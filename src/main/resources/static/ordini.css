@@ -1,0 +1,102 @@
+:root { --rosso: #bd2d25; --crema: #fff8e8; --inchiostro: #24211f; --bordo: #d6cbbc; --verde: #1f6c45; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--inchiostro); background: repeating-linear-gradient(45deg, #f4ead8 0, #f4ead8 12px, #f8f1e5 12px, #f8f1e5 24px); font-family: Georgia, "Times New Roman", serif; }
+.container { width: min(900px, 100%); margin: 0 auto; padding: 18px; }
+header { border-bottom: 4px solid var(--rosso); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: 0; color: var(--rosso); }
+.navigazione { display: flex; flex-wrap: wrap; gap: 12px; }.navigazione a { color: var(--verde); font-weight: bold; }
+h2 { font-size: 18px; margin: 0 0 10px; }
+.tavolo-input, .extra-section, .riepilogo { background: var(--crema); border: 1px solid var(--bordo); border-radius: 6px; padding: 14px; margin-bottom: 14px; }
+label { display: block; font-weight: bold; margin-bottom: 8px; }
+select { width: 100%; min-height: 46px; padding: 8px; font: inherit; border: 1px solid var(--bordo); background: #fff; }
+.tab-container { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; }
+button { font: inherit; cursor: pointer; }
+.tab { min-width: 110px; padding: 12px; border: 1px solid var(--bordo); background: #fff; border-radius: 4px; font-weight: bold; }
+.tab.active { background: var(--rosso); color: #fff; border-color: var(--rosso); }
+.note-input textarea { display: block; width: 100%; height: 110px; min-height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--bordo); border-radius: 8px; font: inherit; font-size: 14px; background: #fff; }
+.prodotti-wrapper { margin-bottom: 14px; }
+.griglia-prodotti { display: flex; gap: 10px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; padding: 0 4px 8px; scroll-snap-type: x mandatory; scrollbar-width: none; min-width: 0; }
+.griglia-prodotti::-webkit-scrollbar { display: none; }
+.pagina-prodotti { flex: 0 0 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 10px; scroll-snap-align: start; }
+.prodotto-btn { min-height: 110px; padding: 10px; background: #fff; border: 2px solid var(--bordo); border-radius: 6px; text-align: left; display: flex; flex-direction: column; }
+.prodotto-btn:active { transform: scale(.98); border-color: var(--rosso); }
+.ingredienti { display: block; margin-top: 4px; color: var(--inchiostro); opacity: .7; font-size: 12px; font-weight: normal; line-height: 1.3; }
+#extra-lista.extra-carousel, #extra-riepilogo-lista.extra-carousel { display: flex; flex-wrap: nowrap; gap: 10px; overflow-x: auto; overflow-y: hidden; padding: 0 4px 10px; scroll-snap-type: x mandatory; scrollbar-width: auto; scrollbar-color: var(--verde) var(--bordo); -webkit-overflow-scrolling: touch; }
+#extra-lista.extra-carousel::-webkit-scrollbar, #extra-riepilogo-lista.extra-carousel::-webkit-scrollbar { display: block; height: 8px; }
+#extra-lista.extra-carousel::-webkit-scrollbar-track, #extra-riepilogo-lista.extra-carousel::-webkit-scrollbar-track { background: var(--bordo); border-radius: 4px; }
+#extra-lista.extra-carousel::-webkit-scrollbar-thumb, #extra-riepilogo-lista.extra-carousel::-webkit-scrollbar-thumb { background: var(--verde); border-radius: 4px; }
+.extra-card { flex: 0 0 170px; min-height: 76px; padding: 10px; border: 2px solid var(--bordo); border-radius: 6px; background: #fff; text-align: left; scroll-snap-align: start; display: flex; flex-direction: column; justify-content: space-between; }
+.extra-card.selezionato { border-color: var(--rosso); background: #fff0ed; }
+.extra-card strong { font-size: 14px; line-height: 1.2; }
+.extra-card span { color: var(--verde); font-weight: bold; }
+.gestione-extra-riepilogo { margin-bottom: 12px; }
+.extra-riepilogo { padding-top: 4px; }
+.riepilogo-totale { text-align: right; color: var(--verde); font-size: 20px; font-weight: bold; }
+#extra-riepilogo-lista { margin-bottom: 12px; }
+#applica-extra { width: 100%; min-height: 42px; border: 0; border-radius: 4px; background: var(--verde); color: #fff; font-weight: bold; }
+.riepilogo-item { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--bordo); padding: 9px 0; }
+.riepilogo-descrizione { display: block; margin-top: 3px; color: var(--inchiostro); opacity: .7; font-size: 12px; }
+.rimuovi { color: var(--rosso); border: 0; background: transparent; text-decoration: underline; }
+.btn-invia, .btn-annulla { width: 100%; min-height: 54px; border-radius: 5px; font-weight: bold; }
+.btn-invia { border: 0; background: var(--verde); color: #fff; }.btn-invia:disabled { background: #9b9b9b; cursor: not-allowed; }.btn-annulla { margin-top: 10px; border: 1px solid var(--bordo); background: transparent; }
+#messaggio { min-height: 24px; font-weight: bold; }.errore { color: var(--rosso); }.successo { color: var(--verde); }
+.conferma-modale { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 18px; background: rgba(36, 33, 31, .58); overscroll-behavior: contain; }
+.conferma-modale[hidden] { display: none; }
+.modale-aperta { overflow: hidden; }
+.conferma-contenuto { width: min(560px, 100%); max-height: min(720px, calc(100vh - 36px)); overflow-y: auto; padding: 20px; background: var(--crema); border: 1px solid var(--bordo); border-radius: 8px; box-shadow: 0 18px 50px rgba(36, 33, 31, .28); }
+.conferma-contenuto h2 { color: var(--rosso); }
+.conferma-riga { padding: 10px 0; border-bottom: 1px solid var(--bordo); }
+.conferma-riga strong, .conferma-riga span { display: block; }
+.conferma-riga span { margin-top: 4px; font-size: 14px; }
+.conferma-totale { color: var(--verde); font-size: 22px; font-weight: bold; text-align: right; }
+.conferma-azioni { display: flex; gap: 10px; }
+.conferma-azioni button { flex: 1; margin: 0; }
+@media (min-width: 650px) { .prodotto-btn { min-height: 120px; } }
+@media (max-width: 649px) {
+    /* Righe prodotto del riepilogo */
+    #riepilogo-items .riepilogo-item {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 100%;
+        gap: 5px;
+        align-items: stretch;
+        overflow: hidden;
+    }
+
+    #riepilogo-items .riepilogo-item > div {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    #riepilogo-items .riepilogo-descrizione,
+    #riepilogo-items .riepilogo-item span {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    #riepilogo-items .rimuovi {
+        align-self: flex-start;
+        white-space: nowrap;
+        max-width: 100%;
+    }
+
+    /* Card Extra del riepilogo */
+    #extra-riepilogo-lista {
+        display: flex;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-right: 24px;
+        box-sizing: border-box;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+}

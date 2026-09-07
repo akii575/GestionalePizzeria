@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordini Pizzeria</title>
+    <link rel="stylesheet" href="/ordini.css">
+    <link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<main class="container">
+    <header><h1>Ordini Pizzeria</h1><nav class="navigazione"><a href="/">Home</a><a href="/gestionale.html">Gestionale</a></nav></header>
+    <section class="tavolo-input">
+        <label for="tavolo">Tavolo / Cliente</label>
+        <select id="tavolo">
+            <option>Tavolo 1</option><option>Tavolo 2</option><option>Tavolo 3</option>
+            <option>Tavolo 4</option><option>Tavolo 5</option><option>Tavolo 6</option>
+            <option>Tavolo 7</option><option>Tavolo 8</option><option>Tavolo 9</option><option>Tavolo 10</option>
+        </select>
+    </section>
+    <section class="note-input">
+        <label for="note">Note</label>
+        <textarea id="note" placeholder="Aggiungi una nota..."></textarea>
+    </section>
+    <nav class="tab-container" aria-label="Categorie">
+        <button class="tab active" data-tab="pizze">Pizze</button>
+        <button class="tab" data-tab="ripieni">Ripieni</button>
+        <button class="tab" data-tab="panuozzi">Panuozzi</button>
+        <button class="tab" data-tab="fritti">Fritti</button>
+        <button class="tab" data-tab="pizze fritte">Fritte</button>
+        <button class="tab" data-tab="pollo scuppettiato">Pollo</button>
+        <button class="tab" data-tab="taglieri">Taglieri</button>
+        <button class="tab" data-tab="primi">Primi</button>
+        <button class="tab" data-tab="secondi">Secondi</button>
+        <button class="tab" data-tab="bibite">Bibite</button>
+        <button class="tab" data-tab="vini">Vini</button>
+        <button class="tab" data-tab="dolci">Dolci</button>
+    </nav>
+    <div class="prodotti-wrapper">
+        <section id="prodotti" class="griglia-prodotti" aria-live="polite"></section>
+    </div>
+    <section class="extra-section" id="extra-section">
+        <h2>Extra per il prossimo piatto</h2>
+        <div id="extra-lista" class="extra-carousel" aria-label="Extra disponibili"></div>
+    </section>
+    <section class="riepilogo">
+        <h2>Riepilogo ordine</h2>
+        <div class="gestione-extra-riepilogo">
+            <label for="riga-extra">Prodotto da modificare</label>
+            <select id="riga-extra" disabled><option value="">Seleziona un prodotto</option></select>
+            <div id="extra-riepilogo" class="extra-riepilogo" hidden>
+                <div id="extra-riepilogo-lista" class="extra-carousel" aria-label="Extra selezionabili"></div>
+                <button id="applica-extra" type="button">Applica extra</button>
+            </div>
+        </div>
+        <div id="riepilogo-items"><p>Nessun prodotto selezionato</p></div>
+        <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
+    </section>
+    <p id="messaggio" role="status"></p>
+    <button class="btn-invia" id="btn-invia" type="button" disabled>Invia ordine in cucina</button>
+    <button class="btn-annulla" id="btn-annulla" type="button">Annulla ordine</button>
+</main>
+<div id="conferma-modale" class="conferma-modale" hidden role="dialog" aria-modal="true" aria-labelledby="conferma-titolo">
+    <div class="conferma-contenuto">
+        <h2 id="conferma-titolo">Conferma ordine</h2>
+        <div id="conferma-riepilogo" class="conferma-riepilogo"></div>
+        <p id="conferma-totale" class="conferma-totale"></p>
+        <div class="conferma-azioni"><button id="conferma-invio" type="button" class="btn-invia">Conferma</button><button id="annulla-invio" type="button" class="btn-annulla">Modifica</button></div>
+    </div>
+</div>
+<script src="/ordini.js"></script>
+<script src="/theme.js"></script>
+</body>
+</html>

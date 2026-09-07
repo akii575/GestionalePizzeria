@@ -1,0 +1,81 @@
+:root { --verde: #176345; --rosso: #b93228; --crema: #fffaf0; --bordo: #d8cdbd; } 
+* { box-sizing: border-box; } 
+body { margin: 0; background: #edf0ea; font-family: Georgia, "Times New Roman", serif; color: #202522; }
+.modifica { width: min(700px, 100%); margin: 0 auto; padding: 22px; }
+header { border-bottom: 4px solid var(--verde); margin-bottom: 18px; }h1 { color: var(--verde); }
+a { color: var(--verde); font-weight: bold; }label { display: block; margin: 12px 0; font-weight: bold; }
+input, select, textarea { display: block; width: 100%; min-height: 42px; margin-top: 5px; padding: 8px; border: 1px solid var(--bordo); border-radius: 4px; font: inherit; background: #fff; }
+textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; font-size: 14px; }
+.extra-carousel { display: flex; gap: 10px; overflow-x: auto; overflow-y: hidden; padding: 0 0 8px; scroll-snap-type: x mandatory; scrollbar-width: auto; scrollbar-color: var(--verde) var(--bordo); -webkit-overflow-scrolling: touch; }
+.extra-carousel::-webkit-scrollbar { display: block; height: 8px; }
+.extra-carousel::-webkit-scrollbar-track { background: var(--bordo); border-radius: 4px; }
+.extra-carousel::-webkit-scrollbar-thumb { background: var(--verde); border-radius: 4px; }
+.extra-card { flex: 0 0 170px; min-height: 76px; padding: 10px; border: 2px solid var(--bordo); border-radius: 6px; background: #fff; text-align: left; scroll-snap-align: start; display: flex; flex-direction: column; justify-content: space-between; }
+.extra-card.selezionato { border-color: var(--rosso); background: #fff0ed; }
+.extra-card strong { font-size: 14px; line-height: 1.2; }
+.extra-card span { color: var(--verde); font-weight: bold; }
+.extra-editor .extra-carousel { flex-direction: column; gap: 6px; height: clamp(190px, 34vh, 320px); max-height: 320px; overflow-x: hidden; overflow-y: scroll; scroll-snap-type: y proximity; padding: 4px 8px 4px 0; scrollbar-width: auto; }
+.extra-editor .extra-carousel::-webkit-scrollbar { width: 8px; height: auto; }
+.extra-editor .extra-card { flex: 0 0 auto; width: 100%; min-height: 52px; scroll-snap-align: none; border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 12px rgba(34, 55, 45, .08); }
+.prodotto-ingredienti { display: block; margin-top: 5px; color: #5d625d; font-size: 12px; font-weight: normal; line-height: 1.3; }
+.riga-edit {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: end;
+    background: var(--crema);
+    padding: 10px;
+    margin-bottom: 8px;
+    border: 1px solid var(--bordo);
+}
+
+.riga-edit > label {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.riga-edit > .extra-editor {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+}
+
+.riga-edit > .rimuovi {
+    grid-column: 2;
+    grid-row: 1;
+}
+.riga-edit label { margin: 0; }.rimuovi { min-height: 42px; border: 0; color: var(--rosso); background: transparent; }
+.salva, #aggiungi { min-height: 44px; padding: 8px 14px; margin-top: 10px; border: 0; border-radius: 4px; background: var(--verde); color: #fff; font-weight: bold; }
+.salva { width: 100%; margin-top: 22px; }#stato { min-height: 24px; color: var(--rosso); }
+#totale-modifica { color: var(--verde); font-size: 20px; font-weight: bold; text-align: right; }
+.extra-selettore select { width: 100%; }
+.extra-selezionati { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.extra-selezionato { min-width: 0; }
+.extra-rimuovi { align-self: flex-start; margin-top: 8px; padding: 5px 8px; border: 1px solid var(--bordo); border-radius: 4px; background: #fff; color: var(--rosso); font: inherit; cursor: pointer; }
+@media (max-width: 600px) {
+    .riga-edit {
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: end;
+    }
+
+    .riga-edit > label {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .riga-edit > .rimuovi {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .riga-edit > .extra-editor {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    .extra-editor .extra-carousel {
+        height: min(42vh, 250px);
+    }
+}
