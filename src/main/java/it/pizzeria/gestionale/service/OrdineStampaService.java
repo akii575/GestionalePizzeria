@@ -3,6 +3,7 @@ package it.pizzeria.gestionale.service;
 import it.pizzeria.gestionale.model.Ordine;
 import it.pizzeria.gestionale.model.RigaOrdine;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.print.Doc;
@@ -19,9 +20,16 @@ import java.time.format.DateTimeFormatter;
 public class OrdineStampaService {
 
     private final String nomeStampante;
+    private final MenuService menuService;
 
-    public OrdineStampaService(@Value("${stampa.nome:}") String nomeStampante) {
+    public OrdineStampaService(String nomeStampante) {
+        this(nomeStampante, new MenuService());
+    }
+
+    @Autowired
+    public OrdineStampaService(@Value("${stampa.nome:}") String nomeStampante, MenuService menuService) {
         this.nomeStampante = nomeStampante == null ? "" : nomeStampante.trim();
+        this.menuService = menuService;
     }
 
     public RisultatoStampa stampa(Ordine ordine) {
@@ -54,17 +62,33 @@ public class OrdineStampaService {
 
     private String creaTestoComanda(Ordine ordine) {
         StringBuilder testo = new StringBuilder();
-        testo.append("PIZZERIA\n");
-        testo.append("COMANDA #").append(ordine.getNumero()).append("\n");
+        testo.append("COMANDA #").append(ordine.getNumero()).append(" - ").append(ordine.getTavoloOCliente()).append("\n");
         testo.append(ordine.getDataOra().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))).append("\n");
-        testo.append(ordine.getTavoloOCliente()).append("\n");
         testo.append("------------------------------\n");
+        boolean separatoreFrittiStampato = false;
+        boolean separatoreBibiteStampato = false;
         for (RigaOrdine riga : ordine.getRighe()) {
+            String categoria = menuService.trovaPerNome(riga.getProdotto()).getCategoria();
+            if (!separatoreFrittiStampato && "fritti".equals(categoria)) {
+                testo.append("------------------------------\n");
+                separatoreFrittiStampato = true;
+            }
+            if (!separatoreBibiteStampato && "bibite".equals(categoria)) {
+                testo.append("------------------------------\n");
+                separatoreBibiteStampato = true;
+            }
             testo.append(riga.getProdotto());
             if (!riga.getExtra().isEmpty()) {
                 testo.append(" + ").append(String.join(", ", riga.getExtra()));
             }
-            testo.append("\n");
+            testo.append(" - EUR ")
+                .append(riga.calcolaTotale().setScale(2, RoundingMode.HALF_UP).toPlainString())
+                .append("\n");
+        }
+        if (!ordine.getNote().trim().isEmpty()) {
+            testo.append("------------------------------\n");
+            testo.append("NOTE:\n");
+            testo.append(ordine.getNote().trim()).append("\n");
         }
         testo.append("------------------------------\n");
         testo.append("TOTALE: EUR ")
