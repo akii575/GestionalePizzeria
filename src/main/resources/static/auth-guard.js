@@ -14,7 +14,9 @@
             }
             if (!response.ok) throw new Error("Servizio di autenticazione non disponibile.");
             const account = await response.json();
-            showToolbar(account.email);
+            if (window.location.pathname === "/" || window.location.pathname === "/index.html") {
+                showToolbar(account.email);
+            }
             document.documentElement.classList.remove("auth-loading");
             return true;
         } catch {
