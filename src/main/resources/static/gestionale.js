@@ -1,7 +1,8 @@
-const stato = { ordini: [], menu: [], timer: null };
+const stato = { ordini: [], menu: [], timer: null, richiestaCaricamento: 0 };
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const lista = document.getElementById("lista-ordini");
 const statoPagina = document.getElementById("stato");
+const eliminazioniInCorso = new Set();
 
 function testoSicuro(valore) { const elemento = document.createElement("span"); elemento.textContent = valore == null ? "" : valore; return elemento.innerHTML; }
 function mostraStato(testo, classe) { statoPagina.textContent = testo; statoPagina.className = classe || ""; }
@@ -25,10 +26,41 @@ function render() {
     lista.querySelectorAll("[data-modifica]").forEach(button => button.addEventListener("click", () => window.location.href = `/modifica.html?numero=${button.dataset.modifica}`));
     lista.querySelectorAll("[data-elimina]").forEach(button => button.addEventListener("click", () => eliminaOrdine(button.dataset.elimina)));
 }
-async function eliminaOrdine(numero) { if (!window.confirm(`Eliminare l'ordine #${numero}?`)) return; const risposta = await fetch(`/api/ordini/${numero}`, { method: "DELETE" }); if (!risposta.ok) { mostraStato("Eliminazione non riuscita.", "errore"); return; } if (window.themeToast) window.themeToast(`Ordine #${numero} eliminato`); await caricaOrdini(); }
+async function eliminaOrdine(numero) {
+    const id = String(numero);
+    if (eliminazioniInCorso.has(id) || !window.confirm(`Eliminare l'ordine #${numero}?`)) return;
+    eliminazioniInCorso.add(id);
+    try {
+        const risposta = await fetch(`/api/ordini/${id}`, { method: "DELETE" });
+        if (!risposta.ok) throw new Error("Eliminazione non riuscita.");
+        stato.ordini = stato.ordini.filter(ordine => String(ordine.numero) !== id);
+        render();
+        if (window.themeToast) window.themeToast(`Ordine #${numero} eliminato`);
+        await caricaOrdini();
+    } catch (errore) {
+        mostraStato(errore.message, "errore");
+    } finally {
+        eliminazioniInCorso.delete(id);
+    }
+}
 async function caricaOrdini() {
+    const richiesta = ++stato.richiestaCaricamento;
     mostraStato("Caricamento ordini...", "loading");
-    try { const risposte = await Promise.all([fetch("/api/ordini", { cache: "no-store" }), fetch("/api/menu", { cache: "no-store" })]); if (!risposte[0].ok || !risposte[1].ok) throw new Error("Impossibile caricare gli ordini."); stato.ordini = await risposte[0].json(); stato.menu = await risposte[1].json(); document.getElementById("ultimo-aggiornamento").textContent = new Date().toLocaleTimeString("it-IT"); render(); mostraStato(""); } catch (errore) { mostraStato(errore.message, "errore"); }
+    try {
+        const risposte = await Promise.all([fetch("/api/ordini", { cache: "no-store" }), fetch("/api/menu", { cache: "no-store" })]);
+        if (richiesta !== stato.richiestaCaricamento) return;
+        if (!risposte[0].ok || !risposte[1].ok) throw new Error("Impossibile caricare gli ordini.");
+        const [ordini, menu] = await Promise.all([risposte[0].json(), risposte[1].json()]);
+        if (richiesta !== stato.richiestaCaricamento) return;
+        stato.ordini = ordini;
+        stato.menu = menu;
+        document.getElementById("ultimo-aggiornamento").textContent = new Date().toLocaleTimeString("it-IT");
+        render();
+        mostraStato("");
+    } catch (errore) {
+        if (richiesta !== stato.richiestaCaricamento) return;
+        mostraStato(errore.message, "errore");
+    }
 }
 function configuraAggiornamento() { if (stato.timer) clearInterval(stato.timer); if (document.getElementById("autoAggiorna").checked) stato.timer = setInterval(caricaOrdini, 15000); }
 document.getElementById("aggiorna").addEventListener("click", caricaOrdini);

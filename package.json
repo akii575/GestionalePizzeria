@@ -1,0 +1,23 @@
+{
+  "name": "gestionale-pizzeria",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/export-menu.js && node scripts/copy-static.js",
+    "import-sqlite": "node scripts/import-sqlite.js",
+    "set-admin": "node scripts/set-admin.js",
+    "test": "node scripts/export-menu.js && node scripts/copy-static.js && node --test"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "sql.js": "^1.13.0"
+  },
+  "overrides": {
+    "jwks-rsa": {
+      "jose": "4.15.9"
+    }
+  }
+}

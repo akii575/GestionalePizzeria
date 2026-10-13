@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionale ordini</title>
+    <style>html.auth-loading body{visibility:hidden}</style><script src="/auth-guard.js"></script>
     <link rel="stylesheet" href="/gestionale.css">
     <link rel="stylesheet" href="/theme.css">
 </head>
 <body>
 <main class="dashboard">
     <header class="dashboard-header">
-        <div><p class="eyebrow">Pizzeria</p><h1>Gestionale ordini</h1><p class="sottotitolo">Ordini salvati sul server locale</p></div>
+        <div><p class="eyebrow">Pizzeria</p><h1>Gestionale ordini</h1><p class="sottotitolo">Ordini salvati in modo sicuro</p></div>
         <nav><a href="/">Home</a><a href="/ordini.html">Nuova comanda</a><button id="aggiorna" type="button">Aggiorna</button><button id="reset-numeri" type="button" class="pericolo">Reset numeri</button></nav>
     </header>
     <section class="filtri" aria-label="Filtri ordini">

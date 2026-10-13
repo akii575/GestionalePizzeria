@@ -1,0 +1,7 @@
+.env*
+service-account*.json
+data/
+target/
+node_modules/
+.git/
+.vercel/

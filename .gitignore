@@ -1,8 +1,17 @@
 target/
 data/*.db
 .env
+.env.*
+!.env.example
 .idea/
 .vscode/
 *.log
 .claude/
 .tools/
+.vercel/
+node_modules/
+public/
+lib/generated-pages.js
+service-account*.json
+.vercel
+.env*
