@@ -5,6 +5,7 @@
   "scripts": {
     "build": "node scripts/export-menu.js && node scripts/copy-static.js",
     "import-sqlite": "node scripts/import-sqlite.js",
+    "printer-terminal": "node scripts/printer-terminal.js",
     "set-admin": "node scripts/set-admin.js",
     "test": "node scripts/export-menu.js && node scripts/copy-static.js && node --test"
   },

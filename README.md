@@ -116,8 +116,36 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   L'import mantiene numeri, date, note, righe e importi; rifiuta di sovrascrivere
   ordini gia' presenti in Firestore e puo' riprendere un'import interrotta dallo
   stesso file SQLite.
-- La stampa automatica Windows non e' disponibile in un server cloud; un ordine
-  creato su Vercel viene salvato e la risposta segnala che la stampa non e' partita.
+- La stampa del sito Vercel passa per una coda Firestore e un terminale Windows
+  locale: il server cloud non puo' raggiungere direttamente una stampante della rete
+  del ristorante. Per abilitarla, installa la stampante in Windows, impostala come
+  predefinita (oppure imposta `PRINTER_NAME` con il nome esatto della coda Windows),
+  installa Node.js e le dipendenze del progetto e avvia dalla cartella del progetto:
+
+  ```powershell
+  npm install
+  npm run printer-terminal
+  ```
+
+  Il terminale usa il service account locale `service-account.json`, interroga
+  Firestore ogni 10 secondi e invia le nuove comande alla stampante predefinita
+  tramite il driver Windows. La chiave del service account ha privilegi amministrativi:
+  tienila solo su un PC fidato, non condividerla e non caricarla su GitHub. Il processo
+  ascolta esclusivamente su `127.0.0.1:8765`; il browser comunica con esso solo dal
+  dominio di produzione e potrebbe chiedere il permesso di accesso alla rete locale.
+  Le stampanti virtuali standard di Windows (PDF, XPS e Fax) non vengono usate per
+  evitare finestre di dialogo o file al posto della stampa fisica.
+  Lascia aperta la finestra del terminale e il PC acceso e connesso a Internet per
+  ricevere e stampare gli ordini. La Home indica stampante, coda e comande fallite;
+  dopo aver risolto un errore, puoi usare "Riprova comande non stampate".
+- Le comande gia' presenti prima dell'attivazione non vengono ristampate. Una
+  modifica a una comanda gia' stampata non la ristampa; quelle ancora in coda usano
+  i dati aggiornati. Se il PC o il terminale si interrompe dopo che Windows ha
+  accettato il lavoro ma prima della conferma su Firestore, il sistema puo' ritentare
+  e produrre una copia duplicata: e' preferibile a perdere una comanda. Dimensione
+  carta, margini e taglierina vanno configurati nelle preferenze del driver Windows.
+  La stampa usa solo software e servizi gia' previsti dal progetto e non richiede
+  nuovi servizi a pagamento; restano applicabili le quote gratuite di Firebase.
 
 ## Test e funzionamento locale legacy
 
