@@ -121,9 +121,32 @@ test("receipt includes order number, destination, product extras and notes", () 
         totale: 9.5
     });
     assert.match(receipt, /COMANDA #12/);
-    assert.match(receipt, /TAVOLO: Tavolo 4/);
-    assert.match(receipt, /Margherita/);
+    assert.match(receipt, /TAVOLO \/ CLIENTE: Tavolo 4/);
+    assert.match(receipt, /1 x Margherita/);
     assert.match(receipt, /\+ Bufala/);
     assert.match(receipt, /Senza basilico/);
-    assert.ok(receipt.includes("EUR 9.50"));
+    assert.ok(receipt.includes("EUR 9,50"));
+    assert.ok(receipt.split(/\r?\n/).every(line => Array.from(line).length <= 42));
+});
+
+test("receipt wraps long product, destination and note text to the configured roll width", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        numero: 128,
+        tavoloOCliente: "Cliente con un nominativo molto lungo da stampare senza tagli",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{
+            prodotto: "Pizza speciale con ingredienti molto lunghi e descrittivi",
+            extra: [{ nome: "Extra con nome particolarmente lungo da mandare a capo" }]
+        }],
+        note: "Prima riga della nota\nSeconda riga con ulteriori dettagli molto lunghi per la cucina",
+        totale: 12
+    });
+    const lines = receipt.split(/\r?\n/);
+
+    assert.ok(lines.every(line => Array.from(line).length <= 42));
+    assert.ok(receipt.includes("Cliente con un"));
+    assert.ok(receipt.includes("nominativo molto lungo"));
+    assert.ok(receipt.includes("Seconda riga con ulteriori dettagli"));
+    assert.ok(receipt.includes("  + Extra con nome"));
 });

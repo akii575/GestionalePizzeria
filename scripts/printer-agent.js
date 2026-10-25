@@ -12,6 +12,7 @@ const LEASE_MILLISECONDS = 120_000;
 const POLL_MILLISECONDS = 10_000;
 const PRINT_TIMEOUT_MILLISECONDS = 45_000;
 const PRINT_SCRIPT = path.join(__dirname, "print-order.ps1");
+const RECEIPT_WIDTH = 42;
 
 function initializeFirestore() {
     let serviceAccount;
@@ -53,28 +54,87 @@ function initializeFirestore() {
     return getFirestore(app);
 }
 
+function wrapReceiptText(value, width = RECEIPT_WIDTH) {
+    const paragraphs = String(value ?? "").replace(/\r\n?/g, "\n").split("\n");
+    const lines = [];
+    for (const paragraph of paragraphs) {
+        const words = paragraph.trim().split(/\s+/).filter(Boolean);
+        if (!words.length) {
+            lines.push("");
+            continue;
+        }
+        let line = "";
+        for (const word of words) {
+            const characters = Array.from(word);
+            if (characters.length > width) {
+                if (line) lines.push(line);
+                for (let index = 0; index < characters.length; index += width) {
+                    lines.push(characters.slice(index, index + width).join(""));
+                }
+                line = "";
+            } else if (line && Array.from(line).length + 1 + characters.length > width) {
+                lines.push(line);
+                line = word;
+            } else {
+                line = line ? `${line} ${word}` : word;
+            }
+        }
+        if (line) lines.push(line);
+    }
+    return lines;
+}
+
+function centerReceiptText(value) {
+    return wrapReceiptText(value).map(line => {
+        const padding = Math.max(0, Math.floor((RECEIPT_WIDTH - Array.from(line).length) / 2));
+        return `${" ".repeat(padding)}${line}`;
+    });
+}
+
 function formatReceipt(order) {
+    const divider = "=".repeat(RECEIPT_WIDTH);
+    const date = new Date(order.dataOra).toLocaleString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
     const lines = [
-        `COMANDA #${order.numero}`,
-        `TAVOLO: ${order.tavoloOCliente}`,
-        new Date(order.dataOra).toLocaleString("it-IT"),
-        "--------------------------------"
+        divider,
+        ...centerReceiptText(`COMANDA #${order.numero}`),
+        divider,
+        ...wrapReceiptText(`TAVOLO / CLIENTE: ${order.tavoloOCliente}`),
+        ...wrapReceiptText(`DATA: ${date}`),
+        divider
     ];
     for (const row of order.righe || []) {
-        lines.push(row.prodotto);
+        lines.push(...wrapReceiptText(`1 x ${row.prodotto}`));
         for (const extra of row.extra || []) {
-            lines.push(`  + ${typeof extra === "string" ? extra : extra.nome}`);
+            const name = typeof extra === "string" ? extra : extra.nome;
+            const prefix = "  + ";
+            const wrappedExtra = wrapReceiptText(name, RECEIPT_WIDTH - prefix.length);
+            lines.push(...wrappedExtra.map((line, index) => (
+                `${index === 0 ? prefix : " ".repeat(prefix.length)}${line}`
+            )));
         }
     }
     if (order.note) {
-        lines.push("--------------------------------", "NOTE:", order.note);
+        lines.push(
+            divider,
+            "NOTE",
+            ...wrapReceiptText(order.note)
+        );
     }
-    lines.push(
-        "--------------------------------",
-        `TOTALE: EUR ${Number(order.totale || 0).toFixed(2)}`,
-        "",
-        ""
-    );
+    const amount = `EUR ${Number(order.totale || 0).toFixed(2).replace(".", ",")}`;
+    const totalGap = RECEIPT_WIDTH - "TOTALE".length - amount.length;
+    lines.push(divider);
+    if (totalGap > 0) {
+        lines.push(`TOTALE${" ".repeat(totalGap)}${amount}`);
+    } else {
+        lines.push(...wrapReceiptText(`TOTALE ${amount}`));
+    }
+    lines.push("", "");
     return lines.join("\r\n");
 }
 

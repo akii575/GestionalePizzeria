@@ -144,7 +144,10 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   accettato il lavoro ma prima della conferma su Firestore, il sistema puo' ritentare
   e produrre una copia duplicata: e' preferibile a perdere una comanda. Dimensione
   carta, margini e taglierina vanno configurati nelle preferenze del driver Windows.
-  La stampa usa solo software e servizi gia' previsti dal progetto e non richiede
+Il driver Epson deve usare la larghezza del rotolo effettivamente caricato; la
+formattazione delle comande usa 42 caratteri per riga, adatta alla configurazione
+80 mm. La larghezza fisica del rotolo non e' rilevabile dal terminale.
+La stampa usa solo software e servizi gia' previsti dal progetto e non richiede
   nuovi servizi a pagamento; restano applicabili le quote gratuite di Firebase.
 
 ## Test e funzionamento locale legacy
