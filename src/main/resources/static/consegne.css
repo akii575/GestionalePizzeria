@@ -1,0 +1,27 @@
+.lista-consegne { display: grid; gap: 14px; }
+.consegna { overflow: hidden; border: 1px solid var(--bordo); border-left: 6px solid var(--rosso); border-radius: 5px; background: var(--crema); }
+.consegna-testa { display: flex; justify-content: space-between; gap: 16px; padding: 15px 16px; border-bottom: 1px solid var(--bordo); }
+.consegna-testa h2 { margin: 0; font-size: 22px; }
+.consegna-testa p { margin: 4px 0 0; color: #5d625d; }
+.consegna-numero { color: var(--rosso); font-weight: bold; }
+.consegna-totale { text-align: right; color: var(--verde); font-size: 22px; font-weight: bold; }
+.consegna-recapiti { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; padding: 14px 16px; }
+.consegna-recapiti > div { min-width: 0; }
+.consegna-recapiti strong, .consegna-recapiti a { overflow-wrap: anywhere; }
+.consegna-telefono { display: inline-block; margin-top: 5px; font-size: 18px; }
+.consegna-indirizzo { display: block; margin-top: 5px; font-size: 17px; }
+.mappe-link { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 7px; font-size: 14px; }
+.consegna-dettagli { margin: 0 16px 12px; padding: 10px 12px; border: 1px solid var(--bordo); border-radius: 4px; background: #fff; }
+.consegna-dettagli summary { color: var(--verde); font-weight: bold; cursor: pointer; }
+.consegna-prodotti { margin: 8px 0; padding-left: 20px; }
+.consegna-prodotti li { padding: 5px 0; }
+.consegna-note { margin: 10px 0 0; padding: 9px; border-left: 3px solid var(--rosso); background: #fff4ef; white-space: pre-wrap; overflow-wrap: anywhere; }
+.consegna-azioni { display: flex; gap: 8px; padding: 0 16px 14px; }
+.consegna-azioni button { border: 1px solid var(--bordo); border-radius: 4px; padding: 8px 12px; background: #fff; }
+.consegna-azioni .pericolo { color: var(--rosso); }
+@media (max-width: 700px) {
+    .consegna-testa { align-items: flex-start; flex-direction: column; }
+    .consegna-totale { text-align: left; }
+    .consegna-recapiti { grid-template-columns: 1fr; }
+    .consegna-azioni { flex-direction: column; }
+}

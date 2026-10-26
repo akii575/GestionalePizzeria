@@ -6,7 +6,8 @@
     { "source": "/index.html", "destination": "/api/pages/index.html" },
     { "source": "/ordini.html", "destination": "/api/pages/ordini.html" },
     { "source": "/gestionale.html", "destination": "/api/pages/gestionale.html" },
-    { "source": "/modifica.html", "destination": "/api/pages/modifica.html" }
+    { "source": "/modifica.html", "destination": "/api/pages/modifica.html" },
+    { "source": "/consegne.html", "destination": "/api/pages/consegne.html" }
   ],
   "headers": [
     {

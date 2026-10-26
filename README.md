@@ -1,9 +1,10 @@
 # Gestionale Pizzeria
 
 Gestionale web per ordini, aggiornato per il deploy su Vercel. Le pagine esistenti
-sono servite solo dopo la verifica server-side della sessione admin; le API Node.js
-salvano gli ordini in Firestore.
-L'accesso e' riservato all'account Firebase con il custom claim `admin: true`.
+sono servite solo dopo la verifica server-side della sessione Firebase; le API
+Node.js salvano gli ordini in Firestore. Gli amministratori usano il custom claim
+`admin: true`; i consegnatori usano `delivery: true` e possono solo visualizzare
+la pagina delle consegne.
 
 ## Configurazione Firebase
 
@@ -34,6 +35,18 @@ comando con `--revoke`:
 ```powershell
 npm run set-admin -- mattia.torneo2000@gmail.com --revoke
 ```
+
+Per abilitare un account consegnatore, prima crealo manualmente in Firebase
+Authentication > Users, poi assegna il claim con:
+
+```powershell
+npm run set-delivery -- consegnatore@example.com
+```
+
+Per revocare il ruolo usa `npm run set-delivery -- consegnatore@example.com --revoke`.
+L'utente deve accedere di nuovo dopo l'assegnazione o la revoca. I consegnatori
+possono vedere tutte le consegne, comprese quelle precedenti, ma non possono
+creare, modificare o eliminare ordini.
 
 Per gestire gli account, usa **Firebase Console > Authentication > Users**.
 La registrazione pubblica non e' implementata.
@@ -92,15 +105,40 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
 
 ## Sicurezza e dati
 
-- Ogni pagina applicativa verifica la sessione server-side; account non autenticati
-  vengono inviati al login e account senza il claim admin ricevono solo "Accesso
-  negato" e logout.
-- Le API verificano una sessione Firebase Admin e il claim `admin` prima di leggere
-  menu/ordini o eseguire modifiche. Le sessioni sono cookie `HttpOnly`, `Secure` e
-  `SameSite=Lax`; le operazioni di modifica controllano anche l'origine.
-- Le Firestore Security Rules autorizzano lettura e scrittura solo a utenti con
-  `request.auth.token.admin == true`. L'SDK Admin delle API ha privilegi server;
-  per questo le API applicano autonomamente lo stesso controllo.
+- Per trasferire il ponte di stampa su un altro PC Windows x64, crea il pacchetto
+  senza segreti con:
+
+  ```powershell
+  .\scripts\package-pizzeria-setup.ps1
+  ```
+
+  Copia `pizzeria-pc-setup.zip` sul PC della pizzeria, estrailo e fai doppio clic
+  su `configura-pc-pizzeria.bat`. Il setup scarica dal sito ufficiale Node.js 22
+  portatile solo se manca, ne verifica il checksum, installa le dipendenze, esegue
+  la build e configura l'attivita' pianificata. Non installa driver Epson. Il file
+  service account e' escluso dal pacchetto: copialo separatamente su USB fidata o
+  selezionalo quando il setup lo richiede; non inviarlo via chat o email.
+  L'installazione prova l'IP Epson noto `192.168.1.222`; se la rete del locale usa
+  un altro IP, ti chiede quello corretto. Dopo aver verificato il nuovo PC, fai
+  doppio clic su `disattiva-stampa-automatica.bat` sul PC di prova. Il comando
+  disabilita solo l'attivita' pianificata, senza cancellare chiavi o configurazione.
+  Attendi fino a 2 minuti per la scadenza del lock condiviso prima di affidare i job
+  al nuovo PC.
+- Ogni pagina applicativa verifica la sessione server-side; gli account admin
+  accedono a tutto, i consegnatori solo alla pagina dedicata e gli altri ricevono
+  "Accesso negato".
+- Le API verificano una sessione Firebase Admin: il claim `admin` consente tutte le
+  operazioni, mentre `delivery` consente solo la lettura degli ordini di tipo
+  consegna. Le sessioni sono cookie `HttpOnly`, `Secure` e `SameSite=Lax`; le
+  operazioni di modifica controllano anche l'origine.
+- Le Firestore Security Rules consentono agli admin lettura e scrittura; i
+  consegnatori possono leggere solo documenti con `tipo == "consegna"`. L'SDK Admin
+  delle API ha privilegi server, quindi ogni endpoint applica autonomamente lo
+  stesso controllo e filtra i risultati.
+- Le nuove comande possono essere di tipo sala/asporto o consegna. Le consegne
+  richiedono nome del cliente, indirizzo e telefono; la pagina Consegne mostra
+  riepilogo e dettaglio, offre chiamata e navigazione tramite Mappe Apple o Google
+  Maps e mostra modifica/eliminazione solo agli admin.
 - Il database SQLite `data/pizzeria.db` resta locale e non viene caricato né
   cancellato dal deploy. Gli ordini gia' presenti non sono importati
   automaticamente in Firestore. Per conservarli, verifica prima il database locale e
@@ -116,39 +154,44 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   L'import mantiene numeri, date, note, righe e importi; rifiuta di sovrascrivere
   ordini gia' presenti in Firestore e puo' riprendere un'import interrotta dallo
   stesso file SQLite.
-- La stampa del sito Vercel passa per una coda Firestore e un terminale Windows
-  locale: il server cloud non puo' raggiungere direttamente una stampante della rete
-  del ristorante. Per abilitarla, installa la stampante in Windows, impostala come
-  predefinita (oppure imposta `PRINTER_NAME` con il nome esatto della coda Windows),
-  installa Node.js e le dipendenze del progetto e avvia dalla cartella del progetto:
+- La stampa del sito Vercel passa per una coda Firestore e un agente Windows locale:
+  il PC interroga Firestore ogni 10 secondi tramite connessioni Internet in uscita e
+  invia la comanda alla stampante Epson sulla rete locale, via ESC/POS TCP porta
+  `9100`. Non servono driver Epson/Windows e non va aperta alcuna porta del router;
+  la stampante non viene esposta a Internet. Il PC deve rimanere acceso, connesso a
+  Internet e con l'utente Windows collegato.
+- Per configurare l'agente, installa Node.js e le dipendenze del progetto una sola
+  volta (`npm install`), assicurati che `service-account.json` sia presente solo sul
+  PC fidato, poi fai doppio clic su `installa-stampa-automatica.bat`. Lo script
+  rileva l'indirizzo IP della porta Epson gia' configurata in Windows, se presente;
+  in alternativa lo richiede. Crea `data/printer-config.json`, verifica la porta
+  `9100`, registra un'attivita' pianificata all'accesso dell'utente corrente e
+  avvia l'agente in background. Se l'IP cambia, riserva quell'indirizzo nel router e
+  riesegui l'installazione. Non e' necessario installare o selezionare una coda
+  stampante Windows per stampare.
 
   ```powershell
   npm install
-  npm run printer-terminal
+  .\installa-stampa-automatica.bat
   ```
 
-  Il terminale usa il service account locale `service-account.json`, interroga
-  Firestore ogni 10 secondi e invia le nuove comande alla stampante predefinita
-  tramite il driver Windows. La chiave del service account ha privilegi amministrativi:
-  tienila solo su un PC fidato, non condividerla e non caricarla su GitHub. Il processo
-  ascolta esclusivamente su `127.0.0.1:8765`; il browser comunica con esso solo dal
-  dominio di produzione e potrebbe chiedere il permesso di accesso alla rete locale.
-  Le stampanti virtuali standard di Windows (PDF, XPS e Fax) non vengono usate per
-  evitare finestre di dialogo o file al posto della stampa fisica.
-  Lascia aperta la finestra del terminale e il PC acceso e connesso a Internet per
-  ricevere e stampare gli ordini. La Home indica stampante, coda e comande fallite;
-  dopo aver risolto un errore, puoi usare "Riprova comande non stampate".
+  Il processo usa il service account locale `service-account.json`, che ha privilegi
+  amministrativi: conservalo solo su un PC fidato, non condividerlo e non caricarlo
+  su GitHub. Il servizio locale ascolta solo su `127.0.0.1:8765` per mostrare lo
+  stato e riprovare i job; il browser puo' chiedere il permesso di accesso alla rete
+  locale. La Home mostra la connessione Ethernet, la coda e gli errori.
 - Le comande gia' presenti prima dell'attivazione non vengono ristampate. Una
   modifica a una comanda gia' stampata non la ristampa; quelle ancora in coda usano
-  i dati aggiornati. Se il PC o il terminale si interrompe dopo che Windows ha
-  accettato il lavoro ma prima della conferma su Firestore, il sistema puo' ritentare
-  e produrre una copia duplicata: e' preferibile a perdere una comanda. Dimensione
-  carta, margini e taglierina vanno configurati nelle preferenze del driver Windows.
-Il driver Epson deve usare la larghezza del rotolo effettivamente caricato; la
-formattazione delle comande usa 42 caratteri per riga, adatta alla configurazione
-80 mm. La larghezza fisica del rotolo non e' rilevabile dal terminale.
+  i dati aggiornati. Se il PC o l'agente si interrompe dopo l'invio dei dati ma prima
+  della conferma Firestore, il job puo' essere ritentato e produrre una copia
+  duplicata: si privilegia non perdere una comanda. I titoli e le sezioni sono inviati
+  in ESC/POS con formato ingrandito; il taglio viene eseguito dalla taglierina della
+  stampante. La larghezza del rotolo va selezionata fisicamente (58 o 80 mm) e la
+  stampante va configurata per l'uso in rete.
+  Riferimenti Epson: [TM-T20 Technical Reference Guide](https://download4.epson.biz/sec_pubs/bs/pdf/TM-T20_trg_en_revD.pdf) e
+  [ESC/POS command reference](https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/index.html).
 La stampa usa solo software e servizi gia' previsti dal progetto e non richiede
-  nuovi servizi a pagamento; restano applicabili le quote gratuite di Firebase.
+nuovi servizi a pagamento; restano applicabili le quote gratuite di Firebase.
 
 ## Test e funzionamento locale legacy
 

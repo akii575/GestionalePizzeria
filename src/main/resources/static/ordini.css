@@ -8,7 +8,12 @@ h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: 0; color: var(--rosso); 
 h2 { font-size: 18px; margin: 0 0 10px; }
 .tavolo-input, .extra-section, .riepilogo { background: var(--crema); border: 1px solid var(--bordo); border-radius: 6px; padding: 14px; margin-bottom: 14px; }
 label { display: block; font-weight: bold; margin-bottom: 8px; }
-select { width: 100%; min-height: 46px; padding: 8px; font: inherit; border: 1px solid var(--bordo); background: #fff; }
+select, .tavolo-input input { width: 100%; min-height: 46px; padding: 8px; font: inherit; border: 1px solid var(--bordo); background: #fff; }
+.campi-consegna { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; margin-top: 12px; }
+.campi-consegna[hidden] { display: none; }
+.campi-consegna label { align-self: end; }
+.campi-consegna label[for="indirizzo-consegna"] { grid-column: 1 / -1; }
+.campi-consegna #indirizzo-consegna { grid-column: 1 / -1; }
 .tab-container { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; }
 button { font: inherit; cursor: pointer; }
 .tab { min-width: 110px; padding: 12px; border: 1px solid var(--bordo); background: #fff; border-radius: 4px; font-weight: bold; }
@@ -48,11 +53,16 @@ button { font: inherit; cursor: pointer; }
 .conferma-riga { padding: 10px 0; border-bottom: 1px solid var(--bordo); }
 .conferma-riga strong, .conferma-riga span { display: block; }
 .conferma-riga span { margin-top: 4px; font-size: 14px; }
+.conferma-consegna { padding: 10px; margin-bottom: 8px; border-left: 4px solid var(--rosso); background: #fff; }
+.conferma-consegna span { display: block; margin-top: 4px; overflow-wrap: anywhere; }
 .conferma-totale { color: var(--verde); font-size: 22px; font-weight: bold; text-align: right; }
 .conferma-azioni { display: flex; gap: 10px; }
 .conferma-azioni button { flex: 1; margin: 0; }
 @media (min-width: 650px) { .prodotto-btn { min-height: 120px; } }
 @media (max-width: 649px) {
+    .campi-consegna { grid-template-columns: 1fr; }
+    .campi-consegna label[for="indirizzo-consegna"],
+    .campi-consegna #indirizzo-consegna { grid-column: auto; }
     /* Righe prodotto del riepilogo */
     #riepilogo-items .riepilogo-item {
         display: flex;

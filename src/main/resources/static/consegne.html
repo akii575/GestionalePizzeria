@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consegne</title>
+    <style>html.auth-loading body{visibility:hidden}</style>
+    <script src="/auth-guard.js"></script>
+    <link rel="stylesheet" href="/gestionale.css">
+    <link rel="stylesheet" href="/consegne.css">
+    <link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<main class="dashboard">
+    <header class="dashboard-header">
+        <div><p class="eyebrow">Pizzeria</p><h1>Consegne</h1><p class="sottotitolo">Riepilogo e recapiti delle consegne</p></div>
+        <nav>
+            <a href="/gestionale.html" data-admin-only hidden>Gestionale ordini</a>
+            <button id="aggiorna" type="button">Aggiorna</button>
+        </nav>
+    </header>
+    <section class="filtri" aria-label="Filtri consegne">
+        <label for="filtro">Cerca cliente, indirizzo o telefono<input id="filtro" type="search" placeholder="Nome, via o numero..."></label>
+        <label for="data">Data ordine<input id="data" type="date"></label>
+    </section>
+    <section class="metriche" aria-label="Riepilogo consegne">
+        <div><span>Consegne visualizzate</span><strong id="numero-consegne">0</strong></div>
+        <div><span>Totale consegne</span><strong id="totale-consegne">0,00 EUR</strong></div>
+        <div><span>Ultimo aggiornamento</span><strong id="ultimo-aggiornamento">--:--</strong></div>
+    </section>
+    <p id="stato" role="status" aria-live="polite"></p>
+    <section id="lista-consegne" class="lista-consegne" aria-live="polite"></section>
+</main>
+<script src="/consegne.js"></script>
+<script src="/theme.js"></script>
+</body>
+</html>

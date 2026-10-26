@@ -5,10 +5,14 @@
     const refreshButton = document.getElementById("printer-refresh");
     const retryButton = document.getElementById("printer-retry");
     if (!statusElement || !agentElement || !listElement || !refreshButton || !retryButton) return;
+    const hintElement = document.querySelector(".printer-hint");
+    if (hintElement) {
+        hintElement.textContent = "Il servizio parte automaticamente all'accesso a Windows. Tieni il PC acceso e connesso a Internet; non serve installare un driver Epson.";
+    }
 
     async function refreshStatus() {
         refreshButton.disabled = true;
-        statusElement.textContent = "Controllo stampanti di questo computer...";
+        statusElement.textContent = "Controllo connessione alla stampante Epson via Ethernet...";
         listElement.replaceChildren();
         try {
             const response = await fetch("http://127.0.0.1:8765/status", {
@@ -21,23 +25,18 @@
             }
             const result = await response.json();
             if (result.printers.length === 0) {
-                statusElement.textContent = "Nessuna stampante installata su questo computer.";
+                statusElement.textContent = "Configurazione della stampante di rete non trovata.";
             } else {
-                statusElement.textContent = "Stampanti rilevate su questo computer:";
+                statusElement.textContent = "Stampante di rete:";
                 for (const printer of result.printers) {
                     const item = document.createElement("li");
-                    if (printer.isVirtual) {
-                        item.textContent = `${printer.name} — stampante virtuale, non usata per le comande`;
-                        listElement.append(item);
-                        continue;
-                    }
                     const state = {
                         ready: "online e pronta",
                         busy: "online, stampa in corso",
-                        unavailable: "non disponibile secondo Windows",
+                        unavailable: "non raggiungibile sulla rete",
                         unknown: `stato non disponibile (${printer.status})`
                     }[printer.state] || "stato sconosciuto";
-                    item.textContent = `${printer.name}${printer.isDefault ? " (predefinita)" : ""} — ${state}`;
+                    item.textContent = `${printer.name} — ${state}`;
                     listElement.append(item);
                 }
             }
@@ -45,7 +44,7 @@
             const agentMessages = {
                 ready: "Stampa automatica attiva; controllo ordini ogni 10 secondi.",
                 another_terminal_active: "Un altro terminale di stampa è già attivo.",
-                printer_unavailable: "Stampante predefinita non disponibile; le comande restano in coda.",
+                printer_unavailable: "Stampante Epson non raggiungibile; le comande restano in coda.",
                 cloud_unavailable: "Connessione alla coda online non disponibile; il terminale riproverà.",
                 paused: "Coda temporaneamente in pausa per un'operazione di gestione.",
                 starting: "Avvio del terminale di stampa..."
@@ -60,8 +59,8 @@
                 ? `Riprova ${queue.failed} comande non stampate`
                 : "Riprova comande non stampate";
         } catch (error) {
-            statusElement.textContent = "Terminale locale non raggiungibile. Avvia `npm run printer-terminal` sul PC collegato alla stampante.";
-            agentElement.textContent = "La stampa automatica partirà quando il terminale sarà in esecuzione.";
+            statusElement.textContent = "Servizio di stampa locale non raggiungibile. Avvia `installa-stampa-automatica.bat` sul PC della pizzeria.";
+            agentElement.textContent = "Il servizio verrà avviato automaticamente all'accesso a Windows dopo l'installazione.";
             retryButton.hidden = true;
         } finally {
             refreshButton.disabled = false;
@@ -81,7 +80,7 @@
             if (!response.ok) throw new Error("retry_failed");
             await refreshStatus();
         } catch {
-            agentElement.textContent = "Impossibile riprovare ora. Verifica che il terminale locale sia avviato.";
+            agentElement.textContent = "Impossibile riprovare ora. Verifica che il servizio di stampa sia attivo sul PC.";
         } finally {
             retryButton.disabled = false;
         }

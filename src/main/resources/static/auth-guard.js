@@ -14,7 +14,19 @@
             }
             if (!response.ok) throw new Error("Servizio di autenticazione non disponibile.");
             const account = await response.json();
-            if (window.location.pathname === "/" || window.location.pathname === "/index.html") {
+            const isHome = window.location.pathname === "/" || window.location.pathname === "/index.html";
+            const isDeliveryPage = window.location.pathname === "/consegne.html";
+            const isAdmin = account.admin === true;
+            const isDelivery = account.delivery === true;
+            if (!isAdmin && !(isDelivery && isDeliveryPage)) {
+                showMessage("Accesso negato", "Questo account non è autorizzato.", true);
+                return false;
+            }
+            window.currentAccount = { ...account, admin: isAdmin, delivery: isDelivery };
+            document.querySelectorAll("[data-admin-only]").forEach(element => {
+                element.hidden = !isAdmin;
+            });
+            if ((isAdmin && isHome) || isDeliveryPage) {
                 showToolbar(account.email);
             }
             document.documentElement.classList.remove("auth-loading");
@@ -24,6 +36,7 @@
             return false;
         }
     })();
+    window.authReady = gate;
 
     window.fetch = async (input, init) => {
         const url = typeof input === "string" ? input : input.url;

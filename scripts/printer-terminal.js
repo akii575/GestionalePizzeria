@@ -3,7 +3,7 @@ const http = require("node:http");
 const ALLOWED_ORIGIN = "https://gestionale-pizzeria-six.vercel.app";
 const PORT = 8765;
 const { createPrinterAgent, initializeFirestore } = require("./printer-agent");
-const { listPrinters, normalizePrinter } = require("./windows-printers");
+const { listNetworkPrinters } = require("./network-printer");
 
 function corsHeaders(request, response) {
     const origin = request.headers.origin;
@@ -21,7 +21,7 @@ function corsHeaders(request, response) {
     return true;
 }
 
-function createServer({ getPrinters = listPrinters, getStatus, retryFailed } = {}) {
+function createServer({ getPrinters = listNetworkPrinters, getStatus, retryFailed } = {}) {
     return http.createServer(async (request, response) => {
         if (request.url !== "/status" && request.url !== "/retry-failed") {
             response.writeHead(404, { "Cache-Control": "no-store" });
@@ -127,4 +127,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { createServer, listPrinters, normalizePrinter };
+module.exports = { createServer };

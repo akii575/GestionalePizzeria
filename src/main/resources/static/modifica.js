@@ -14,6 +14,12 @@ function aggiornaTotale() {
 	}, 0);
 	document.getElementById("totale-modifica").textContent = `Totale: ${euro.format(totale)}`;
 }
+function aggiornaCampiConsegna() {
+	const consegna = document.getElementById("tipo-ordine").value === "consegna";
+	document.getElementById("campi-consegna").hidden = !consegna;
+	document.getElementById("indirizzo-consegna").required = consegna;
+	document.getElementById("telefono-consegna").required = consegna;
+}
 function renderExtraSelezionati(container, selezionati, onChange) {
 	container.innerHTML = "";
 	container.dataset.extra = JSON.stringify(selezionati);
@@ -59,7 +65,56 @@ function rigaEdit(riga = { prodotto: menu[0]?.nome || "", extra: [] }) {
 	righe.appendChild(div);
 	aggiornaTotale();
 }
-async function avvia() { try { const risposte = await Promise.all([fetch("/api/menu"), fetch("/api/extra"), fetch("/api/ordini")]); menu = await risposte[0].json(); extra = (await risposte[1].json()).sort((primo, secondo) => primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" })); const ordine = (await risposte[2].json()).find(o => String(o.numero) === String(numero)); if (!ordine) throw new Error("Ordine non trovato."); document.getElementById("numero").textContent = `#${ordine.numero}`; document.getElementById("tavolo").value = ordine.tavoloOCliente; document.getElementById("note").value = ordine.note || ""; ordine.righe.forEach(rigaEdit); } catch (errore) { stato(errore.message); } }
+async function avvia() {
+	try {
+		const risposte = await Promise.all([fetch("/api/menu"), fetch("/api/extra"), fetch("/api/ordini")]);
+		menu = await risposte[0].json();
+		extra = (await risposte[1].json()).sort((primo, secondo) => primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" }));
+		const ordine = (await risposte[2].json()).find(o => String(o.numero) === String(numero));
+		if (!ordine) throw new Error("Ordine non trovato.");
+		document.getElementById("numero").textContent = `#${ordine.numero}`;
+		document.getElementById("tipo-ordine").value = ordine.tipo === "consegna" ? "consegna" : "sala";
+		document.getElementById("tavolo").value = ordine.tavoloOCliente;
+		document.getElementById("indirizzo-consegna").value = ordine.indirizzoConsegna || "";
+		document.getElementById("telefono-consegna").value = ordine.telefonoConsegna || "";
+		document.getElementById("note").value = ordine.note || "";
+		aggiornaCampiConsegna();
+		ordine.righe.forEach(rigaEdit);
+	} catch (errore) {
+		stato(errore.message);
+	}
+}
 document.getElementById("aggiungi").onclick = () => rigaEdit();
-document.getElementById("salva").onclick = async () => { const pulsante = document.getElementById("salva"); pulsante.disabled = true; stato("Salvataggio in corso..."); const payload = { tavoloOCliente: document.getElementById("tavolo").value, note: document.getElementById("note").value, righe: Array.from(document.querySelectorAll(".riga-edit")).map(riga => ({ prodotto: riga.querySelector(".prodotto").value, extra: JSON.parse(riga.querySelector(".extra-selezionati")?.dataset.extra || "[]") })) }; const risposta = await fetch(`/api/ordini/${numero}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); if (!risposta.ok) { const errore = await risposta.json(); pulsante.disabled = false; stato(errore.errore || "Salvataggio non riuscito."); return; } window.location.href = "/gestionale.html"; };
+document.getElementById("tipo-ordine").addEventListener("change", aggiornaCampiConsegna);
+document.getElementById("salva").onclick = async () => {
+	const pulsante = document.getElementById("salva");
+	const consegna = document.getElementById("tipo-ordine").value === "consegna";
+	if (consegna && (!document.getElementById("indirizzo-consegna").reportValidity()
+		|| !document.getElementById("telefono-consegna").reportValidity())) return;
+	pulsante.disabled = true;
+	stato("Salvataggio in corso...");
+	const payload = {
+		tipo: document.getElementById("tipo-ordine").value,
+		tavoloOCliente: document.getElementById("tavolo").value,
+		indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
+		telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",
+		note: document.getElementById("note").value,
+		righe: Array.from(document.querySelectorAll(".riga-edit")).map(riga => ({
+			prodotto: riga.querySelector(".prodotto").value,
+			extra: JSON.parse(riga.querySelector(".extra-selezionati")?.dataset.extra || "[]")
+		}))
+	};
+	const risposta = await fetch(`/api/ordini/${numero}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload)
+	});
+	if (!risposta.ok) {
+		const errore = await risposta.json();
+		pulsante.disabled = false;
+		stato(errore.errore || "Salvataggio non riuscito.");
+		return;
+	}
+	window.location.href = "/gestionale.html";
+};
 avvia();

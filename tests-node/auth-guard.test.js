@@ -9,11 +9,15 @@ const guardSource = fs.readFileSync(
     "utf8"
 );
 
-async function runGuard(pathname) {
+async function runGuard(pathname, account = { admin: true, delivery: false, email: "admin@example.com" }) {
     const appendedElements = [];
     const document = {
         documentElement: { classList: { add() {}, remove() {} } },
-        body: { append(...elements) { appendedElements.push(...elements); } },
+        body: {
+            append(...elements) { appendedElements.push(...elements); },
+            replaceChildren() {}
+        },
+        querySelectorAll() { return []; },
         createElement(tagName) {
             return {
                 tagName,
@@ -28,23 +32,35 @@ async function runGuard(pathname) {
         fetch: async () => ({
             status: 200,
             ok: true,
-            json: async () => ({ email: "admin@example.com" })
+            json: async () => account
         })
     };
 
     vm.runInNewContext(guardSource, { document, window });
-    await new Promise(resolve => setImmediate(resolve));
-    return appendedElements;
+    const authorized = await window.authReady;
+    return { appendedElements, authorized, window };
 }
 
 test("account toolbar is shown on home only", async () => {
     for (const pathname of ["/", "/index.html"]) {
-        const elements = await runGuard(pathname);
-        assert.equal(elements.length, 1, `${pathname} should show the toolbar`);
+        const result = await runGuard(pathname);
+        assert.equal(result.appendedElements.length, 1, `${pathname} should show the toolbar`);
     }
 
     for (const pathname of ["/ordini.html", "/gestionale.html", "/modifica.html"]) {
-        const elements = await runGuard(pathname);
-        assert.equal(elements.length, 0, `${pathname} should not show the toolbar`);
+        const result = await runGuard(pathname);
+        assert.equal(result.appendedElements.length, 0, `${pathname} should not show the toolbar`);
     }
+});
+
+test("delivery account is allowed only on the delivery page", async () => {
+    const delivery = { admin: false, delivery: true, email: "corriere@example.com" };
+    const page = await runGuard("/consegne.html", delivery);
+    assert.equal(page.authorized, true);
+    assert.equal(page.window.currentAccount.delivery, true);
+    assert.equal(page.appendedElements.length, 1);
+
+    const adminPage = await runGuard("/gestionale.html", delivery);
+    assert.equal(adminPage.authorized, false);
+    assert.equal(adminPage.window.currentAccount, undefined);
 });

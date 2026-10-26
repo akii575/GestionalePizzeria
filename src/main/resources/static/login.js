@@ -10,7 +10,12 @@ async function firebaseConfig() {
 
 async function checkExistingSession() {
     const response = await fetch("/api/auth/verify", { cache: "no-store", credentials: "same-origin" });
-    if (response.ok || response.status === 403) window.location.replace("/");
+    if (response.ok) {
+        const account = await response.json();
+        window.location.replace(account.delivery && !account.admin ? "/consegne.html" : "/");
+    } else if (response.status === 403) {
+        window.location.replace("/");
+    }
 }
 
 function mostraAccessoNegato() {
@@ -64,7 +69,8 @@ form.addEventListener("submit", async event => {
             return;
         }
         if (!verification.ok) throw new Error("Non è stato possibile verificare i permessi.");
-        window.location.replace("/");
+        const account = await verification.json();
+        window.location.replace(account.delivery && !account.admin ? "/consegne.html" : "/");
     } catch (error) {
         status.className = "error";
         status.textContent = error.message || "Accesso non riuscito.";

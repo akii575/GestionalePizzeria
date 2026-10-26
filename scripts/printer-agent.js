@@ -1,18 +1,17 @@
-const { spawn } = require("node:child_process");
 const { randomUUID } = require("node:crypto");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { cert, getApps, initializeApp } = require("firebase-admin/app");
 const { FieldPath, FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
-const { listPrinters } = require("./windows-printers");
+const { listNetworkPrinters, sendEscPosReceipt } = require("./network-printer");
+const menu = require("../lib/menu.json");
 
 const PROJECT_ID = "gestionalecivico7";
 const LEASE_MILLISECONDS = 120_000;
 const POLL_MILLISECONDS = 10_000;
-const PRINT_TIMEOUT_MILLISECONDS = 45_000;
-const PRINT_SCRIPT = path.join(__dirname, "print-order.ps1");
-const RECEIPT_WIDTH = 42;
+const RECEIPT_WIDTH = 28;
+const PRODUCT_CATEGORIES = [...new Set(menu.map(product => product.categoria))];
+const CATEGORY_BY_PRODUCT = new Map(menu.map(product => [product.nome, product.categoria]));
 
 function initializeFirestore() {
     let serviceAccount;
@@ -100,23 +99,43 @@ function formatReceipt(order) {
         hour: "2-digit",
         minute: "2-digit"
     });
+    const destination = order.tipo === "consegna"
+        ? [
+            ...wrapReceiptText(`CONSEGNA: ${order.tavoloOCliente}`),
+            ...wrapReceiptText(`TEL: ${order.telefonoConsegna || ""}`),
+            ...wrapReceiptText(`INDIRIZZO: ${order.indirizzoConsegna || ""}`)
+        ]
+        : wrapReceiptText(`TAVOLO / CLIENTE: ${order.tavoloOCliente}`);
     const lines = [
         divider,
         ...centerReceiptText(`COMANDA #${order.numero}`),
         divider,
-        ...wrapReceiptText(`TAVOLO / CLIENTE: ${order.tavoloOCliente}`),
+        ...destination,
         ...wrapReceiptText(`DATA: ${date}`),
         divider
     ];
+    const rowsByCategory = new Map();
     for (const row of order.righe || []) {
-        lines.push(...wrapReceiptText(`1 x ${row.prodotto}`));
-        for (const extra of row.extra || []) {
-            const name = typeof extra === "string" ? extra : extra.nome;
-            const prefix = "  + ";
-            const wrappedExtra = wrapReceiptText(name, RECEIPT_WIDTH - prefix.length);
-            lines.push(...wrappedExtra.map((line, index) => (
-                `${index === 0 ? prefix : " ".repeat(prefix.length)}${line}`
-            )));
+        const category = row.categoria || CATEGORY_BY_PRODUCT.get(row.prodotto) || "altro";
+        if (!rowsByCategory.has(category)) rowsByCategory.set(category, []);
+        rowsByCategory.get(category).push(row);
+    }
+    const categories = [
+        ...PRODUCT_CATEGORIES.filter(category => rowsByCategory.has(category)),
+        ...Array.from(rowsByCategory.keys()).filter(category => !PRODUCT_CATEGORIES.includes(category))
+    ];
+    for (const category of categories) {
+        lines.push("", `@@SECTION:${category.toLocaleUpperCase("it-IT")}@@`);
+        for (const row of rowsByCategory.get(category)) {
+            lines.push(...wrapReceiptText(`1 x ${row.prodotto}`));
+            for (const extra of row.extra || []) {
+                const name = typeof extra === "string" ? extra : extra.nome;
+                const prefix = "  + ";
+                const wrappedExtra = wrapReceiptText(name, RECEIPT_WIDTH - prefix.length);
+                lines.push(...wrappedExtra.map((line, index) => (
+                    `${index === 0 ? prefix : " ".repeat(prefix.length)}${line}`
+                )));
+            }
         }
     }
     if (order.note) {
@@ -138,43 +157,12 @@ function formatReceipt(order) {
     return lines.join("\r\n");
 }
 
-async function sendToPrinter(order, printerName) {
-    const directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), "gestionale-comanda-"));
-    try {
-        const receiptPath = path.join(directory, "comanda.txt");
-        await fs.promises.writeFile(receiptPath, formatReceipt(order), "utf8");
-        await new Promise((resolve, reject) => {
-            const child = spawn("powershell.exe", [
-                "-NoProfile",
-                "-NonInteractive",
-                "-File",
-                PRINT_SCRIPT,
-                printerName,
-                receiptPath
-            ], { windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
-            let stderr = "";
-            child.stderr.setEncoding("utf8");
-            child.stderr.on("data", chunk => {
-                if (stderr.length < 2000) stderr += chunk;
-            });
-            const timeout = setTimeout(() => child.kill(), PRINT_TIMEOUT_MILLISECONDS);
-            child.once("error", error => {
-                clearTimeout(timeout);
-                reject(new Error(error.code || "printer_process_failed"));
-            });
-            child.once("close", code => {
-                clearTimeout(timeout);
-                if (code === 0) resolve();
-                else reject(new Error(stderr.trim() || `printer_exit_${code}`));
-            });
-        });
-    } finally {
-        await fs.promises.rm(directory, { recursive: true, force: true });
-    }
+async function sendToPrinter(order, printer) {
+    await sendEscPosReceipt(printer, formatReceipt(order));
 }
 
 function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
-    const queryPrinters = getPrinters || listPrinters;
+    const queryPrinters = getPrinters || listNetworkPrinters;
     const submitPrint = printOrder || sendToPrinter;
     const instanceId = randomUUID();
     const jobs = db.collection("printerJobs");
@@ -205,10 +193,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
 
     async function selectedPrinter() {
         const printers = await queryPrinters();
-        const requested = process.env.PRINTER_NAME && process.env.PRINTER_NAME.trim();
-        const printer = requested
-            ? printers.find(item => item.name === requested)
-            : printers.find(item => item.isDefault);
+        const printer = printers.find(item => item.isDefault);
         if (!printer || printer.isVirtual || printer.state === "unavailable") return null;
         return printer;
     }

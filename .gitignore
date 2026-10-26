@@ -1,5 +1,7 @@
 target/
 data/*.db
+data/printer-config.json
+pizzeria-pc-setup.zip
 .env
 .env.*
 !.env.example

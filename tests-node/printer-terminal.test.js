@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createServer, normalizePrinter } = require("../scripts/printer-terminal");
+const { createServer } = require("../scripts/printer-terminal");
 
 const allowedOrigin = "https://gestionale-pizzeria-six.vercel.app";
 
@@ -102,14 +102,6 @@ test("failed print jobs can be retried only from the production app", async t =>
     });
 });
 
-test("Windows printer states are normalized without treating unknown as online", () => {
-    assert.equal(normalizePrinter({ status: "Normal" }).state, "ready");
-    assert.equal(normalizePrinter({ status: "Printing" }).state, "busy");
-    assert.equal(normalizePrinter({ status: "Offline" }).state, "unavailable");
-    assert.equal(normalizePrinter({ status: "Other" }).state, "unknown");
-    assert.equal(normalizePrinter({ status: "Normal", isVirtual: true }).isVirtual, true);
-});
-
 test("receipt includes order number, destination, product extras and notes", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
@@ -122,11 +114,54 @@ test("receipt includes order number, destination, product extras and notes", () 
     });
     assert.match(receipt, /COMANDA #12/);
     assert.match(receipt, /TAVOLO \/ CLIENTE: Tavolo 4/);
+    assert.match(receipt, /^@@SECTION:PIZZE@@$/m);
     assert.match(receipt, /1 x Margherita/);
     assert.match(receipt, /\+ Bufala/);
     assert.match(receipt, /Senza basilico/);
     assert.ok(receipt.includes("EUR 9,50"));
-    assert.ok(receipt.split(/\r?\n/).every(line => Array.from(line).length <= 42));
+    assert.ok(receipt.split(/\r?\n/).every(line => Array.from(line).length <= 28));
+});
+
+test("receipt groups products by menu category in catalog order", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        numero: 13,
+        tavoloOCliente: "Tavolo 2",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [
+            { prodotto: "Coca Cola / Zero 33cl" },
+            { prodotto: "Patatine Piccole" },
+            { prodotto: "Margherita" }
+        ],
+        totale: 15
+    });
+    const lines = receipt.split(/\r?\n/);
+    const pizzaSection = lines.indexOf("@@SECTION:PIZZE@@");
+    const friesSection = lines.indexOf("@@SECTION:FRITTI@@");
+    const drinksSection = lines.indexOf("@@SECTION:BIBITE@@");
+
+    assert.ok(pizzaSection >= 0 && pizzaSection < friesSection && friesSection < drinksSection);
+    assert.equal(lines[pizzaSection + 1], "1 x Margherita");
+    assert.equal(lines[friesSection + 1], "1 x Patatine Piccole");
+    assert.equal(lines[drinksSection + 1], "1 x Coca Cola / Zero 33cl");
+});
+
+test("delivery receipt prints customer contact details", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        numero: 14,
+        tipo: "consegna",
+        tavoloOCliente: "Anna Rossi",
+        indirizzoConsegna: "Via Roma 12, Napoli",
+        telefonoConsegna: "+39 333 1234567",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{ prodotto: "Margherita" }],
+        totale: 5
+    });
+
+    assert.ok(receipt.includes("CONSEGNA: Anna Rossi"));
+    assert.ok(receipt.includes("TEL: +39 333 1234567"));
+    assert.ok(receipt.replace(/\r?\n/g, " ").includes("INDIRIZZO: Via Roma 12, Napoli"));
 });
 
 test("receipt wraps long product, destination and note text to the configured roll width", () => {
@@ -144,9 +179,8 @@ test("receipt wraps long product, destination and note text to the configured ro
     });
     const lines = receipt.split(/\r?\n/);
 
-    assert.ok(lines.every(line => Array.from(line).length <= 42));
-    assert.ok(receipt.includes("Cliente con un"));
-    assert.ok(receipt.includes("nominativo molto lungo"));
-    assert.ok(receipt.includes("Seconda riga con ulteriori dettagli"));
-    assert.ok(receipt.includes("  + Extra con nome"));
+    assert.ok(lines.every(line => Array.from(line).length <= 28));
+    assert.ok(receipt.replace(/\r?\n/g, " ").includes("Cliente con un nominativo molto lungo"));
+    assert.ok(receipt.replace(/\r?\n/g, " ").includes("Seconda riga con ulteriori dettagli"));
+    assert.ok(receipt.replace(/\r?\n/g, " ").includes("  + Extra con nome"));
 });

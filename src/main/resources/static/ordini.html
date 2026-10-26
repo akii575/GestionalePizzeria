@@ -12,12 +12,27 @@
 <main class="container">
     <header><h1>Ordini Pizzeria</h1><nav class="navigazione"><a href="/">Home</a><a href="/gestionale.html">Gestionale</a></nav></header>
     <section class="tavolo-input">
-        <label for="tavolo">Tavolo / Cliente</label>
-        <select id="tavolo">
-            <option>Tavolo 1</option><option>Tavolo 2</option><option>Tavolo 3</option>
-            <option>Tavolo 4</option><option>Tavolo 5</option><option>Tavolo 6</option>
-            <option>Tavolo 7</option><option>Tavolo 8</option><option>Tavolo 9</option><option>Tavolo 10</option>
+        <label for="tipo-ordine">Tipo ordine</label>
+        <select id="tipo-ordine">
+            <option value="sala">Sala / asporto</option>
+            <option value="consegna">Consegna a domicilio</option>
         </select>
+        <div id="campo-tavolo">
+            <label for="tavolo">Tavolo</label>
+            <select id="tavolo">
+                <option>Tavolo 1</option><option>Tavolo 2</option><option>Tavolo 3</option>
+                <option>Tavolo 4</option><option>Tavolo 5</option><option>Tavolo 6</option>
+                <option>Tavolo 7</option><option>Tavolo 8</option><option>Tavolo 9</option><option>Tavolo 10</option>
+            </select>
+        </div>
+        <div id="campi-consegna" class="campi-consegna" hidden>
+            <label for="cliente-consegna">Nome cliente</label>
+            <input id="cliente-consegna" type="text" autocomplete="name" maxlength="120">
+            <label for="indirizzo-consegna">Indirizzo di consegna</label>
+            <input id="indirizzo-consegna" type="text" autocomplete="street-address" maxlength="300">
+            <label for="telefono-consegna">Numero di telefono</label>
+            <input id="telefono-consegna" type="tel" autocomplete="tel" maxlength="30" pattern="\+?[0-9\s().-]{6,30}" title="Inserisci un numero valido.">
+        </div>
     </section>
     <section class="note-input">
         <label for="note">Note</label>

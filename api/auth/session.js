@@ -20,7 +20,7 @@ module.exports = api(async (req, res) => {
     } catch {
         throw httpError(401, "Credenziali non valide.");
     }
-    if (decoded.admin !== true) {
+    if (decoded.admin !== true && decoded.delivery !== true) {
         throw httpError(403, "Accesso negato.");
     }
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: maxAgeSeconds * 1000 });
