@@ -15,8 +15,12 @@ function aggiornaTotale() {
 	document.getElementById("totale-modifica").textContent = `Totale: ${euro.format(totale)}`;
 }
 function aggiornaCampiConsegna() {
-	const consegna = document.getElementById("tipo-ordine").value === "consegna";
+	const tipo = document.getElementById("tipo-ordine").value;
+	const consegna = tipo === "consegna";
 	document.getElementById("campi-consegna").hidden = !consegna;
+	document.querySelector("#destinazione-label span").textContent = tipo === "ritiro"
+		? "Nome cliente"
+		: consegna ? "Nome cliente" : "Tavolo";
 	document.getElementById("indirizzo-consegna").required = consegna;
 	document.getElementById("telefono-consegna").required = consegna;
 }
@@ -73,7 +77,9 @@ async function avvia() {
 		const ordine = (await risposte[2].json()).find(o => String(o.numero) === String(numero));
 		if (!ordine) throw new Error("Ordine non trovato.");
 		document.getElementById("numero").textContent = `#${ordine.numero}`;
-		document.getElementById("tipo-ordine").value = ordine.tipo === "consegna" ? "consegna" : "sala";
+		document.getElementById("tipo-ordine").value = ordine.tipo === "consegna"
+			? "consegna"
+			: ordine.tipo === "ritiro" ? "ritiro" : "tavolo";
 		document.getElementById("tavolo").value = ordine.tavoloOCliente;
 		document.getElementById("indirizzo-consegna").value = ordine.indirizzoConsegna || "";
 		document.getElementById("telefono-consegna").value = ordine.telefonoConsegna || "";
@@ -89,6 +95,7 @@ document.getElementById("tipo-ordine").addEventListener("change", aggiornaCampiC
 document.getElementById("salva").onclick = async () => {
 	const pulsante = document.getElementById("salva");
 	const consegna = document.getElementById("tipo-ordine").value === "consegna";
+	if (!document.getElementById("tavolo").reportValidity()) return;
 	if (consegna && (!document.getElementById("indirizzo-consegna").reportValidity()
 		|| !document.getElementById("telefono-consegna").reportValidity())) return;
 	pulsante.disabled = true;

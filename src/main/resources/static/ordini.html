@@ -10,11 +10,12 @@
 </head>
 <body>
 <main class="container">
-    <header><h1>Ordini Pizzeria</h1><nav class="navigazione"><a href="/">Home</a><a href="/gestionale.html">Gestionale</a></nav></header>
+    <header><h1>Ordini Pizzeria</h1><nav class="navigazione"><a href="/">Home</a><a href="/gestionale.html">Tutti gli ordini</a><a href="/consegne.html">Consegne</a><a href="/ritiri.html">Ritiri</a><a href="/tavoli.html">Tavoli</a></nav></header>
     <section class="tavolo-input">
         <label for="tipo-ordine">Tipo ordine</label>
         <select id="tipo-ordine">
-            <option value="sala">Sala / asporto</option>
+            <option value="tavolo">Servizio al tavolo</option>
+            <option value="ritiro">Ritiro al banco</option>
             <option value="consegna">Consegna a domicilio</option>
         </select>
         <div id="campo-tavolo">
@@ -24,6 +25,10 @@
                 <option>Tavolo 4</option><option>Tavolo 5</option><option>Tavolo 6</option>
                 <option>Tavolo 7</option><option>Tavolo 8</option><option>Tavolo 9</option><option>Tavolo 10</option>
             </select>
+        </div>
+        <div id="campo-ritiro" hidden>
+            <label for="cliente-ritiro">Nome cliente</label>
+            <input id="cliente-ritiro" type="text" autocomplete="name" maxlength="120">
         </div>
         <div id="campi-consegna" class="campi-consegna" hidden>
             <label for="cliente-consegna">Nome cliente</label>

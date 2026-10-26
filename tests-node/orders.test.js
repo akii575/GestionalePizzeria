@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { prepareOrder, publicOrder } = require("../lib/orders");
+const { filterOrdersByType, prepareOrder, publicOrder } = require("../lib/orders");
 
 test("validates an order and calculates product and extra totals", () => {
     const order = prepareOrder({
@@ -10,7 +10,7 @@ test("validates an order and calculates product and extra totals", () => {
     });
 
     assert.equal(order.tavoloOCliente, "Tavolo 1");
-    assert.equal(order.tipo, "sala");
+    assert.equal(order.tipo, "tavolo");
     assert.equal(order.note, "Senza cipolla");
     assert.equal(order.righe[0].totale, 6);
     assert.equal(order.totale, 6);
@@ -35,6 +35,33 @@ test("requires delivery contact details and includes them in public order data",
     assert.equal(publicData.tavoloOCliente, "Anna Rossi");
     assert.equal(publicData.indirizzoConsegna, "Via Roma 12, Napoli");
     assert.equal(publicData.telefonoConsegna, "+39 333 1234567");
+});
+
+test("supports table, pickup and legacy dining-room orders", () => {
+    const pickup = prepareOrder({
+        tipo: "ritiro",
+        tavoloOCliente: "Anna Rossi",
+        righe: [{ prodotto: "Margherita" }]
+    });
+    const legacy = prepareOrder({
+        tipo: "sala",
+        tavoloOCliente: "Tavolo 2",
+        righe: [{ prodotto: "Margherita" }]
+    });
+
+    assert.equal(pickup.tipo, "ritiro");
+    assert.equal(publicOrder({ ...legacy, numero: 2 }).tipo, "tavolo");
+    assert.deepEqual(filterOrdersByType([
+        { tipo: "sala" },
+        { tipo: "ritiro" },
+        { tipo: "consegna" }
+    ], "tavolo"), [{ tipo: "sala" }]);
+    assert.deepEqual(filterOrdersByType([
+        { tipo: "sala" },
+        { tipo: "ritiro" },
+        { tipo: "consegna" }
+    ], "ritiro"), [{ tipo: "ritiro" }]);
+    assert.throws(() => filterOrdersByType([], "asporto"), /Tipo servizio/);
 });
 
 test("rejects missing order details and products outside the menu", () => {

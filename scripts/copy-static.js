@@ -3,7 +3,7 @@ const path = require("node:path");
 
 const source = path.join(__dirname, "..", "src", "main", "resources", "static");
 const destination = path.join(__dirname, "..", "public");
-const protectedPages = ["index.html", "ordini.html", "gestionale.html", "modifica.html", "consegne.html"];
+const protectedPages = ["index.html", "ordini.html", "gestionale.html", "modifica.html", "consegne.html", "ritiri.html", "tavoli.html"];
 
 fs.rmSync(destination, { recursive: true, force: true });
 fs.cpSync(source, destination, { recursive: true });

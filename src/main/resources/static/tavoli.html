@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servizio al tavolo</title>
+    <style>html.auth-loading body{visibility:hidden}</style><script src="/auth-guard.js"></script>
+    <link rel="stylesheet" href="/gestionale.css">
+    <link rel="stylesheet" href="/theme.css">
+</head>
+<body data-service-type="tavolo">
+<main class="dashboard">
+    <header class="dashboard-header">
+        <div><p class="eyebrow">Riepilogo dedicato</p><h1>Servizio al tavolo</h1><p class="sottotitolo">Ordini dei tavoli, inclusi gli ordini storici della sala</p></div>
+        <nav><a href="/">Home</a><a href="/ordini.html">Nuova comanda</a><a href="/gestionale.html">Tutti gli ordini</a><a href="/consegne.html">Consegne</a><a href="/ritiri.html">Ritiri</a><button id="aggiorna" type="button">Aggiorna</button><button id="reset-numeri" type="button" class="pericolo" hidden>Reset numeri</button></nav>
+    </header>
+    <section class="filtri" aria-label="Filtri tavoli">
+        <label for="filtro">Cerca tavolo<input id="filtro" type="search" placeholder="Tavolo 3..."></label>
+        <label for="data">Data<input id="data" type="date"></label>
+        <label class="switch"><input id="autoAggiorna" type="checkbox" checked> Aggiorna ogni 15 secondi</label>
+    </section>
+    <section class="metriche" aria-label="Riepilogo tavoli">
+        <div><span>Ordini visualizzati</span><strong id="numero-ordini">0</strong></div>
+        <div><span>Totale visualizzato</span><strong id="totale-ordini">0,00 EUR</strong></div>
+        <div><span>Ultimo aggiornamento</span><strong id="ultimo-aggiornamento">--:--</strong></div>
+    </section>
+    <p id="stato" role="status"></p>
+    <section id="lista-ordini" class="lista-ordini" aria-live="polite"></section>
+</main>
+<script src="/gestionale.js"></script>
+<script src="/theme.js"></script>
+</body>
+</html>

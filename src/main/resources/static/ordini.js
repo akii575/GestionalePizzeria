@@ -6,6 +6,7 @@ const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
 const tipoOrdine = document.getElementById("tipo-ordine");
 const campoTavolo = document.getElementById("campo-tavolo");
+const campoRitiro = document.getElementById("campo-ritiro");
 const campiConsegna = document.getElementById("campi-consegna");
 const selettoreRigaExtra = document.getElementById("riga-extra");
 const extraRiepilogo = document.getElementById("extra-riepilogo");
@@ -20,8 +21,11 @@ function mostraMessaggio(testo, classe) { messaggio.textContent = testo; messagg
 function testoSicuro(valore) { const elemento = document.createElement("span"); elemento.textContent = valore == null ? "" : valore; return elemento.innerHTML; }
 function aggiornaTipoOrdine() {
     const consegna = tipoOrdine.value === "consegna";
-    campoTavolo.hidden = consegna;
+    const ritiro = tipoOrdine.value === "ritiro";
+    campoTavolo.hidden = consegna || ritiro;
+    campoRitiro.hidden = !ritiro;
     campiConsegna.hidden = !consegna;
+    document.getElementById("cliente-ritiro").required = ritiro;
     for (const id of ["cliente-consegna", "indirizzo-consegna", "telefono-consegna"]) {
         document.getElementById(id).required = consegna;
     }
@@ -55,15 +59,20 @@ function aggiornaSelettoreRighe() { const scelto = selettoreRigaExtra.value; sel
 function renderRiepilogo() { riepilogo.innerHTML = ""; stato.righe.forEach((riga, indice) => { const voce = document.createElement("div"); voce.className = "riepilogo-item"; const descrizione = riga.ingredienti?.length ? `<small class="riepilogo-descrizione">${testoSicuro(riga.ingredienti.join(", "))}</small>` : ""; voce.innerHTML = `<div><strong>${testoSicuro(riga.prodotto)}</strong>${descrizione}<span>${riga.extra.length ? `Extra: ${testoSicuro(nomiExtra(riga.extra).join(", "))}` : "Nessun extra"}</span></div><button class="rimuovi" type="button" data-indice="${indice}">Rimuovi</button>`; riepilogo.appendChild(voce); }); if (!stato.righe.length) riepilogo.innerHTML = "<p>Nessun prodotto selezionato</p>"; riepilogo.querySelectorAll(".rimuovi").forEach(button => button.addEventListener("click", () => { stato.righe.splice(Number(button.dataset.indice), 1); renderRiepilogo(); })); document.getElementById("riepilogo-totale").textContent = `Totale: ${euro.format(stato.righe.reduce((totale, riga) => totale + prezzoRiga(riga), 0))}`; invia.disabled = !stato.righe.length; aggiornaSelettoreRighe(); }
 function apriConferma() {
     if (!stato.righe.length) return;
+    if (tipoOrdine.value === "ritiro") {
+        if (!document.getElementById("cliente-ritiro").reportValidity()) return;
+    }
     if (tipoOrdine.value === "consegna") {
         for (const id of ["cliente-consegna", "indirizzo-consegna", "telefono-consegna"]) {
             if (!document.getElementById(id).reportValidity()) return;
         }
     }
-    const dettagliConsegna = tipoOrdine.value === "consegna"
+    const dettagliServizio = tipoOrdine.value === "consegna"
         ? `<div class="conferma-consegna"><strong>Consegna a: ${testoSicuro(document.getElementById("cliente-consegna").value.trim())}</strong><span>${testoSicuro(document.getElementById("indirizzo-consegna").value.trim())}</span><span>${testoSicuro(document.getElementById("telefono-consegna").value.trim())}</span></div>`
-        : "";
-    confermaRiepilogo.innerHTML = dettagliConsegna + stato.righe.map(riga => {
+        : tipoOrdine.value === "ritiro"
+            ? `<div class="conferma-consegna"><strong>Ritiro al banco: ${testoSicuro(document.getElementById("cliente-ritiro").value.trim())}</strong></div>`
+            : `<div class="conferma-consegna"><strong>Servizio al tavolo: ${testoSicuro(document.getElementById("tavolo").value)}</strong></div>`;
+    confermaRiepilogo.innerHTML = dettagliServizio + stato.righe.map(riga => {
         const extra = nomiExtra(riga.extra).map(nome => {
             const dato = stato.extra.find(item => item.nome === nome);
             return `${testoSicuro(nome)} (${euro.format(Number(dato?.prezzo || 0))})`;
@@ -80,14 +89,18 @@ async function inviaOrdine() {
     chiudiConferma();
     invia.disabled = true;
     mostraMessaggio("Invio ordine in corso...", "");
-    const consegna = tipoOrdine.value === "consegna";
+    const tipo = tipoOrdine.value;
+    const consegna = tipo === "consegna";
+    const ritiro = tipo === "ritiro";
     try {
         const risposta = await fetch("/api/ordini", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                tipo: tipoOrdine.value,
-                tavoloOCliente: consegna ? document.getElementById("cliente-consegna").value : document.getElementById("tavolo").value,
+                tipo,
+                tavoloOCliente: consegna
+                    ? document.getElementById("cliente-consegna").value
+                    : ritiro ? document.getElementById("cliente-ritiro").value : document.getElementById("tavolo").value,
                 indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
                 telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",
                 note: document.getElementById("note").value,
@@ -99,6 +112,7 @@ async function inviaOrdine() {
         mostraMessaggio(`Ordine #${dati.numero} salvato. ${dati.messaggioStampa}`, dati.stampaCompletata || dati.stampaInCoda ? "successo" : "errore");
         stato.righe = [];
         document.getElementById("note").value = "";
+        document.getElementById("cliente-ritiro").value = "";
         document.getElementById("cliente-consegna").value = "";
         document.getElementById("indirizzo-consegna").value = "";
         document.getElementById("telefono-consegna").value = "";

@@ -131,6 +131,7 @@ function encodeEscPosReceipt(receipt) {
     bytes(0x1b, 0x40);
     for (const line of String(receipt).split(/\r?\n/)) {
         const section = /^@@SECTION:(.*)@@$/.exec(line);
+        const title = /^@@TITLE:(.*)@@$/.exec(line);
         if (section) {
             bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x11);
             text(section[1]);
@@ -140,9 +141,9 @@ function encodeEscPosReceipt(receipt) {
             lineFeed();
             continue;
         }
-        if (line.startsWith("COMANDA #")) {
+        if (title) {
             bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x11);
-            text(line);
+            text(title[1]);
             lineFeed();
             normalText();
             continue;

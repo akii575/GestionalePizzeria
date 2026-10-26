@@ -5,6 +5,7 @@ const { cert, getApps, initializeApp } = require("firebase-admin/app");
 const { FieldPath, FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { listNetworkPrinters, sendEscPosReceipt } = require("./network-printer");
 const menu = require("../lib/menu.json");
+const extras = require("../lib/extras.json");
 
 const PROJECT_ID = "gestionalecivico7";
 const LEASE_MILLISECONDS = 120_000;
@@ -12,6 +13,8 @@ const POLL_MILLISECONDS = 10_000;
 const RECEIPT_WIDTH = 28;
 const PRODUCT_CATEGORIES = [...new Set(menu.map(product => product.categoria))];
 const CATEGORY_BY_PRODUCT = new Map(menu.map(product => [product.nome, product.categoria]));
+const PRODUCT_BY_NAME = new Map(menu.map(product => [product.nome, product]));
+const EXTRA_BY_NAME = new Map(extras.map(extra => [extra.nome, extra]));
 
 function initializeFirestore() {
     let serviceAccount;
@@ -83,11 +86,28 @@ function wrapReceiptText(value, width = RECEIPT_WIDTH) {
     return lines;
 }
 
-function centerReceiptText(value) {
-    return wrapReceiptText(value).map(line => {
-        const padding = Math.max(0, Math.floor((RECEIPT_WIDTH - Array.from(line).length) / 2));
-        return `${" ".repeat(padding)}${line}`;
-    });
+function receiptExtra(extra) {
+    const name = typeof extra === "string" ? extra : extra.nome || "";
+    const catalogExtra = EXTRA_BY_NAME.get(name);
+    const price = Number(typeof extra === "string" ? catalogExtra?.prezzo : extra.prezzo ?? catalogExtra?.prezzo ?? 0);
+    return { name, price: Number.isFinite(price) ? price : 0 };
+}
+
+function receiptUnitPrice(row) {
+    if (row.totale !== undefined && row.totale !== null && Number.isFinite(Number(row.totale))) {
+        return Number(row.totale);
+    }
+    const basePrice = Number(row.prezzoBase ?? row.prezzo ?? PRODUCT_BY_NAME.get(row.prodotto)?.prezzo ?? 0);
+    return basePrice + (row.extra || []).reduce((sum, extra) => sum + receiptExtra(extra).price, 0);
+}
+
+function wrapReceiptItem(description, price) {
+    const amount = `EUR ${price.toFixed(2).replace(".", ",")}`;
+    const descriptionWidth = Math.max(1, RECEIPT_WIDTH - amount.length - 1);
+    const wrapped = wrapReceiptText(description, descriptionWidth);
+    const lastLine = wrapped.pop() || "";
+    const gap = Math.max(1, RECEIPT_WIDTH - Array.from(lastLine).length - amount.length);
+    return [...wrapped, `${lastLine}${" ".repeat(gap)}${amount}`];
 }
 
 function formatReceipt(order) {
@@ -99,21 +119,29 @@ function formatReceipt(order) {
         hour: "2-digit",
         minute: "2-digit"
     });
-    const destination = order.tipo === "consegna"
+    const tipo = order.tipo === "consegna" ? "consegna" : order.tipo === "ritiro" ? "ritiro" : "tavolo";
+    const title = tipo === "consegna" ? "CONSEGNA A DOMICILIO" : tipo === "ritiro" ? "RITIRO AL BANCO" : "SERVIZIO AL TAVOLO";
+    const destination = tipo === "consegna"
         ? [
-            ...wrapReceiptText(`CONSEGNA: ${order.tavoloOCliente}`),
+            ...wrapReceiptText(`CLIENTE: ${order.tavoloOCliente}`),
             ...wrapReceiptText(`TEL: ${order.telefonoConsegna || ""}`),
             ...wrapReceiptText(`INDIRIZZO: ${order.indirizzoConsegna || ""}`)
         ]
-        : wrapReceiptText(`TAVOLO / CLIENTE: ${order.tavoloOCliente}`);
-    const lines = [
+        : tipo === "ritiro"
+            ? wrapReceiptText(`CLIENTE: ${order.tavoloOCliente}`)
+            : wrapReceiptText(`TAVOLO: ${order.tavoloOCliente}`);
+    const lines = [];
+    if (order.note) {
+        lines.push("NOTE", ...wrapReceiptText(order.note), divider);
+    }
+    lines.push(
         divider,
-        ...centerReceiptText(`COMANDA #${order.numero}`),
+        `@@TITLE:${title}@@`,
         divider,
         ...destination,
         ...wrapReceiptText(`DATA: ${date}`),
         divider
-    ];
+    );
     const rowsByCategory = new Map();
     for (const row of order.righe || []) {
         const category = row.categoria || CATEGORY_BY_PRODUCT.get(row.prodotto) || "altro";
@@ -126,10 +154,26 @@ function formatReceipt(order) {
     ];
     for (const category of categories) {
         lines.push("", `@@SECTION:${category.toLocaleUpperCase("it-IT")}@@`);
+        const groupedRows = new Map();
         for (const row of rowsByCategory.get(category)) {
-            lines.push(...wrapReceiptText(`1 x ${row.prodotto}`));
-            for (const extra of row.extra || []) {
-                const name = typeof extra === "string" ? extra : extra.nome;
+            const rowExtras = (row.extra || []).map(receiptExtra);
+            const price = receiptUnitPrice(row);
+            const key = JSON.stringify([
+                row.prodotto,
+                rowExtras.map(extra => [extra.name, extra.price]).sort((first, second) => first[0].localeCompare(second[0], "it")),
+                price
+            ]);
+            const existing = groupedRows.get(key);
+            if (existing) {
+                existing.quantity++;
+            } else {
+                groupedRows.set(key, { row, rowExtras, price, quantity: 1 });
+            }
+        }
+        for (const { row, rowExtras, price, quantity } of groupedRows.values()) {
+            lines.push(...wrapReceiptItem(`${quantity}x ${row.prodotto}`, price));
+            for (const extra of rowExtras) {
+                const name = extra.name;
                 const prefix = "  + ";
                 const wrappedExtra = wrapReceiptText(name, RECEIPT_WIDTH - prefix.length);
                 lines.push(...wrappedExtra.map((line, index) => (
@@ -137,13 +181,6 @@ function formatReceipt(order) {
                 )));
             }
         }
-    }
-    if (order.note) {
-        lines.push(
-            divider,
-            "NOTE",
-            ...wrapReceiptText(order.note)
-        );
     }
     const amount = `EUR ${Number(order.totale || 0).toFixed(2).replace(".", ",")}`;
     const totalGap = RECEIPT_WIDTH - "TOTALE".length - amount.length;

@@ -3,13 +3,17 @@ const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR"
 const lista = document.getElementById("lista-ordini");
 const statoPagina = document.getElementById("stato");
 const eliminazioniInCorso = new Set();
+const tipoServizio = document.body.dataset.serviceType || "";
 
 function testoSicuro(valore) { const elemento = document.createElement("span"); elemento.textContent = valore == null ? "" : valore; return elemento.innerHTML; }
 function mostraStato(testo, classe) { statoPagina.textContent = testo; statoPagina.className = classe || ""; }
+function tipoNormalizzato(tipo) { return tipo === "sala" ? "tavolo" : tipo || "tavolo"; }
 function ordiniFiltrati() {
     const testo = document.getElementById("filtro").value.trim().toLowerCase();
     const data = document.getElementById("data").value;
-    return stato.ordini.filter(ordine => (!testo || ordine.tavoloOCliente.toLowerCase().includes(testo)) && (!data || ordine.dataOra.substring(0, 10) === data));
+    return stato.ordini.filter(ordine => (!tipoServizio || tipoNormalizzato(ordine.tipo) === tipoServizio)
+        && (!testo || String(ordine.tavoloOCliente || "").toLowerCase().includes(testo))
+        && (!data || ordine.dataOra.substring(0, 10) === data));
 }
 function render() {
     const ordini = ordiniFiltrati();
@@ -21,7 +25,8 @@ function render() {
         const dataOra = new Date(ordine.dataOra);
         const righe = ordine.righe.map(riga => { const extra = riga.extra.length ? `Extra: ${riga.extra.map(elemento => elemento.nome || elemento).join(", ")} (+${euro.format(riga.extra.reduce((totale, elemento) => totale + Number(elemento.prezzo || 1), 0))})` : "Nessun extra"; const prodotto = stato.menu.find(item => item.nome === riga.prodotto); const ingredienti = prodotto?.ingredienti?.length ? `<small class="riga-ingredienti">${testoSicuro(prodotto.ingredienti.join(", "))}</small>` : ""; return `<div class="riga"><div><strong>${testoSicuro(riga.prodotto)}</strong>${ingredienti}<span>${testoSicuro(extra)} | Base: ${euro.format(Number(riga.prezzoBase))}</span></div><div class="riga-prezzo">${euro.format(Number(riga.totale))}</div></div>`; }).join("");
         const note = ordine.note ? `<p class="ordine-note">Note: ${testoSicuro(ordine.note)}</p>` : "";
-        lista.insertAdjacentHTML("beforeend", `<article class="ordine ${indice === 0 && !document.getElementById("filtro").value && !document.getElementById("data").value ? "recente" : ""}"><div class="ordine-testa"><div><h2>Ordine #${ordine.numero}</h2><p>${dataOra.toLocaleString("it-IT")} | ${testoSicuro(ordine.tavoloOCliente)}</p></div><div class="ordine-totale">${euro.format(Number(ordine.totale))}</div></div>${note}<div class="ordine-righe">${righe}</div><div class="azioni"><button type="button" data-modifica="${ordine.numero}">Modifica</button><button type="button" data-elimina="${ordine.numero}" class="pericolo">Elimina</button></div></article>`);
+        const nomeServizio = { consegna: "Consegna", ritiro: "Ritiro al banco", tavolo: "Servizio al tavolo" }[tipoNormalizzato(ordine.tipo)];
+        lista.insertAdjacentHTML("beforeend", `<article class="ordine ${indice === 0 && !document.getElementById("filtro").value && !document.getElementById("data").value ? "recente" : ""}"><div class="ordine-testa"><div><h2>Ordine #${ordine.numero}</h2><p>${testoSicuro(nomeServizio)} | ${dataOra.toLocaleString("it-IT")} | ${testoSicuro(ordine.tavoloOCliente)}</p></div><div class="ordine-totale">${euro.format(Number(ordine.totale))}</div></div>${note}<div class="ordine-righe">${righe}</div><div class="azioni"><button type="button" data-modifica="${ordine.numero}">Modifica</button><button type="button" data-elimina="${ordine.numero}" class="pericolo">Elimina</button></div></article>`);
     });
     lista.querySelectorAll("[data-modifica]").forEach(button => button.addEventListener("click", () => window.location.href = `/modifica.html?numero=${button.dataset.modifica}`));
     lista.querySelectorAll("[data-elimina]").forEach(button => button.addEventListener("click", () => eliminaOrdine(button.dataset.elimina)));
@@ -47,7 +52,8 @@ async function caricaOrdini() {
     const richiesta = ++stato.richiestaCaricamento;
     mostraStato("Caricamento ordini...", "loading");
     try {
-        const risposte = await Promise.all([fetch("/api/ordini", { cache: "no-store" }), fetch("/api/menu", { cache: "no-store" })]);
+        const urlOrdini = tipoServizio ? `/api/ordini?tipo=${encodeURIComponent(tipoServizio)}` : "/api/ordini";
+        const risposte = await Promise.all([fetch(urlOrdini, { cache: "no-store" }), fetch("/api/menu", { cache: "no-store" })]);
         if (richiesta !== stato.richiestaCaricamento) return;
         if (!risposte[0].ok || !risposte[1].ok) throw new Error("Impossibile caricare gli ordini.");
         const [ordini, menu] = await Promise.all([risposte[0].json(), risposte[1].json()]);

@@ -49,9 +49,9 @@ test("the network printer uses the Epson raw ESC/POS port", () => {
 
 test("ESC/POS receipt contains readable section commands and a partial cut", () => {
     const payload = encodeEscPosReceipt([
-        "COMANDA #12",
+        "@@TITLE:CONSEGNA A DOMICILIO@@",
         "@@SECTION:PIZZE@@",
-        "1 x Più Bufala",
+        "1x Più Bufala                 EUR 9,50",
         "TOTALE EUR 9,50"
     ].join("\r\n"));
     const text = payload.toString("ascii");
@@ -59,6 +59,9 @@ test("ESC/POS receipt contains readable section commands and a partial cut", () 
     assert.ok(payload.subarray(0, 2).equals(Buffer.from([0x1b, 0x40])));
     assert.match(text, /PIZZE/);
     assert.match(text, /Piu Bufala/);
+    assert.match(text, /CONSEGNA A DOMICILIO/);
+    assert.doesNotMatch(text, /COMANDA #12/);
+    assert.doesNotMatch(text, /@@TITLE/);
     assert.doesNotMatch(text, /@@SECTION/);
     assert.ok(payload.subarray(-6).equals(Buffer.from([0x0a, 0x0a, 0x1d, 0x56, 0x41, 0x03])));
     assert.equal(payload[payload.length - 1], 3);

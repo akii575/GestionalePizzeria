@@ -102,27 +102,30 @@ test("failed print jobs can be retried only from the production app", async t =>
     });
 });
 
-test("receipt includes order number, destination, product extras and notes", () => {
+test("receipt starts with notes and prints service, destination, unit prices and extras without order number", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
         numero: 12,
+        tipo: "tavolo",
         tavoloOCliente: "Tavolo 4",
         dataOra: "2026-10-14T12:00:00.000Z",
-        righe: [{ prodotto: "Margherita", extra: [{ nome: "Bufala" }] }],
+        righe: [{ prodotto: "Margherita", prezzoBase: 8.5, extra: [{ nome: "Bufala", prezzo: 1 }], totale: 9.5 }],
         note: "Senza basilico",
         totale: 9.5
     });
-    assert.match(receipt, /COMANDA #12/);
-    assert.match(receipt, /TAVOLO \/ CLIENTE: Tavolo 4/);
+    assert.equal(receipt.split(/\r?\n/)[0], "NOTE");
+    assert.ok(receipt.indexOf("Senza basilico") < receipt.indexOf("@@TITLE:"));
+    assert.match(receipt, /@@TITLE:SERVIZIO AL TAVOLO@@/);
+    assert.match(receipt, /TAVOLO: Tavolo 4/);
     assert.match(receipt, /^@@SECTION:PIZZE@@$/m);
-    assert.match(receipt, /1 x Margherita/);
+    assert.match(receipt, /1x Margherita\s+EUR 9,50/);
     assert.match(receipt, /\+ Bufala/);
-    assert.match(receipt, /Senza basilico/);
+    assert.doesNotMatch(receipt, /COMANDA #12/);
     assert.ok(receipt.includes("EUR 9,50"));
     assert.ok(receipt.split(/\r?\n/).every(line => Array.from(line).length <= 28));
 });
 
-test("receipt groups products by menu category in catalog order", () => {
+test("receipt groups products by menu category in catalog order with their prices", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
         numero: 13,
@@ -141,9 +144,32 @@ test("receipt groups products by menu category in catalog order", () => {
     const drinksSection = lines.indexOf("@@SECTION:BIBITE@@");
 
     assert.ok(pizzaSection >= 0 && pizzaSection < friesSection && friesSection < drinksSection);
-    assert.equal(lines[pizzaSection + 1], "1 x Margherita");
-    assert.equal(lines[friesSection + 1], "1 x Patatine Piccole");
-    assert.equal(lines[drinksSection + 1], "1 x Coca Cola / Zero 33cl");
+    assert.match(lines[pizzaSection + 1], /^1x Margherita\s+EUR /);
+    assert.match(lines[friesSection + 1], /^1x Patatine Piccole\s+EUR /);
+    assert.match(lines[drinksSection + 1], /^1x Coca Cola \/ Zero$/);
+    assert.match(lines[drinksSection + 2], /^33cl\s+EUR /);
+});
+
+test("receipt combines identical product variants while keeping different extras separate", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        tipo: "ritiro",
+        tavoloOCliente: "Anna",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [
+            { prodotto: "Margherita", prezzoBase: 5, extra: [{ id: "fior-di-latte", nome: "Fior di latte", prezzo: 1 }], totale: 6 },
+            { prodotto: "Margherita", prezzoBase: 5, extra: [{ id: "fior-di-latte", nome: "Fior di latte", prezzo: 1 }], totale: 6 },
+            { prodotto: "Margherita", prezzoBase: 5, extra: [], totale: 5 }
+        ],
+        totale: 17
+    });
+    const lines = receipt.split(/\r?\n/);
+    const itemLines = lines.filter(line => /^\d+x Margherita/.test(line));
+
+    assert.match(receipt, /@@TITLE:RITIRO AL BANCO@@/);
+    assert.equal(itemLines.length, 2);
+    assert.ok(itemLines.some(line => line.startsWith("2x Margherita") && line.includes("EUR 6,00")));
+    assert.ok(itemLines.some(line => line.startsWith("1x Margherita") && line.includes("EUR 5,00")));
 });
 
 test("delivery receipt prints customer contact details", () => {
@@ -159,7 +185,8 @@ test("delivery receipt prints customer contact details", () => {
         totale: 5
     });
 
-    assert.ok(receipt.includes("CONSEGNA: Anna Rossi"));
+    assert.match(receipt, /@@TITLE:CONSEGNA A DOMICILIO@@/);
+    assert.ok(receipt.includes("CLIENTE: Anna Rossi"));
     assert.ok(receipt.includes("TEL: +39 333 1234567"));
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("INDIRIZZO: Via Roma 12, Napoli"));
 });

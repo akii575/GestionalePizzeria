@@ -47,7 +47,7 @@ test("account toolbar is shown on home only", async () => {
         assert.equal(result.appendedElements.length, 1, `${pathname} should show the toolbar`);
     }
 
-    for (const pathname of ["/ordini.html", "/gestionale.html", "/modifica.html"]) {
+    for (const pathname of ["/ordini.html", "/gestionale.html", "/modifica.html", "/ritiri.html", "/tavoli.html"]) {
         const result = await runGuard(pathname);
         assert.equal(result.appendedElements.length, 0, `${pathname} should not show the toolbar`);
     }
@@ -60,7 +60,9 @@ test("delivery account is allowed only on the delivery page", async () => {
     assert.equal(page.window.currentAccount.delivery, true);
     assert.equal(page.appendedElements.length, 1);
 
-    const adminPage = await runGuard("/gestionale.html", delivery);
-    assert.equal(adminPage.authorized, false);
-    assert.equal(adminPage.window.currentAccount, undefined);
+    for (const pathname of ["/gestionale.html", "/ritiri.html", "/tavoli.html", "/ordini.html"]) {
+        const adminPage = await runGuard(pathname, delivery);
+        assert.equal(adminPage.authorized, false, `${pathname} must remain admin-only`);
+        assert.equal(adminPage.window.currentAccount, undefined);
+    }
 });

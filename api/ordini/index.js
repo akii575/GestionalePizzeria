@@ -1,7 +1,7 @@
 const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
-const { prepareOrder, publicOrder } = require("../../lib/orders");
+const { filterOrdersByType, prepareOrder, publicOrder } = require("../../lib/orders");
 
 module.exports = api(async (req, res) => {
     await requireAdmin(req);
@@ -11,7 +11,11 @@ module.exports = api(async (req, res) => {
     if (req.method === "GET") {
         res.setHeader("Cache-Control", "no-store");
         const snapshot = await orders.orderBy("numero", "desc").get();
-        return res.status(200).json(snapshot.docs.map(document => publicOrder(document.data())));
+        const results = snapshot.docs.map(document => publicOrder(document.data()));
+        const filtered = typeof req.query.tipo === "undefined"
+            ? results
+            : filterOrdersByType(results, req.query.tipo);
+        return res.status(200).json(filtered);
     }
     if (req.method === "POST") {
         requireSameOrigin(req);
