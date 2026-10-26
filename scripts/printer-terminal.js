@@ -109,7 +109,7 @@ function start() {
     });
     server.listen(PORT, "127.0.0.1", () => {
         console.log(`Printer terminal listening on http://127.0.0.1:${PORT}`);
-        console.log("Automatic printing is active; keep this window open on the computer with the printer.");
+        console.log("Automatic printing is active; keep this computer connected to both network printers.");
         void agent.run();
     });
     process.once("SIGINT", async () => {

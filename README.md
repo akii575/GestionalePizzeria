@@ -118,12 +118,16 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   la build e configura l'attivita' pianificata. Non installa driver Epson. Il file
   service account e' escluso dal pacchetto: copialo separatamente su USB fidata o
   selezionalo quando il setup lo richiede; non inviarlo via chat o email.
-  L'installazione prova l'IP Epson noto `192.168.1.222`; se la rete del locale usa
-  un altro IP, ti chiede quello corretto. Dopo aver verificato il nuovo PC, fai
+  L'installazione prova l'IP Epson noto `192.168.1.222` per la stampante Cucina e
+  chiede l'IP della stampante Sala. Entrambe devono avere un IP locale diverso e
+  raggiungibile sulla porta `9100`. Dopo aver verificato il nuovo PC, fai
   doppio clic su `disattiva-stampa-automatica.bat` sul PC di prova. Il comando
   disabilita solo l'attivita' pianificata, senza cancellare chiavi o configurazione.
   Attendi fino a 2 minuti per la scadenza del lock condiviso prima di affidare i job
   al nuovo PC.
+  Per aggiungere la seconda stampante a un PC gia' configurato, interrompi prima
+  l'agente con `disattiva-stampa-automatica.bat` e poi rilancia
+  `installa-stampa-automatica.bat`; inserisci gli IP distinti di Cucina e Sala.
 - Ogni pagina applicativa verifica la sessione server-side; gli account admin
   accedono a tutto, i consegnatori solo alla pagina dedicata e gli altri ricevono
   "Accesso negato".
@@ -156,19 +160,21 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   stesso file SQLite.
 - La stampa del sito Vercel passa per una coda Firestore e un agente Windows locale:
   il PC interroga Firestore ogni 10 secondi tramite connessioni Internet in uscita e
-  invia la comanda alla stampante Epson sulla rete locale, via ESC/POS TCP porta
-  `9100`. Non servono driver Epson/Windows e non va aperta alcuna porta del router;
-  la stampante non viene esposta a Internet. Il PC deve rimanere acceso, connesso a
+  invia lo stesso ticket sia alla stampante Cucina sia alla stampante Sala, via
+  ESC/POS TCP sulla porta `9100`. Entrambe devono essere raggiungibili per avviare
+  una comanda; se una si scollega durante l'invio, la coda registra quella gia'
+  riuscita e al tentativo successivo manda la copia solo alla stampante mancante.
+  Non servono driver Epson/Windows e non va aperta alcuna porta del router; le
+  stampanti non vengono esposte a Internet. Il PC deve rimanere acceso, connesso a
   Internet e con l'utente Windows collegato.
 - Per configurare l'agente, installa Node.js e le dipendenze del progetto una sola
   volta (`npm install`), assicurati che `service-account.json` sia presente solo sul
-  PC fidato, poi fai doppio clic su `installa-stampa-automatica.bat`. Lo script
-  rileva l'indirizzo IP della porta Epson gia' configurata in Windows, se presente;
-  in alternativa lo richiede. Crea `data/printer-config.json`, verifica la porta
-  `9100`, registra un'attivita' pianificata all'accesso dell'utente corrente e
-  avvia l'agente in background. Se l'IP cambia, riserva quell'indirizzo nel router e
-  riesegui l'installazione. Non e' necessario installare o selezionare una coda
-  stampante Windows per stampare.
+  PC fidato, poi fai doppio clic su `installa-stampa-automatica.bat`. Lo script chiede
+  gli IP delle stampanti Cucina e Sala, verifica la porta `9100`, registra
+  un'attivita' pianificata all'accesso dell'utente corrente e avvia l'agente in
+  background. Se un IP cambia, riserva entrambi gli indirizzi nel router e riesegui
+  l'installazione quando l'agente e' fermo. Non e' necessario installare o
+  selezionare code stampante Windows per stampare.
 
   ```powershell
   npm install

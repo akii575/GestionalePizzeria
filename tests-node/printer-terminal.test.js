@@ -164,6 +164,44 @@ test("delivery receipt prints customer contact details", () => {
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("INDIRIZZO: Via Roma 12, Napoli"));
 });
 
+test("the same receipt is sent to both printers and retries skip a printer that already received it", async () => {
+    const { sendOrderToPrinters } = require("../scripts/printer-agent");
+    const order = {
+        numero: 19,
+        tavoloOCliente: "Tavolo 3",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{ prodotto: "Margherita" }],
+        totale: 7
+    };
+    const printers = [
+        { name: "Cucina", host: "192.168.1.222", port: 9100 },
+        { name: "Sala", host: "192.168.1.223", port: 9100 }
+    ];
+    const successful = [];
+    const firstAttempt = [];
+
+    await assert.rejects(sendOrderToPrinters(order, printers, {
+        print: async (_order, printer, receipt) => {
+            firstAttempt.push({ name: printer.name, receipt });
+            if (printer.name === "Sala") throw new Error("sala_offline");
+        },
+        onPrinterPrinted: async name => successful.push(name)
+    }), /sala_offline/);
+
+    assert.deepEqual(successful, ["Cucina"]);
+    assert.deepEqual(firstAttempt.map(item => item.name), ["Cucina", "Sala"]);
+
+    const retry = [];
+    await sendOrderToPrinters(order, printers, {
+        alreadyPrinted: successful,
+        print: async (_order, printer, receipt) => retry.push({ name: printer.name, receipt })
+    });
+
+    assert.deepEqual(retry.map(item => item.name), ["Sala"]);
+    assert.equal(retry[0].receipt, firstAttempt[0].receipt);
+    assert.equal(firstAttempt[0].receipt, firstAttempt[1].receipt);
+});
+
 test("receipt wraps long product, destination and note text to the configured roll width", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({

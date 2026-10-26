@@ -40,7 +40,8 @@ module.exports = api(async (req, res) => {
                 numero,
                 status: "queued",
                 createdAt: now,
-                attemptCount: 0
+                attemptCount: 0,
+                printedPrinters: []
             });
             return saved;
         });

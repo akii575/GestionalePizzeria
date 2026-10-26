@@ -19,9 +19,28 @@ test("only private IPv4 addresses are accepted for the local printer", () => {
 
 test("the network printer uses the Epson raw ESC/POS port", () => {
     assert.deepEqual(validatePrinterConfig({ host: "192.168.1.222" }), {
-        host: "192.168.1.222",
+        printers: [{ name: "Stampante", host: "192.168.1.222", port: 9100 }],
         port: 9100
     });
+    assert.deepEqual(validatePrinterConfig({
+        printers: [
+            { name: "Cucina", host: "192.168.1.222" },
+            { name: "Sala", host: "192.168.1.223" }
+        ],
+        port: 9100
+    }), {
+        printers: [
+            { name: "Cucina", host: "192.168.1.222", port: 9100 },
+            { name: "Sala", host: "192.168.1.223", port: 9100 }
+        ],
+        port: 9100
+    });
+    assert.throws(() => validatePrinterConfig({
+        printers: [
+            { name: "Cucina", host: "192.168.1.222" },
+            { name: "Sala", host: "192.168.1.222" }
+        ]
+    }), /indirizzo IP univoci/);
     assert.throws(
         () => validatePrinterConfig({ host: "192.168.1.222", port: 443 }),
         /porta ESC\/POS 9100/

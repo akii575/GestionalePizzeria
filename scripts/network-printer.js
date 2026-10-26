@@ -15,25 +15,60 @@ function isPrivateIpv4(host) {
 }
 
 function validatePrinterConfig(config) {
-    const host = typeof config?.host === "string" ? config.host.trim() : "";
-    if (!isPrivateIpv4(host)) {
-        throw new Error("L'indirizzo della stampante deve essere un IPv4 privato della rete locale.");
+    if (!config || typeof config !== "object") {
+        throw new Error("La configurazione delle stampanti non e' valida.");
     }
     if (config.port !== undefined && Number(config.port) !== DEFAULT_PORT) {
         throw new Error(`La stampante deve usare la porta ESC/POS ${DEFAULT_PORT}.`);
     }
-    return { host, port: DEFAULT_PORT };
+    const entries = Array.isArray(config.printers)
+        ? config.printers
+        : Array.isArray(config.hosts)
+            ? config.hosts
+            : typeof config.host === "string"
+                ? [config]
+                : [];
+    if (entries.length === 0) {
+        throw new Error("Configura almeno una stampante di rete.");
+    }
+    const names = new Set();
+    const hosts = new Set();
+    const printers = entries.map((entry, index) => {
+        const host = typeof entry === "string"
+            ? entry.trim()
+            : entry && typeof entry.host === "string" ? entry.host.trim() : "";
+        const name = entry && typeof entry === "object"
+                && typeof entry.name === "string" && entry.name.trim()
+            ? entry.name.trim()
+            : entries.length === 1 ? "Stampante" : `Stampante ${index + 1}`;
+        const port = entry && typeof entry === "object" && entry.port !== undefined
+            ? Number(entry.port)
+            : DEFAULT_PORT;
+        if (!isPrivateIpv4(host)) {
+            throw new Error(`L'indirizzo della stampante ${name} deve essere un IPv4 privato della rete locale.`);
+        }
+        if (port !== DEFAULT_PORT) {
+            throw new Error(`La stampante deve usare la porta ESC/POS ${DEFAULT_PORT}.`);
+        }
+        if (names.has(name) || hosts.has(host)) {
+            throw new Error("Ogni stampante deve avere un nome e un indirizzo IP univoci.");
+        }
+        names.add(name);
+        hosts.add(host);
+        return { name, host, port: DEFAULT_PORT };
+    });
+    return { printers, port: DEFAULT_PORT };
 }
 
 function loadPrinterConfig({ env = process.env, configPath = PRINTER_CONFIG_PATH } = {}) {
     if (env.PRINTER_HOST) {
         return validatePrinterConfig({
-            host: env.PRINTER_HOST,
+            printers: [{ name: "Stampante", host: env.PRINTER_HOST }],
             port: env.PRINTER_PORT || DEFAULT_PORT
         });
     }
     if (!fs.existsSync(configPath)) {
-        throw new Error("Manca data/printer-config.json. Esegui installa-stampa-automatica.bat.");
+        throw new Error("Manca data/printer-config.json. Configura le stampanti Epson sul PC.");
     }
     let config;
     try {
@@ -61,16 +96,17 @@ function checkTcpConnection(host, port = DEFAULT_PORT, timeout = CONNECT_TIMEOUT
 }
 
 async function listNetworkPrinters(config = loadPrinterConfig()) {
-    const online = await checkTcpConnection(config.host, config.port);
-    return [{
-        name: `Epson Ethernet (${config.host})`,
-        host: config.host,
-        port: config.port,
-        isDefault: true,
-        isVirtual: false,
-        status: online ? "Normal" : "Offline",
-        state: online ? "ready" : "unavailable"
-    }];
+    const validated = validatePrinterConfig(config);
+    return Promise.all(validated.printers.map(async (printer, index) => {
+        const online = await checkTcpConnection(printer.host, printer.port);
+        return {
+            ...printer,
+            isDefault: index === 0,
+            isVirtual: false,
+            status: online ? "Normal" : "Offline",
+            state: online ? "ready" : "unavailable"
+        };
+    }));
 }
 
 function toPrinterText(value) {
@@ -121,10 +157,10 @@ function encodeEscPosReceipt(receipt) {
 }
 
 function sendEscPosReceipt(printer, receipt, timeout = 15000) {
-    const config = validatePrinterConfig(printer);
+    const config = validatePrinterConfig(printer).printers[0];
     const payload = encodeEscPosReceipt(receipt);
     return new Promise((resolve, reject) => {
-        const socket = net.createConnection(config);
+        const socket = net.createConnection({ host: config.host, port: config.port });
         let settled = false;
         const finish = error => {
             if (settled) return;

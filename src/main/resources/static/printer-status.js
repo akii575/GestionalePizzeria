@@ -7,12 +7,12 @@
     if (!statusElement || !agentElement || !listElement || !refreshButton || !retryButton) return;
     const hintElement = document.querySelector(".printer-hint");
     if (hintElement) {
-        hintElement.textContent = "Il servizio parte automaticamente all'accesso a Windows. Tieni il PC acceso e connesso a Internet; non serve installare un driver Epson.";
+        hintElement.textContent = "Il servizio invia la stessa comanda alle stampanti di cucina e sala. Tieni il PC acceso e connesso a Internet; non serve installare driver Epson.";
     }
 
     async function refreshStatus() {
         refreshButton.disabled = true;
-        statusElement.textContent = "Controllo connessione alla stampante Epson via Ethernet...";
+        statusElement.textContent = "Controllo delle stampanti Epson via Ethernet...";
         listElement.replaceChildren();
         try {
             const response = await fetch("http://127.0.0.1:8765/status", {
@@ -25,9 +25,9 @@
             }
             const result = await response.json();
             if (result.printers.length === 0) {
-                statusElement.textContent = "Configurazione della stampante di rete non trovata.";
+                statusElement.textContent = "Configurazione delle stampanti di rete non trovata.";
             } else {
-                statusElement.textContent = "Stampante di rete:";
+                statusElement.textContent = "Stampanti di rete:";
                 for (const printer of result.printers) {
                     const item = document.createElement("li");
                     const state = {
@@ -44,7 +44,7 @@
             const agentMessages = {
                 ready: "Stampa automatica attiva; controllo ordini ogni 10 secondi.",
                 another_terminal_active: "Un altro terminale di stampa è già attivo.",
-                printer_unavailable: "Stampante Epson non raggiungibile; le comande restano in coda.",
+                printer_unavailable: "Una o più stampanti Epson non sono raggiungibili; le comande restano in coda.",
                 cloud_unavailable: "Connessione alla coda online non disponibile; il terminale riproverà.",
                 paused: "Coda temporaneamente in pausa per un'operazione di gestione.",
                 starting: "Avvio del terminale di stampa..."

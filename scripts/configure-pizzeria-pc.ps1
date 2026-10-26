@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$PrinterHost
+    [string]$PrinterHost,
+    [string]$KitchenPrinterHost,
+    [string]$DiningPrinterHost
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,6 +40,24 @@ function Test-PrivateIpv4 {
     return $octets[0] -eq 10 `
         -or ($octets[0] -eq 172 -and $octets[1] -ge 16 -and $octets[1] -le 31) `
         -or ($octets[0] -eq 192 -and $octets[1] -eq 168)
+}
+
+function Resolve-PrinterHost {
+    param(
+        [string]$HostAddress,
+        [string]$PrinterName,
+        [string]$DefaultAddress
+    )
+    if (-not $HostAddress) {
+        $HostAddress = $DefaultAddress
+    }
+    while (-not (Test-PrivateIpv4 $HostAddress) -or -not (Test-PrinterPort $HostAddress)) {
+        if ($HostAddress) {
+            Write-Warning "$PrinterName non raggiungibile su $HostAddress`:9100."
+        }
+        $HostAddress = Read-Host "Inserisci l'IP locale della stampante $PrinterName (porta 9100)"
+    }
+    return $HostAddress
 }
 
 function Get-Node22Path {
@@ -149,8 +169,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "scripts\install-printe
 
 $runningTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($runningTask -and $runningTask.State -eq "Running") {
-    Write-Host "L'agente e' gia' attivo su questo PC. Nessuna modifica eseguita."
-    exit 0
+    throw "L'agente e' gia' attivo. Per riconfigurare le stampanti, verifica che non ci sia una stampa in corso, esegui disattiva-stampa-automatica.bat e rilancia il setup."
 }
 
 Ensure-ServiceAccount
@@ -177,37 +196,57 @@ try {
     Pop-Location
 }
 
-if (-not $PrinterHost) {
-    $existingPorts = @(
-        Get-PrinterPort -ErrorAction SilentlyContinue |
-            Where-Object {
-                $_.PortMonitor -like "*Epson Port Handler*" -and
-                $_.Description -match '^\d{1,3}(\.\d{1,3}){3}$'
-            }
-    )
-    if ($existingPorts.Count -eq 1) {
-        $PrinterHost = $existingPorts[0].Description
-    } else {
-        $PrinterHost = "192.168.1.222"
-    }
+$existingPorts = @(
+    Get-PrinterPort -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.PortMonitor -like "*Epson Port Handler*" -and
+            $_.Description -match '^\d{1,3}(\.\d{1,3}){3}$'
+        }
+)
+if (-not $KitchenPrinterHost) {
+    $KitchenPrinterHost = $PrinterHost
 }
-
-while (-not (Test-PrivateIpv4 $PrinterHost) -or -not (Test-PrinterPort $PrinterHost)) {
-    Write-Warning "Stampante non raggiungibile su $PrinterHost`:9100."
-    $PrinterHost = Read-Host "Inserisci l'IP locale della Epson (porta 9100)"
+if (-not $KitchenPrinterHost -and $existingPorts.Count -gt 0) {
+    $KitchenPrinterHost = $existingPorts[0].Description
+}
+if (-not $DiningPrinterHost -and $existingPorts.Count -gt 1) {
+    $DiningPrinterHost = $existingPorts[1].Description
+}
+$KitchenPrinterHost = Resolve-PrinterHost `
+    -HostAddress $KitchenPrinterHost `
+    -PrinterName "Cucina" `
+    -DefaultAddress "192.168.1.222"
+$DiningPrinterHost = Resolve-PrinterHost `
+    -HostAddress $DiningPrinterHost `
+    -PrinterName "Sala" `
+    -DefaultAddress ""
+while ($KitchenPrinterHost -eq $DiningPrinterHost) {
+    Write-Warning "Le stampanti di cucina e sala devono avere indirizzi IP diversi."
+    $DiningPrinterHost = Resolve-PrinterHost `
+        -HostAddress "" `
+        -PrinterName "Sala" `
+        -DefaultAddress ""
 }
 
 $configPath = Join-Path $projectRoot "data\printer-config.json"
 New-Item -ItemType Directory -Path (Split-Path -Parent $configPath) -Force | Out-Null
-$configuration = @{ host = $PrinterHost; port = 9100 } | ConvertTo-Json
+$configuration = @{
+    printers = @(
+        @{ name = "Cucina"; host = $KitchenPrinterHost },
+        @{ name = "Sala"; host = $DiningPrinterHost }
+    )
+    port = 9100
+} | ConvertTo-Json
 [System.IO.File]::WriteAllText(
     $configPath,
     $configuration,
     (New-Object System.Text.UTF8Encoding($false))
 )
 
-Write-Host "Stampante Epson trovata su $PrinterHost`:9100. Configuro l'avvio automatico..."
-& (Join-Path $PSScriptRoot "install-printer-agent.ps1") -PrinterHost $PrinterHost
+Write-Host "Stampanti Epson trovate su $KitchenPrinterHost`:9100 e $DiningPrinterHost`:9100. Configuro l'avvio automatico..."
+& (Join-Path $PSScriptRoot "install-printer-agent.ps1") `
+    -KitchenPrinterHost $KitchenPrinterHost `
+    -DiningPrinterHost $DiningPrinterHost
 if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
     throw "Installazione dell'attivita' automatica non riuscita."
 }

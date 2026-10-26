@@ -48,8 +48,11 @@ module.exports = api(async (req, res) => {
                         : previous.messaggioStampa || "Comanda aggiornata."
             };
             transaction.set(order, updated);
-            if (job && job.status === "queued") {
-                transaction.update(printerJob, { updatedAt: new Date().toISOString() });
+            if (job && ["queued", "failed"].includes(job.status)) {
+                transaction.update(printerJob, {
+                    updatedAt: new Date().toISOString(),
+                    printedPrinters: []
+                });
             }
             return updated;
         });

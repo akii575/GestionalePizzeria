@@ -157,8 +157,27 @@ function formatReceipt(order) {
     return lines.join("\r\n");
 }
 
-async function sendToPrinter(order, printer) {
-    await sendEscPosReceipt(printer, formatReceipt(order));
+async function sendToPrinter(order, printer, receipt = formatReceipt(order)) {
+    await sendEscPosReceipt(printer, receipt);
+}
+
+async function sendOrderToPrinters(order, printers, {
+    alreadyPrinted = [],
+    print = sendToPrinter,
+    onPrinterPrinted = async () => {}
+} = {}) {
+    if (!Array.isArray(printers) || printers.length === 0) {
+        throw new Error("printer_configuration_empty");
+    }
+    const receipt = formatReceipt(order);
+    const completed = new Set(alreadyPrinted);
+    for (const printer of printers) {
+        if (completed.has(printer.name)) continue;
+        await print(order, printer, receipt);
+        await onPrinterPrinted(printer.name);
+        completed.add(printer.name);
+    }
+    return [...completed];
 }
 
 function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
@@ -191,11 +210,13 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         });
     }
 
-    async function selectedPrinter() {
+    async function selectedPrinters() {
         const printers = await queryPrinters();
-        const printer = printers.find(item => item.isDefault);
-        if (!printer || printer.isVirtual || printer.state === "unavailable") return null;
-        return printer;
+        if (!Array.isArray(printers) || printers.length === 0
+                || printers.some(printer => printer.isVirtual || printer.state !== "ready")) {
+            return null;
+        }
+        return printers;
     }
 
     async function recoverExpiredJob() {
@@ -272,8 +293,31 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 stampaInCoda: false,
                 messaggioStampa: "Comanda inviata alla stampante."
             });
-            return { jobRef, orderRef, order: orderSnapshot.data(), numero: job.numero };
+            return {
+                jobRef,
+                orderRef,
+                order: orderSnapshot.data(),
+                numero: job.numero,
+                printedPrinters: Array.isArray(job.printedPrinters) ? [...job.printedPrinters] : []
+            };
         });
+    }
+
+    async function recordPrinterPrinted(job, printerName) {
+        await db.runTransaction(async transaction => {
+            const snapshot = await transaction.get(job.jobRef);
+            if (!snapshot.exists || snapshot.data().claimedBy !== instanceId
+                    || snapshot.data().status !== "printing") {
+                throw new Error("printer_job_claim_lost");
+            }
+            transaction.update(job.jobRef, {
+                printedPrinters: FieldValue.arrayUnion(printerName),
+                leaseUntil: Timestamp.fromMillis(Date.now() + LEASE_MILLISECONDS)
+            });
+        });
+        if (!job.printedPrinters.includes(printerName)) {
+            job.printedPrinters.push(printerName);
+        }
     }
 
     async function finishJob(job, error) {
@@ -296,21 +340,27 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                     stampaInCoda: false,
                     messaggioStampa: completed
                         ? "Comanda stampata."
-                        : "Stampa automatica non riuscita. Verifica la stampante e premi Riprova sulla Home."
+                        : job.printedPrinters.length > 0
+                            ? "Comanda stampata su almeno una stampante, ma non su tutte. Verifica la connessione e premi Riprova sulla Home."
+                            : "Stampa automatica non riuscita. Verifica le stampanti e premi Riprova sulla Home."
                 });
             }
         });
     }
 
-    async function processOneJob(printer) {
+    async function processOneJob(printers) {
         if (await recoverExpiredJob()) return;
         const job = await claimNextJob();
         if (!job) return;
         try {
-            await submitPrint(job.order, printer.name);
+            await sendOrderToPrinters(job.order, printers, {
+                alreadyPrinted: job.printedPrinters,
+                print: submitPrint,
+                onPrinterPrinted: printerName => recordPrinterPrinted(job, printerName)
+            });
         } catch (error) {
             await finishJob(job, error);
-            lastError = "La stampante ha rifiutato una comanda.";
+            lastError = "Una o più stampanti non hanno ricevuto la comanda.";
             console.error(`Printing order #${job.numero} failed:`, error.code || error.name || "unknown");
             return;
         }
@@ -318,7 +368,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             await finishJob(job, null);
             lastPrintedOrder = job.numero;
             lastError = null;
-            console.log(`Order #${job.numero} sent to the Windows print queue.`);
+            console.log(`Order #${job.numero} sent to all network printers.`);
         } catch (error) {
             lastError = "Comanda inviata, ma non e' stato possibile confermare la stampa.";
             console.error("Unable to acknowledge printed order:", error.code || error.name || "unknown");
@@ -335,13 +385,13 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             workerState = "another_terminal_active";
             return;
         }
-        const printer = await selectedPrinter();
-        if (!printer) {
+        const printers = await selectedPrinters();
+        if (!printers) {
             workerState = "printer_unavailable";
             return;
         }
         workerState = "ready";
-        await processOneJob(printer);
+        await processOneJob(printers);
     }
 
     async function countsFor(status) {
@@ -427,4 +477,4 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     };
 }
 
-module.exports = { createPrinterAgent, formatReceipt, initializeFirestore };
+module.exports = { createPrinterAgent, formatReceipt, initializeFirestore, sendOrderToPrinters };

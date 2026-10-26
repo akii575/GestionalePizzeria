@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$PrinterHost
+    [string]$PrinterHost,
+    [string]$KitchenPrinterHost,
+    [string]$DiningPrinterHost
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,64 +24,80 @@ if (-not (Test-Path -LiteralPath $nodeModulesPath -PathType Container)) {
     throw "Mancano le dipendenze Node.js. Dalla cartella del progetto esegui npm install."
 }
 
-if (-not $PrinterHost) {
-    $ports = @(
-        Get-PrinterPort -ErrorAction SilentlyContinue |
-            Where-Object {
-                $_.PortMonitor -like "*Epson Port Handler*" -and
-                $_.Description -match '^\d{1,3}(\.\d{1,3}){3}$'
-            }
-    )
-    if ($ports.Count -eq 1) {
-        $PrinterHost = $ports[0].Description
-    } elseif ($ports.Count -gt 1) {
-        throw "Rilevate piu' porte Epson. Specifica l'indirizzo con -PrinterHost."
+$existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+if ($existingTask -and $existingTask.State -eq "Running") {
+    throw "Il servizio e' gia' in esecuzione. Non e' stato interrotto per evitare di duplicare una stampa."
+}
+
+if (-not $KitchenPrinterHost) {
+    $KitchenPrinterHost = $PrinterHost
+}
+$ports = @(
+    Get-PrinterPort -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.PortMonitor -like "*Epson Port Handler*" -and
+            $_.Description -match '^\d{1,3}(\.\d{1,3}){3}$'
+        }
+)
+if (-not $KitchenPrinterHost -and $ports.Count -gt 0) {
+    $KitchenPrinterHost = $ports[0].Description
+}
+if (-not $DiningPrinterHost -and $ports.Count -gt 1) {
+    $DiningPrinterHost = $ports[1].Description
+}
+if (-not $KitchenPrinterHost) {
+    $KitchenPrinterHost = Read-Host "Indirizzo IP locale della stampante Cucina (es. 192.168.1.222)"
+}
+if (-not $DiningPrinterHost) {
+    $DiningPrinterHost = Read-Host "Indirizzo IP locale della stampante Sala"
+}
+if ($KitchenPrinterHost -eq $DiningPrinterHost) {
+    throw "Le stampanti di cucina e sala devono avere indirizzi IP diversi."
+}
+
+$printerTargets = @(
+    @{ name = "Cucina"; host = $KitchenPrinterHost },
+    @{ name = "Sala"; host = $DiningPrinterHost }
+)
+foreach ($printer in $printerTargets) {
+    if ($printer.host -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {
+        throw "Indirizzo IPv4 non valido per la stampante $($printer.name): $($printer.host)"
     }
-}
-if (-not $PrinterHost) {
-    $PrinterHost = Read-Host "Indirizzo IP della stampante Epson (es. 192.168.1.222)"
-}
-if ($PrinterHost -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {
-    throw "Indirizzo IPv4 non valido: $PrinterHost"
-}
-$octets = @($PrinterHost.Split(".") | ForEach-Object { [int]$_ })
-if (($octets | Where-Object { $_ -lt 0 -or $_ -gt 255 }).Count -gt 0) {
-    throw "Indirizzo IPv4 non valido: $PrinterHost"
-}
-$isPrivateAddress = $octets[0] -eq 10 `
-    -or ($octets[0] -eq 172 -and $octets[1] -ge 16 -and $octets[1] -le 31) `
-    -or ($octets[0] -eq 192 -and $octets[1] -eq 168)
-if (-not $isPrivateAddress) {
-    throw "Per sicurezza usa l'indirizzo privato della stampante nella rete del locale."
+    $octets = @($printer.host.Split(".") | ForEach-Object { [int]$_ })
+    if (($octets | Where-Object { $_ -lt 0 -or $_ -gt 255 }).Count -gt 0) {
+        throw "Indirizzo IPv4 non valido per la stampante $($printer.name): $($printer.host)"
+    }
+    $isPrivateAddress = $octets[0] -eq 10 `
+        -or ($octets[0] -eq 172 -and $octets[1] -ge 16 -and $octets[1] -le 31) `
+        -or ($octets[0] -eq 192 -and $octets[1] -eq 168)
+    if (-not $isPrivateAddress) {
+        throw "Per sicurezza usa l'indirizzo privato della stampante $($printer.name) nella rete del locale."
+    }
+
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $connection = $client.BeginConnect($printer.host, 9100, $null, $null)
+        if ($connection.AsyncWaitHandle.WaitOne(3000)) {
+            $client.EndConnect($connection)
+            Write-Output "Stampante $($printer.name) raggiungibile su $($printer.host):9100."
+        } else {
+            Write-Warning "La stampante $($printer.name) non risponde su $($printer.host):9100. Verifica rete e indirizzo."
+        }
+    } catch {
+        Write-Warning "Connessione alla stampante $($printer.name) non riuscita. Verifica Ethernet, IP e rete locale."
+    } finally {
+        $client.Close()
+    }
 }
 
 New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
-$json = @{ host = $PrinterHost; port = 9100 } | ConvertTo-Json
+$json = @{ printers = $printerTargets; port = 9100 } | ConvertTo-Json -Depth 4
 [System.IO.File]::WriteAllText(
     $configPath,
     $json,
     (New-Object System.Text.UTF8Encoding($false))
 )
 
-$client = New-Object System.Net.Sockets.TcpClient
-try {
-    $connection = $client.BeginConnect($PrinterHost, 9100, $null, $null)
-    if ($connection.AsyncWaitHandle.WaitOne(3000)) {
-        $client.EndConnect($connection)
-        Write-Output "Stampante raggiungibile su ${PrinterHost}:9100."
-    } else {
-        Write-Warning "La stampante non risponde su ${PrinterHost}:9100. Il servizio restera' installato e ritentera'."
-    }
-} catch {
-    Write-Warning "Connessione alla stampante non riuscita. Verifica Ethernet, indirizzo IP e rete locale."
-} finally {
-    $client.Close()
-}
-
-$existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-if ($existingTask -and $existingTask.State -eq "Running") {
-    throw "Il servizio e' gia' in esecuzione. Non e' stato interrotto per evitare di duplicare una stampa."
-}
 if ($existingTask) {
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
 }
@@ -114,7 +132,8 @@ Start-ScheduledTask -TaskName $taskName
 Start-Sleep -Seconds 2
 try {
     $status = Invoke-RestMethod -Uri "http://127.0.0.1:8765/status" -TimeoutSec 10
-    Write-Output "Servizio installato e avviato. Stampante: $($status.printers[0].state); agente: $($status.agent.workerState)."
+    $printerStates = ($status.printers | ForEach-Object { "$($_.name): $($_.state)" }) -join "; "
+    Write-Output "Servizio installato e avviato. Stampanti: $printerStates; agente: $($status.agent.workerState)."
     Write-Output "Partira' automaticamente a ogni accesso di questo utente Windows."
 } catch {
     Write-Warning "Attivazione pianificata; stato non ancora disponibile. Consulta i log in data\printer-agent*.log."
