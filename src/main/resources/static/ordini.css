@@ -1,6 +1,5 @@
-:root { --rosso: #bd2d25; --crema: #fff8e8; --inchiostro: #24211f; --bordo: #d6cbbc; --verde: #1f6c45; }
 * { box-sizing: border-box; }
-body { margin: 0; color: var(--inchiostro); background: repeating-linear-gradient(45deg, #f4ead8 0, #f4ead8 12px, #f8f1e5 12px, #f8f1e5 24px); font-family: Georgia, "Times New Roman", serif; }
+body { margin: 0; }
 .container { width: min(900px, 100%); margin: 0 auto; padding: 18px; }
 header { border-bottom: 4px solid var(--rosso); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 h1 { margin: 0 0 12px; font-size: 30px; letter-spacing: 0; color: var(--rosso); }
@@ -9,11 +8,17 @@ h2 { font-size: 18px; margin: 0 0 10px; }
 .tavolo-input, .extra-section, .riepilogo { background: var(--crema); border: 1px solid var(--bordo); border-radius: 6px; padding: 14px; margin-bottom: 14px; }
 label { display: block; font-weight: bold; margin-bottom: 8px; }
 select, .tavolo-input input { width: 100%; min-height: 46px; padding: 8px; font: inherit; border: 1px solid var(--bordo); background: #fff; }
-.campi-consegna { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; margin-top: 12px; }
+.campi-consegna { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; margin-top: 12px; padding: 14px; border: 1px solid #d9e4d9; border-radius: 8px; background: linear-gradient(135deg, #f3f8f1, #fffdf7); }
 .campi-consegna[hidden] { display: none; }
-.campi-consegna label { align-self: end; }
-.campi-consegna label[for="indirizzo-consegna"] { grid-column: 1 / -1; }
-.campi-consegna #indirizzo-consegna { grid-column: 1 / -1; }
+.consegna-intestazione { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 3px; padding-bottom: 8px; border-bottom: 1px solid #d9e4d9; }
+.consegna-intestazione strong { color: var(--verde); font-size: 16px; }
+.consegna-intestazione span { color: #5d625d; font-size: 13px; font-weight: normal; }
+.campo-consegna { min-width: 0; }
+.campo-indirizzo { grid-column: 1 / -1; }
+.campo-consegna input { width: 100%; min-height: 48px; padding: 9px 12px; border: 1px solid var(--bordo); border-radius: 5px; background: #fff; font: inherit; }
+.campo-consegna input:focus, #campo-ritiro input:focus { outline: 3px solid rgba(31, 108, 69, .18); border-color: var(--verde); }
+#campo-ritiro input { width: 100%; min-height: 46px; padding: 8px 12px; border: 1px solid var(--bordo); border-radius: 5px; background: #fff; font: inherit; }
+.campo-consegna label { margin: 12px 0 6px; }
 .tab-container { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; }
 button { font: inherit; cursor: pointer; }
 .tab { min-width: 110px; padding: 12px; border: 1px solid var(--bordo); background: #fff; border-radius: 4px; font-weight: bold; }
@@ -61,8 +66,7 @@ button { font: inherit; cursor: pointer; }
 @media (min-width: 650px) { .prodotto-btn { min-height: 120px; } }
 @media (max-width: 649px) {
     .campi-consegna { grid-template-columns: 1fr; }
-    .campi-consegna label[for="indirizzo-consegna"],
-    .campi-consegna #indirizzo-consegna { grid-column: auto; }
+    .campo-indirizzo { grid-column: auto; }
     /* Righe prodotto del riepilogo */
     #riepilogo-items .riepilogo-item {
         display: flex;

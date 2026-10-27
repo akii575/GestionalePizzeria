@@ -1,3 +1,80 @@
 <!DOCTYPE html>
-<html lang="it"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Modifica ordine</title><style>html.auth-loading body{visibility:hidden}</style><script src="/auth-guard.js"></script><link rel="stylesheet" href="/modifica.css"><link rel="stylesheet" href="/theme.css"></head>
-<body><main class="modifica"><header><a href="/gestionale.html">Torna al gestionale</a><h1>Modifica ordine <span id="numero"></span></h1></header><p id="stato"></p><label for="tipo-ordine">Tipo ordine<select id="tipo-ordine"><option value="tavolo">Servizio al tavolo</option><option value="ritiro">Ritiro al banco</option><option value="consegna">Consegna a domicilio</option></select></label><label id="destinazione-label" for="tavolo"><span>Tavolo</span><input id="tavolo" maxlength="120" required></label><div id="campi-consegna" hidden><label for="indirizzo-consegna">Indirizzo di consegna<input id="indirizzo-consegna" autocomplete="street-address" maxlength="300"></label><label for="telefono-consegna">Numero di telefono<input id="telefono-consegna" type="tel" autocomplete="tel" maxlength="30" pattern="\+?[0-9\s().-]{6,30}" title="Inserisci un numero valido."></label></div><label for="note">Note<textarea id="note" placeholder="Aggiungi una nota..."></textarea></label><section><h2>Righe ordine</h2><div id="righe"></div><p id="totale-modifica">Totale: 0,00 €</p><button id="aggiungi" type="button">Aggiungi prodotto</button></section><button id="salva" class="salva" type="button">Salva modifiche</button></main><script src="/modifica.js"></script><script src="/theme.js"></script></body></html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modifica ordine</title>
+    <style>html.auth-loading body{visibility:hidden}</style>
+    <script src="/auth-guard.js"></script>
+    <link rel="stylesheet" href="/modifica.css">
+    <link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<main class="modifica">
+    <header>
+        <a href="/gestionale.html">Torna al gestionale</a>
+        <h1>Modifica ordine <span id="numero"></span></h1>
+    </header>
+    <p id="stato"></p>
+    <label for="tipo-ordine">Tipo ordine
+        <select id="tipo-ordine">
+            <option value="tavolo">Tavolo</option>
+            <option value="banco">Banco</option>
+            <option value="ritiro">Ritiro</option>
+            <option value="consegna">Consegna</option>
+        </select>
+    </label>
+    <div id="campo-banco" hidden>
+        <label for="cognome-banco">Cognome cliente
+            <input id="cognome-banco" autocomplete="family-name" maxlength="80" placeholder="Cognome">
+        </label>
+    </div>
+    <label id="destinazione-label" for="tavolo"><span>Tavolo</span>
+        <input id="tavolo" maxlength="120" required>
+    </label>
+    <label id="campo-persone" for="numero-persone">Numero persone
+        <input id="numero-persone" type="number" min="1" max="30" step="1" value="1" required>
+    </label>
+    <div id="campi-ritiro" hidden>
+        <label for="telefono-ritiro">Numero di telefono
+            <input id="telefono-ritiro" type="tel" autocomplete="tel" maxlength="30" pattern="\+?[0-9\s().-]{6,30}" title="Inserisci un numero valido.">
+        </label>
+    </div>
+    <div id="campi-consegna" hidden>
+        <label for="indirizzo-consegna">Indirizzo di consegna
+            <input id="indirizzo-consegna" autocomplete="street-address" maxlength="300" placeholder="Via, numero civico, città">
+        </label>
+        <label for="telefono-consegna">Numero di telefono
+            <input id="telefono-consegna" type="tel" autocomplete="tel" maxlength="30" pattern="\+?[0-9\s().-]{6,30}" title="Inserisci un numero valido.">
+        </label>
+    </div>
+    <div id="campo-orario" hidden>
+        <label for="orario">Orario richiesto
+            <input id="orario" type="time" required>
+        </label>
+    </div>
+    <div id="campo-pagamento" hidden>
+        <label for="stato-pagamento">Pagamento
+            <select id="stato-pagamento">
+                <option value="">Da verificare</option>
+                <option value="non_pagato">Non pagato</option>
+                <option value="pagato">Pagato</option>
+                <option value="pos">POS</option>
+            </select>
+        </label>
+    </div>
+    <label for="note">Note
+        <textarea id="note" placeholder="Aggiungi una nota..."></textarea>
+    </label>
+    <section>
+        <h2>Righe ordine</h2>
+        <div id="righe"></div>
+        <p id="totale-modifica">Totale: 0,00 €</p>
+        <button id="aggiungi" type="button">Aggiungi prodotto</button>
+    </section>
+    <button id="salva" class="salva" type="button">Salva modifiche</button>
+</main>
+<script src="/modifica.js"></script>
+<script src="/theme.js"></script>
+</body>
+</html>

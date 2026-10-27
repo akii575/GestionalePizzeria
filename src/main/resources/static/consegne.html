@@ -13,16 +13,19 @@
 <body>
 <main class="dashboard">
     <header class="dashboard-header">
-        <div><p class="eyebrow">Pizzeria</p><h1>Consegne</h1><p class="sottotitolo">Riepilogo e recapiti delle consegne</p></div>
+        <div><h1>Consegne</h1></div>
         <nav>
-            <a href="/gestionale.html" data-admin-only hidden>Gestionale ordini</a>
+            <a href="/" data-admin-only hidden>Home</a>
+            <a href="/ordini.html" data-admin-only hidden>Nuova comanda</a>
+            <a href="/gestionale.html" data-admin-only hidden>Tutti gli ordini</a>
             <a href="/ritiri.html" data-admin-only hidden>Ritiri</a>
+            <a href="/banco.html" data-admin-only hidden>Banco</a>
             <a href="/tavoli.html" data-admin-only hidden>Tavoli</a>
             <button id="aggiorna" type="button">Aggiorna</button>
         </nav>
     </header>
     <section class="filtri" aria-label="Filtri consegne">
-        <label for="filtro">Cerca cliente, indirizzo o telefono<input id="filtro" type="search" placeholder="Nome, via o numero..."></label>
+        <label for="filtro">Cerca indirizzo o telefono<input id="filtro" type="search" placeholder="Via o numero..."></label>
         <label for="data">Data ordine<input id="data" type="date"></label>
     </section>
     <section class="metriche" aria-label="Riepilogo consegne">
@@ -33,6 +36,9 @@
     <p id="stato" role="status" aria-live="polite"></p>
     <section id="lista-consegne" class="lista-consegne" aria-live="polite"></section>
 </main>
+<script src="/maps-ui.js"></script>
+<script src="/pagamento-ui.js"></script>
+<script src="/order-card.js"></script>
 <script src="/consegne.js"></script>
 <script src="/theme.js"></script>
 </body>

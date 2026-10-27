@@ -119,29 +119,43 @@ function formatReceipt(order) {
         hour: "2-digit",
         minute: "2-digit"
     });
-    const tipo = order.tipo === "consegna" ? "consegna" : order.tipo === "ritiro" ? "ritiro" : "tavolo";
-    const title = tipo === "consegna" ? "CONSEGNA A DOMICILIO" : tipo === "ritiro" ? "RITIRO AL BANCO" : "SERVIZIO AL TAVOLO";
+    const tipo = ["banco", "ritiro", "consegna"].includes(order.tipo) ? order.tipo : "tavolo";
+    const title = tipo === "tavolo"
+        ? `TAVOLO${Number.isInteger(order.numeroPersone) && order.numeroPersone > 0 ? ` x${order.numeroPersone}` : ""}`
+        : tipo.toLocaleUpperCase("it-IT");
     const destination = tipo === "consegna"
         ? [
-            ...wrapReceiptText(`CLIENTE: ${order.tavoloOCliente}`),
             ...wrapReceiptText(`TEL: ${order.telefonoConsegna || ""}`),
             ...wrapReceiptText(`INDIRIZZO: ${order.indirizzoConsegna || ""}`)
         ]
         : tipo === "ritiro"
-            ? wrapReceiptText(`CLIENTE: ${order.tavoloOCliente}`)
-            : wrapReceiptText(`TAVOLO: ${order.tavoloOCliente}`);
+            ? [
+                ...wrapReceiptText(`CLIENTE: ${order.tavoloOCliente}`),
+                ...(order.telefonoRitiro ? wrapReceiptText(`TEL: ${order.telefonoRitiro}`) : [])
+            ]
+            : tipo === "tavolo"
+                ? [
+                    ...wrapReceiptText(`TAVOLO: ${order.tavoloOCliente}`),
+                    ...(Number.isInteger(order.numeroPersone) && order.numeroPersone > 0
+                        ? [`PERSONE: ${order.numeroPersone}`]
+                        : [])
+                ]
+                : tipo === "banco"
+                    ? wrapReceiptText(`COGNOME: ${order.cognomeBanco || ""}`)
+                    : [];
     const lines = [];
-    if (order.note) {
-        lines.push("NOTE", ...wrapReceiptText(order.note), divider);
-    }
     lines.push(
         divider,
         `@@TITLE:${title}@@`,
         divider,
         ...destination,
-        ...wrapReceiptText(`DATA: ${date}`),
-        divider
+        ...wrapReceiptText(`DATA: ${date}`)
     );
+    if (tipo !== "tavolo" && order.orario) {
+        lines.push(...wrapReceiptText(`ORARIO: ${order.orario}`));
+    }
+    if (order.note) lines.push(divider, "NOTE", ...wrapReceiptText(order.note));
+    lines.push(divider);
     const rowsByCategory = new Map();
     for (const row of order.righe || []) {
         const category = row.categoria || CATEGORY_BY_PRODUCT.get(row.prodotto) || "altro";

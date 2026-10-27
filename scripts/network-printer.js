@@ -133,7 +133,7 @@ function encodeEscPosReceipt(receipt) {
         const section = /^@@SECTION:(.*)@@$/.exec(line);
         const title = /^@@TITLE:(.*)@@$/.exec(line);
         if (section) {
-            bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x11);
+            bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x10);
             text(section[1]);
             lineFeed();
             normalText();
@@ -148,10 +148,19 @@ function encodeEscPosReceipt(receipt) {
             normalText();
             continue;
         }
+        if (line === "NOTE") {
+            bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1);
+            text(line);
+            lineFeed();
+            normalText();
+            continue;
+        }
+        const item = /^\d+x /.test(line);
+        if (item) bytes(0x1b, 0x45, 1);
         if (line.startsWith("TOTALE")) bytes(0x1b, 0x45, 1);
         text(line);
         lineFeed();
-        if (line.startsWith("TOTALE")) bytes(0x1b, 0x45, 0);
+        if (item || line.startsWith("TOTALE")) bytes(0x1b, 0x45, 0);
     }
     bytes(0x0a, 0x0a, 0x1d, 0x56, 0x41, 0x03);
     return Buffer.concat(commands);

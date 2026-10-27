@@ -139,13 +139,16 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   consegnatori possono leggere solo documenti con `tipo == "consegna"`. L'SDK Admin
   delle API ha privilegi server, quindi ogni endpoint applica autonomamente lo
   stesso controllo e filtra i risultati.
-- Le nuove comande distinguono servizio al tavolo, ritiro al banco e consegna a
-  domicilio. I vecchi ordini `sala` restano compatibili e appaiono nel riepilogo
-  Tavoli. Ritiro e consegna richiedono il nome del cliente; le consegne richiedono
-  anche indirizzo e telefono. Gli admin hanno riepiloghi separati per Tavoli,
-  Ritiri e Consegne, oltre alla vista completa. La stampa mette le note in testa,
-  non riporta il numero ordine, mostra prezzo unitario e quantità aggregate per
-  prodotto con gli stessi extra.
+- Le nuove comande distinguono Tavolo, Banco, Ritiro e Consegna. Gli ordini al
+  banco richiedono il cognome per identificare la comanda. I tavoli
+  registrano anche il numero di persone; gli ordini storici `sala` restano
+  compatibili e appaiono nel riepilogo Tavoli. Il ritiro richiede nome cliente e
+  telefono richiamabile; la consegna richiede indirizzo e telefono, senza chiedere
+  il nome. Il riepilogo consegne permette di scegliere l'app mappe e gli admin
+  hanno riepiloghi separati per ciascun servizio, oltre alla vista completa. La
+  stampa mostra prima il servizio, poi le note e quindi i prodotti; non riporta il
+  numero ordine, mostra il prezzo unitario e aggrega le quantità di prodotti
+  identici con gli stessi extra.
 - Il database SQLite `data/pizzeria.db` resta locale e non viene caricato né
   cancellato dal deploy. Gli ordini gia' presenti non sono importati
   automaticamente in Firestore. Per conservarli, verifica prima il database locale e

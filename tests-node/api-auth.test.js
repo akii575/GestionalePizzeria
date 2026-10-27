@@ -7,6 +7,7 @@ const protectedHandlers = [
     ["orders", require("../api/ordini"), "GET"],
     ["deliveries", require("../api/consegne"), "GET"],
     ["order update", require("../api/ordini/[numero]"), "PUT"],
+    ["payment update", require("../api/ordini/[numero]"), "PATCH"],
     ["order reset", require("../api/reset-numeri"), "POST"]
 ];
 

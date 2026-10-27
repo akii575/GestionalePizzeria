@@ -5,14 +5,20 @@ const statoPagina = document.getElementById("stato");
 const eliminazioniInCorso = new Set();
 const tipoServizio = document.body.dataset.serviceType || "";
 
-function testoSicuro(valore) { const elemento = document.createElement("span"); elemento.textContent = valore == null ? "" : valore; return elemento.innerHTML; }
 function mostraStato(testo, classe) { statoPagina.textContent = testo; statoPagina.className = classe || ""; }
 function tipoNormalizzato(tipo) { return tipo === "sala" ? "tavolo" : tipo || "tavolo"; }
 function ordiniFiltrati() {
     const testo = document.getElementById("filtro").value.trim().toLowerCase();
     const data = document.getElementById("data").value;
     return stato.ordini.filter(ordine => (!tipoServizio || tipoNormalizzato(ordine.tipo) === tipoServizio)
-        && (!testo || String(ordine.tavoloOCliente || "").toLowerCase().includes(testo))
+        && (!testo || [
+            ordine.tavoloOCliente,
+            ordine.cognomeBanco,
+            ordine.indirizzoConsegna,
+            ordine.telefonoConsegna,
+            ordine.telefonoRitiro,
+            ...(ordine.righe || []).map(riga => riga.prodotto)
+        ].some(valore => String(valore || "").toLowerCase().includes(testo)))
         && (!data || ordine.dataOra.substring(0, 10) === data));
 }
 function render() {
@@ -21,12 +27,11 @@ function render() {
     document.getElementById("totale-ordini").textContent = euro.format(ordini.reduce((somma, ordine) => somma + Number(ordine.totale), 0));
     lista.innerHTML = "";
     if (!ordini.length) { lista.innerHTML = '<div class="vuoto">Nessun ordine corrisponde ai filtri.</div>'; return; }
-    ordini.slice().reverse().forEach((ordine, indice) => {
-        const dataOra = new Date(ordine.dataOra);
-        const righe = ordine.righe.map(riga => { const extra = riga.extra.length ? `Extra: ${riga.extra.map(elemento => elemento.nome || elemento).join(", ")} (+${euro.format(riga.extra.reduce((totale, elemento) => totale + Number(elemento.prezzo || 1), 0))})` : "Nessun extra"; const prodotto = stato.menu.find(item => item.nome === riga.prodotto); const ingredienti = prodotto?.ingredienti?.length ? `<small class="riga-ingredienti">${testoSicuro(prodotto.ingredienti.join(", "))}</small>` : ""; return `<div class="riga"><div><strong>${testoSicuro(riga.prodotto)}</strong>${ingredienti}<span>${testoSicuro(extra)} | Base: ${euro.format(Number(riga.prezzoBase))}</span></div><div class="riga-prezzo">${euro.format(Number(riga.totale))}</div></div>`; }).join("");
-        const note = ordine.note ? `<p class="ordine-note">Note: ${testoSicuro(ordine.note)}</p>` : "";
-        const nomeServizio = { consegna: "Consegna", ritiro: "Ritiro al banco", tavolo: "Servizio al tavolo" }[tipoNormalizzato(ordine.tipo)];
-        lista.insertAdjacentHTML("beforeend", `<article class="ordine ${indice === 0 && !document.getElementById("filtro").value && !document.getElementById("data").value ? "recente" : ""}"><div class="ordine-testa"><div><h2>Ordine #${ordine.numero}</h2><p>${testoSicuro(nomeServizio)} | ${dataOra.toLocaleString("it-IT")} | ${testoSicuro(ordine.tavoloOCliente)}</p></div><div class="ordine-totale">${euro.format(Number(ordine.totale))}</div></div>${note}<div class="ordine-righe">${righe}</div><div class="azioni"><button type="button" data-modifica="${ordine.numero}">Modifica</button><button type="button" data-elimina="${ordine.numero}" class="pericolo">Elimina</button></div></article>`);
+    ordini.slice().reverse().forEach(ordine => {
+        lista.insertAdjacentHTML("beforeend", window.orderCard.render(ordine, {
+            canEdit: window.currentAccount?.admin === true,
+            menu: stato.menu
+        }));
     });
     lista.querySelectorAll("[data-modifica]").forEach(button => button.addEventListener("click", () => window.location.href = `/modifica.html?numero=${button.dataset.modifica}`));
     lista.querySelectorAll("[data-elimina]").forEach(button => button.addEventListener("click", () => eliminaOrdine(button.dataset.elimina)));
@@ -73,6 +78,18 @@ document.getElementById("aggiorna").addEventListener("click", caricaOrdini);
 document.getElementById("filtro").addEventListener("input", render);
 document.getElementById("data").addEventListener("change", render);
 document.getElementById("autoAggiorna").addEventListener("change", configuraAggiornamento);
+if (window.paymentUI) {
+    window.paymentUI.bind(lista, {
+        canEdit: () => window.currentAccount?.admin === true,
+        onUpdated: ordine => {
+            const esistente = stato.ordini.find(elemento => String(elemento.numero) === String(ordine.numero));
+            if (esistente) esistente.statoPagamento = ordine.statoPagamento;
+            render();
+            if (window.themeToast) window.themeToast(`Ordine #${ordine.numero}: ${ordine.statoPagamento === "pagato" ? "pagato" : "non pagato"}`);
+        },
+        onError: errore => mostraStato(errore.message, "errore")
+    });
+}
 document.getElementById("reset-numeri").addEventListener("click", async () => {
     if (!window.confirm("Sei sicuro di voler eliminare tutti gli ordini?")) return;
     try {
@@ -84,4 +101,9 @@ document.getElementById("reset-numeri").addEventListener("click", async () => {
         mostraStato(errore.message, "errore");
     }
 });
-caricaOrdini(); configuraAggiornamento();
+async function avvia() {
+    if (!await window.authReady || !window.currentAccount) return;
+    await caricaOrdini();
+    configuraAggiornamento();
+}
+avvia();

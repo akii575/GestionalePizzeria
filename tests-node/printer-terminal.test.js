@@ -102,21 +102,25 @@ test("failed print jobs can be retried only from the production app", async t =>
     });
 });
 
-test("receipt starts with notes and prints service, destination, unit prices and extras without order number", () => {
+test("receipt prints the service first, places notes before products, and includes cover count", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
         numero: 12,
         tipo: "tavolo",
         tavoloOCliente: "Tavolo 4",
+        numeroPersone: 3,
         dataOra: "2026-10-14T12:00:00.000Z",
         righe: [{ prodotto: "Margherita", prezzoBase: 8.5, extra: [{ nome: "Bufala", prezzo: 1 }], totale: 9.5 }],
         note: "Senza basilico",
         totale: 9.5
     });
-    assert.equal(receipt.split(/\r?\n/)[0], "NOTE");
-    assert.ok(receipt.indexOf("Senza basilico") < receipt.indexOf("@@TITLE:"));
-    assert.match(receipt, /@@TITLE:SERVIZIO AL TAVOLO@@/);
+    assert.equal(receipt.split(/\r?\n/)[0], "=".repeat(28));
+    assert.ok(receipt.indexOf("@@TITLE:") < receipt.indexOf("NOTE"));
+    assert.ok(receipt.indexOf("Senza basilico") < receipt.indexOf("@@SECTION:"));
+    assert.match(receipt, /@@TITLE:TAVOLO x3@@/);
     assert.match(receipt, /TAVOLO: Tavolo 4/);
+    assert.match(receipt, /PERSONE: 3/);
+    assert.doesNotMatch(receipt, /ORARIO:/);
     assert.match(receipt, /^@@SECTION:PIZZE@@$/m);
     assert.match(receipt, /1x Margherita\s+EUR 9,50/);
     assert.match(receipt, /\+ Bufala/);
@@ -155,7 +159,9 @@ test("receipt combines identical product variants while keeping different extras
     const receipt = formatReceipt({
         tipo: "ritiro",
         tavoloOCliente: "Anna",
+        telefonoRitiro: "333 1234567",
         dataOra: "2026-10-14T12:00:00.000Z",
+        orario: "18:45",
         righe: [
             { prodotto: "Margherita", prezzoBase: 5, extra: [{ id: "fior-di-latte", nome: "Fior di latte", prezzo: 1 }], totale: 6 },
             { prodotto: "Margherita", prezzoBase: 5, extra: [{ id: "fior-di-latte", nome: "Fior di latte", prezzo: 1 }], totale: 6 },
@@ -166,13 +172,15 @@ test("receipt combines identical product variants while keeping different extras
     const lines = receipt.split(/\r?\n/);
     const itemLines = lines.filter(line => /^\d+x Margherita/.test(line));
 
-    assert.match(receipt, /@@TITLE:RITIRO AL BANCO@@/);
+    assert.match(receipt, /@@TITLE:RITIRO@@/);
+    assert.match(receipt, /ORARIO: 18:45/);
+    assert.match(receipt, /TEL: 333 1234567/);
     assert.equal(itemLines.length, 2);
     assert.ok(itemLines.some(line => line.startsWith("2x Margherita") && line.includes("EUR 6,00")));
     assert.ok(itemLines.some(line => line.startsWith("1x Margherita") && line.includes("EUR 5,00")));
 });
 
-test("delivery receipt prints customer contact details", () => {
+test("delivery receipt prints contact details without a customer name", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
         numero: 14,
@@ -185,10 +193,26 @@ test("delivery receipt prints customer contact details", () => {
         totale: 5
     });
 
-    assert.match(receipt, /@@TITLE:CONSEGNA A DOMICILIO@@/);
-    assert.ok(receipt.includes("CLIENTE: Anna Rossi"));
+    assert.match(receipt, /@@TITLE:CONSEGNA@@/);
+    assert.doesNotMatch(receipt, /CLIENTE:|Anna Rossi/);
     assert.ok(receipt.includes("TEL: +39 333 1234567"));
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("INDIRIZZO: Via Roma 12, Napoli"));
+    assert.ok(receipt.indexOf("@@TITLE:") < receipt.indexOf("@@SECTION:"));
+});
+
+test("counter receipt has a dedicated title without destination details", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{ prodotto: "Margherita" }],
+        totale: 5
+    });
+
+    assert.match(receipt, /@@TITLE:BANCO@@/);
+    assert.match(receipt, /COGNOME: Rossi/);
+    assert.doesNotMatch(receipt, /CLIENTE:|TAVOLO:/);
 });
 
 test("the same receipt is sent to both printers and retries skip a printer that already received it", async () => {

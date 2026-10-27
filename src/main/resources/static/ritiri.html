@@ -11,8 +11,8 @@
 <body data-service-type="ritiro">
 <main class="dashboard">
     <header class="dashboard-header">
-        <div><p class="eyebrow">Riepilogo dedicato</p><h1>Ritiri al banco</h1><p class="sottotitolo">Ordini da preparare per il ritiro</p></div>
-        <nav><a href="/">Home</a><a href="/ordini.html">Nuova comanda</a><a href="/gestionale.html">Tutti gli ordini</a><a href="/consegne.html">Consegne</a><a href="/tavoli.html">Tavoli</a><button id="aggiorna" type="button">Aggiorna</button><button id="reset-numeri" type="button" class="pericolo" hidden>Reset numeri</button></nav>
+        <div><h1>Ritiri al banco</h1></div>
+        <nav><a href="/">Home</a><a href="/ordini.html">Nuova comanda</a><a href="/gestionale.html">Tutti gli ordini</a><a href="/consegne.html">Consegne</a><a href="/tavoli.html">Tavoli</a><a href="/banco.html">Banco</a><button id="aggiorna" type="button">Aggiorna</button><button id="reset-numeri" type="button" class="pericolo" hidden>Reset numeri</button></nav>
     </header>
     <section class="filtri" aria-label="Filtri ritiri">
         <label for="filtro">Cerca cliente<input id="filtro" type="search" placeholder="Nome cliente..."></label>
@@ -27,6 +27,8 @@
     <p id="stato" role="status"></p>
     <section id="lista-ordini" class="lista-ordini" aria-live="polite"></section>
 </main>
+<script src="/pagamento-ui.js"></script>
+<script src="/order-card.js"></script>
 <script src="/gestionale.js"></script>
 <script src="/theme.js"></script>
 </body>

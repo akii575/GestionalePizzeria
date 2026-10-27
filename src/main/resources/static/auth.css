@@ -3,32 +3,33 @@ body {
     margin: 0;
     display: grid;
     place-items: center;
-    background: #f4f1eb;
-    color: #27231f;
-    font-family: system-ui, sans-serif;
+    background: var(--sfondo);
+    color: var(--inchiostro);
+    font-family: inherit;
 }
 .login-card {
     width: min(90vw, 420px);
     box-sizing: border-box;
     padding: 2rem;
-    border-radius: 1rem;
-    background: #fff;
-    box-shadow: 0 1rem 3rem #3322111c;
+    border: 1px solid var(--bordo);
+    border-radius: var(--theme-radius);
+    background: var(--theme-surface);
+    box-shadow: var(--theme-shadow);
 }
 .login-card h1 { margin: 0 0 .5rem; }
-.login-card > p { color: #625c55; }
+.login-card > p { color: var(--theme-muted); }
 .login-card form, .login-card label { display: grid; gap: .75rem; }
 .login-card form { gap: 1.25rem; margin-top: 1.5rem; }
 .login-card input, .login-card button {
     box-sizing: border-box;
     width: 100%;
     padding: .85rem 1rem;
-    border: 1px solid #c9c2b8;
-    border-radius: .5rem;
+    border: 1px solid var(--bordo);
+    border-radius: var(--theme-control-radius);
     font: inherit;
 }
-.login-card button { border: 0; background: #9a3d21; color: white; cursor: pointer; font-weight: 700; }
+.login-card button { border: 0; background: var(--theme-green); color: white; cursor: pointer; font-weight: 700; }
 .login-card button:disabled { opacity: .65; cursor: wait; }
 #login-status { min-height: 1.5em; }
 #login-status.error { color: #a22626; }
-.eyebrow { color: #9a3d21 !important; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+.login-card .eyebrow { color: var(--theme-red) !important; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }

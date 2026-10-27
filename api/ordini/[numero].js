@@ -1,7 +1,7 @@
 const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
-const { prepareOrder, publicOrder } = require("../../lib/orders");
+const { prepareOrder, preparePaymentUpdate, publicOrder } = require("../../lib/orders");
 
 function orderNumber(req) {
     const value = Number(req.query.numero);
@@ -37,6 +37,11 @@ module.exports = api(async (req, res) => {
             }
             const updated = {
                 ...prepared,
+                statoPagamento: Object.prototype.hasOwnProperty.call(req.body, "statoPagamento")
+                    ? prepared.statoPagamento
+                    : ["ritiro", "consegna"].includes(prepared.tipo)
+                        ? previous.statoPagamento || null
+                        : null,
                 numero,
                 dataOra: previous.dataOra,
                 stampaCompletata: previous.stampaCompletata === true,
@@ -47,6 +52,9 @@ module.exports = api(async (req, res) => {
                         ? "Comanda aggiornata; la copia gia' stampata non e' stata ristampata."
                         : previous.messaggioStampa || "Comanda aggiornata."
             };
+            if (previous.statoPagamento === "pos" && updated.statoPagamento !== "pos") {
+                throw httpError(409, "Il pagamento POS e' fisso e non puo' essere modificato.");
+            }
             transaction.set(order, updated);
             if (job && ["queued", "failed"].includes(job.status)) {
                 transaction.update(printerJob, {
@@ -55,6 +63,18 @@ module.exports = api(async (req, res) => {
                 });
             }
             return updated;
+        });
+        return res.status(200).json(publicOrder(saved));
+    }
+    if (req.method === "PATCH") {
+        requireSameOrigin(req);
+        const saved = await db.runTransaction(async transaction => {
+            const snapshot = await transaction.get(order);
+            if (!snapshot.exists) throw httpError(404, `Ordine non trovato: ${numero}`);
+            const previous = snapshot.data();
+            const update = preparePaymentUpdate(previous, req.body);
+            transaction.update(order, update);
+            return { ...previous, ...update };
         });
         return res.status(200).json(publicOrder(saved));
     }
@@ -78,5 +98,5 @@ module.exports = api(async (req, res) => {
         });
         return res.status(204).end();
     }
-    return methodNotAllowed(res, ["PUT", "DELETE"]);
+    return methodNotAllowed(res, ["PUT", "PATCH", "DELETE"]);
 });

@@ -2,7 +2,7 @@ const pages = require("../../lib/generated-pages");
 const { api, methodNotAllowed } = require("../../lib/api");
 const { requireAdmin, requireDeliveryAccess } = require("../../lib/auth");
 
-const deniedPage = `<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Accesso negato</title><body style="min-height:100vh;display:grid;place-content:center;text-align:center;gap:1rem;font-family:system-ui,sans-serif;background:#f4f1eb;color:#27231f"><main><h1>Accesso negato</h1><p>Questo account non è autorizzato.</p><button id="logout" type="button">Esci</button></main><script src="/auth-logout.js"></script></body></html>`;
+const deniedPage = `<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Accesso negato</title><link rel="stylesheet" href="/theme.css"><body class="accesso-negato"><main><h1>Accesso negato</h1><p>Questo account non è autorizzato.</p><button id="logout" type="button">Esci</button></main><script src="/auth-logout.js"></script></body></html>`;
 
 module.exports = api(async (req, res) => {
     if (req.method !== "GET") {

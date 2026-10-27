@@ -9,6 +9,7 @@
     { "source": "/modifica.html", "destination": "/api/pages/modifica.html" },
     { "source": "/consegne.html", "destination": "/api/pages/consegne.html" },
     { "source": "/ritiri.html", "destination": "/api/pages/ritiri.html" },
+    { "source": "/banco.html", "destination": "/api/pages/banco.html" },
     { "source": "/tavoli.html", "destination": "/api/pages/tavoli.html" }
   ],
   "headers": [

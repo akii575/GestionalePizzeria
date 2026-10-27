@@ -26,8 +26,11 @@
             document.querySelectorAll("[data-admin-only]").forEach(element => {
                 element.hidden = !isAdmin;
             });
-            if ((isAdmin && isHome) || isDeliveryPage) {
+            if (isAdmin && isHome) {
                 showToolbar(account.email);
+            }
+            if (isDeliveryPage) {
+                document.querySelector(".dashboard-header nav").append(makeLogoutButton());
             }
             document.documentElement.classList.remove("auth-loading");
             return true;
@@ -51,7 +54,7 @@
         document.body.replaceChildren();
         document.documentElement.classList.remove("auth-loading");
         const main = document.createElement("main");
-        main.setAttribute("style", "min-height:100vh;display:grid;place-content:center;text-align:center;gap:1rem;font-family:system-ui,sans-serif;background:#f4f1eb;color:#27231f");
+        main.className = "auth-feedback";
         const heading = document.createElement("h1");
         heading.textContent = title;
         const detail = document.createElement("p");
@@ -64,8 +67,8 @@
     function makeLogoutButton() {
         const button = document.createElement("button");
         button.type = "button";
+        button.className = "auth-logout";
         button.textContent = "Esci";
-        button.setAttribute("style", "padding:.7rem 1rem;border:0;border-radius:.4rem;background:#9a3d21;color:white;cursor:pointer;font:inherit");
         button.addEventListener("click", async () => {
             await nativeFetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
             window.location.replace("/login.html");
@@ -75,12 +78,12 @@
 
     function showToolbar(email) {
         const toolbar = document.createElement("div");
-        toolbar.setAttribute("style", "position:fixed;z-index:9999;right:1rem;top:1rem;display:flex;gap:.6rem;align-items:center;padding:.45rem .7rem;background:#fff;border:1px solid #ddd;border-radius:.5rem;box-shadow:0 2px 8px #0002;font:12px system-ui,sans-serif");
+        toolbar.className = "account-toolbar";
         const identity = document.createElement("span");
+        identity.className = "account-toolbar__identity";
         identity.textContent = email || "Amministratore";
         const button = makeLogoutButton();
-        button.setAttribute("style", "padding:.35rem .7rem;border:0;border-radius:.35rem;background:#9a3d21;color:white;cursor:pointer;font:inherit");
         toolbar.append(identity, button);
-        document.body.append(toolbar);
+        document.body.prepend(toolbar);
     }
 })();

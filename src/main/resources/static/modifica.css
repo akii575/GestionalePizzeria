@@ -1,6 +1,5 @@
-:root { --verde: #176345; --rosso: #b93228; --crema: #fffaf0; --bordo: #d8cdbd; } 
 * { box-sizing: border-box; } 
-body { margin: 0; background: #edf0ea; font-family: Georgia, "Times New Roman", serif; color: #202522; }
+body { margin: 0; }
 .modifica { width: min(700px, 100%); margin: 0 auto; padding: 22px; }
 header { border-bottom: 4px solid var(--verde); margin-bottom: 18px; }h1 { color: var(--verde); }
 a { color: var(--verde); font-weight: bold; }label { display: block; margin: 12px 0; font-weight: bold; }

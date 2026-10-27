@@ -2,9 +2,14 @@ const numero = new URLSearchParams(window.location.search).get("numero");
 const righe = document.getElementById("righe");
 let menu = [];
 let extra = [];
+let posFisso = false;
 const CATEGORIE_CON_EXTRA = ["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"];
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const stato = testo => document.getElementById("stato").textContent = testo;
+function oraLocale() {
+	const adesso = new Date();
+	return `${String(adesso.getHours()).padStart(2, "0")}:${String(adesso.getMinutes()).padStart(2, "0")}`;
+}
 function riferimentoExtra(elemento) { return typeof elemento === "string" ? extra.find(item => item.nome === elemento) : elemento; }
 function aggiornaTotale() {
 	const totale = Array.from(document.querySelectorAll(".riga-edit")).reduce((somma, riga) => {
@@ -17,10 +22,30 @@ function aggiornaTotale() {
 function aggiornaCampiConsegna() {
 	const tipo = document.getElementById("tipo-ordine").value;
 	const consegna = tipo === "consegna";
+	const tavolo = tipo === "tavolo";
+	const ritiro = tipo === "ritiro";
+	const banco = tipo === "banco";
+	const orario = document.getElementById("orario");
+	const statoPagamento = document.getElementById("stato-pagamento");
+	document.getElementById("campo-banco").hidden = !banco;
+	const destinazione = document.getElementById("tavolo");
+	document.getElementById("destinazione-label").hidden = !tavolo && !ritiro;
+	document.getElementById("campo-persone").hidden = !tavolo;
+	destinazione.required = tavolo || ritiro;
+	document.getElementById("campi-ritiro").hidden = !ritiro;
 	document.getElementById("campi-consegna").hidden = !consegna;
-	document.querySelector("#destinazione-label span").textContent = tipo === "ritiro"
+	document.getElementById("campo-orario").hidden = tavolo;
+	document.getElementById("campo-pagamento").hidden = !ritiro && !consegna;
+	document.querySelector('#stato-pagamento option[value="pos"]').hidden = !consegna;
+	orario.required = !tavolo;
+	statoPagamento.disabled = posFisso;
+	document.getElementById("tipo-ordine").disabled = posFisso;
+	document.querySelector("#destinazione-label span").textContent = ritiro
 		? "Nome cliente"
-		: consegna ? "Nome cliente" : "Tavolo";
+		: "Tavolo";
+	document.getElementById("numero-persone").required = tavolo;
+	document.getElementById("telefono-ritiro").required = ritiro;
+	document.getElementById("cognome-banco").required = banco;
 	document.getElementById("indirizzo-consegna").required = consegna;
 	document.getElementById("telefono-consegna").required = consegna;
 }
@@ -79,11 +104,22 @@ async function avvia() {
 		document.getElementById("numero").textContent = `#${ordine.numero}`;
 		document.getElementById("tipo-ordine").value = ordine.tipo === "consegna"
 			? "consegna"
-			: ordine.tipo === "ritiro" ? "ritiro" : "tavolo";
-		document.getElementById("tavolo").value = ordine.tavoloOCliente;
+			: ordine.tipo === "banco" ? "banco" : ordine.tipo === "ritiro" ? "ritiro" : "tavolo";
+		document.getElementById("tavolo").value = ordine.tipo === "consegna" || ordine.tipo === "banco"
+			? ""
+			: ordine.tavoloOCliente || "";
+		document.getElementById("numero-persone").value = Number.isInteger(ordine.numeroPersone)
+			&& ordine.numeroPersone > 0 ? ordine.numeroPersone : 1;
 		document.getElementById("indirizzo-consegna").value = ordine.indirizzoConsegna || "";
 		document.getElementById("telefono-consegna").value = ordine.telefonoConsegna || "";
+		document.getElementById("telefono-ritiro").value = ordine.telefonoRitiro || "";
+		document.getElementById("cognome-banco").value = ordine.cognomeBanco || "";
 		document.getElementById("note").value = ordine.note || "";
+		document.getElementById("orario").value = ordine.tipo === "tavolo"
+			? ""
+			: ordine.orario || oraLocale();
+		document.getElementById("stato-pagamento").value = ordine.statoPagamento || "";
+		posFisso = ordine.statoPagamento === "pos";
 		aggiornaCampiConsegna();
 		ordine.righe.forEach(rigaEdit);
 	} catch (errore) {
@@ -91,20 +127,42 @@ async function avvia() {
 	}
 }
 document.getElementById("aggiungi").onclick = () => rigaEdit();
-document.getElementById("tipo-ordine").addEventListener("change", aggiornaCampiConsegna);
+document.getElementById("tipo-ordine").addEventListener("change", () => {
+	const tipo = document.getElementById("tipo-ordine").value;
+	const statoPagamento = document.getElementById("stato-pagamento");
+	if (["ritiro", "consegna"].includes(tipo) && !statoPagamento.value && !posFisso) {
+		statoPagamento.value = "non_pagato";
+	}
+	aggiornaCampiConsegna();
+});
 document.getElementById("salva").onclick = async () => {
 	const pulsante = document.getElementById("salva");
-	const consegna = document.getElementById("tipo-ordine").value === "consegna";
-	if (!document.getElementById("tavolo").reportValidity()) return;
+	const tipo = document.getElementById("tipo-ordine").value;
+	const consegna = tipo === "consegna";
+	const tavolo = tipo === "tavolo";
+	const ritiro = tipo === "ritiro";
+	const banco = tipo === "banco";
+	if (!tavolo && !document.getElementById("orario").reportValidity()) return;
+	if (banco && !document.getElementById("cognome-banco").reportValidity()) return;
+	if ((tavolo || ritiro) && !document.getElementById("tavolo").reportValidity()) return;
+	if (ritiro && !document.getElementById("telefono-ritiro").reportValidity()) return;
+	if (tavolo && !document.getElementById("numero-persone").reportValidity()) return;
 	if (consegna && (!document.getElementById("indirizzo-consegna").reportValidity()
 		|| !document.getElementById("telefono-consegna").reportValidity())) return;
 	pulsante.disabled = true;
 	stato("Salvataggio in corso...");
 	const payload = {
-		tipo: document.getElementById("tipo-ordine").value,
-		tavoloOCliente: document.getElementById("tavolo").value,
+		tipo,
+		orario: tavolo ? "" : document.getElementById("orario").value,
+		statoPagamento: ritiro || consegna
+			? document.getElementById("stato-pagamento").value || null
+			: null,
+		cognomeBanco: banco ? document.getElementById("cognome-banco").value : "",
+		tavoloOCliente: tavolo || ritiro ? document.getElementById("tavolo").value : "",
+		numeroPersone: tavolo ? Number(document.getElementById("numero-persone").value) : null,
 		indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
 		telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",
+		telefonoRitiro: ritiro ? document.getElementById("telefono-ritiro").value : "",
 		note: document.getElementById("note").value,
 		righe: Array.from(document.querySelectorAll(".riga-edit")).map(riga => ({
 			prodotto: riga.querySelector(".prodotto").value,

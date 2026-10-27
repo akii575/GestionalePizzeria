@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ordini Pizzeria</title>
+    <title>Nuova comanda | CIVICO7</title>
     <style>html.auth-loading body{visibility:hidden}</style><script src="/auth-guard.js"></script>
     <link rel="stylesheet" href="/ordini.css">
     <link rel="stylesheet" href="/theme.css">
 </head>
 <body>
 <main class="container">
-    <header><h1>Ordini Pizzeria</h1><nav class="navigazione"><a href="/">Home</a><a href="/gestionale.html">Tutti gli ordini</a><a href="/consegne.html">Consegne</a><a href="/ritiri.html">Ritiri</a><a href="/tavoli.html">Tavoli</a></nav></header>
+    <header><h1>Nuova comanda</h1><nav class="navigazione"><a href="/">Home</a><a href="/gestionale.html">Tutti gli ordini</a><a href="/consegne.html">Consegne</a><a href="/ritiri.html">Ritiri</a><a href="/banco.html">Banco</a><a href="/tavoli.html">Tavoli</a></nav></header>
     <section class="tavolo-input">
         <label for="tipo-ordine">Tipo ordine</label>
         <select id="tipo-ordine">
-            <option value="tavolo">Servizio al tavolo</option>
-            <option value="ritiro">Ritiro al banco</option>
-            <option value="consegna">Consegna a domicilio</option>
+            <option value="tavolo">Tavolo</option>
+            <option value="banco">Banco</option>
+            <option value="ritiro">Ritiro</option>
+            <option value="consegna">Consegna</option>
         </select>
         <div id="campo-tavolo">
             <label for="tavolo">Tavolo</label>
@@ -25,18 +26,48 @@
                 <option>Tavolo 4</option><option>Tavolo 5</option><option>Tavolo 6</option>
                 <option>Tavolo 7</option><option>Tavolo 8</option><option>Tavolo 9</option><option>Tavolo 10</option>
             </select>
+            <label for="numero-persone">Numero persone</label>
+            <input id="numero-persone" type="number" min="1" max="30" step="1" value="1" required>
         </div>
         <div id="campo-ritiro" hidden>
             <label for="cliente-ritiro">Nome cliente</label>
             <input id="cliente-ritiro" type="text" autocomplete="name" maxlength="120">
+            <label for="telefono-ritiro">Numero di telefono</label>
+            <input id="telefono-ritiro" type="tel" autocomplete="tel" maxlength="30" pattern="\+?[0-9\s().-]{6,30}" title="Inserisci un numero valido.">
+        </div>
+        <div id="campo-banco" hidden>
+            <label for="cognome-banco">Cognome cliente</label>
+            <input id="cognome-banco" type="text" autocomplete="family-name" maxlength="80" placeholder="Cognome">
         </div>
         <div id="campi-consegna" class="campi-consegna" hidden>
-            <label for="cliente-consegna">Nome cliente</label>
-            <input id="cliente-consegna" type="text" autocomplete="name" maxlength="120">
-            <label for="indirizzo-consegna">Indirizzo di consegna</label>
-            <input id="indirizzo-consegna" type="text" autocomplete="street-address" maxlength="300">
-            <label for="telefono-consegna">Numero di telefono</label>
-            <input id="telefono-consegna" type="tel" autocomplete="tel" maxlength="30" pattern="\+?[0-9\s().-]{6,30}" title="Inserisci un numero valido.">
+            <div class="consegna-intestazione"><strong>Dati consegna</strong><span>Indirizzo completo e numero di telefono</span></div>
+            <div class="campo-consegna campo-indirizzo">
+                <label for="indirizzo-consegna">Indirizzo di consegna</label>
+                <input id="indirizzo-consegna" type="text" autocomplete="street-address" maxlength="300" placeholder="Via, numero civico, città">
+            </div>
+            <div class="campo-consegna campo-telefono">
+                <label for="telefono-consegna">Numero di telefono</label>
+                <input id="telefono-consegna" type="tel" autocomplete="tel" maxlength="30" pattern="\+?[0-9\s().-]{6,30}" title="Inserisci un numero valido." placeholder="Es. 333 1234567">
+            </div>
+        </div>
+        <div id="campo-orario" hidden>
+            <label for="orario">Orario richiesto</label>
+            <input id="orario" type="time" required>
+        </div>
+        <div id="campo-pagamento-ritiro" hidden>
+            <label for="pagamento-ritiro">Pagamento ritiro</label>
+            <select id="pagamento-ritiro">
+                <option value="non_pagato" selected>Non pagato</option>
+                <option value="pagato">Pagato</option>
+            </select>
+        </div>
+        <div id="campo-pagamento-consegna" hidden>
+            <label for="pagamento-consegna">Pagamento consegna</label>
+            <select id="pagamento-consegna">
+                <option value="non_pagato" selected>Non pagato</option>
+                <option value="pagato">Pagato</option>
+                <option value="pos">POS</option>
+            </select>
         </div>
     </section>
     <section class="note-input">
