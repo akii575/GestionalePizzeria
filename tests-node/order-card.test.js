@@ -90,6 +90,19 @@ test("delivery surcharge is included in order details only when present", () => 
     assert.doesNotMatch(deliveryWithoutFee, /order-card__delivery-fee/);
 });
 
+test("delivery surcharge toggle is placed beside payment and adapts to narrow screens", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const newOrderPage = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
+    const editOrderPage = fs.readFileSync(path.join(directory, "modifica.html"), "utf8");
+    const theme = fs.readFileSync(path.join(directory, "theme.css"), "utf8");
+
+    assert.match(newOrderPage, /<div id="campo-pagamento-consegna" class="riga-pagamento-consegna" hidden>[\s\S]*?id="pagamento-consegna"[\s\S]*?id="btn-costo-consegna"/);
+    assert.match(editOrderPage, /<div id="campo-pagamento" class="riga-pagamento-consegna" hidden>[\s\S]*?id="stato-pagamento"[\s\S]*?id="btn-costo-consegna"/);
+    assert.match(theme, /\.riga-pagamento-consegna\s*\{\s*display:\s*flex;[^}]*align-items:\s*flex-end;[^}]*justify-content:\s*space-between;[^}]*gap:\s*12px;/);
+    assert.match(theme, /@media \(max-width: 720px\)[\s\S]*?\.riga-pagamento-consegna > \.btn-costo-consegna\s*\{[^}]*min-height:\s*44px;/);
+    assert.match(theme, /@media \(max-width: 350px\)[\s\S]*?\.riga-pagamento-consegna \{ flex-wrap: wrap; \}/);
+});
+
 test("every order-list page loads the shared card renderer before its page script", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     for (const [page, renderer] of [

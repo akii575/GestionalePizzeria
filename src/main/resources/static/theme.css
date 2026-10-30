@@ -114,6 +114,33 @@ button {
 
 .btn-costo-consegna[aria-pressed="true"] { background: #1d4ed8; }
 
+.riga-pagamento-consegna {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.riga-pagamento-consegna[hidden] { display: none; }
+.riga-pagamento-consegna > label,
+.riga-pagamento-consegna > .campo-pagamento-consegna {
+    flex: 1 1 180px;
+    min-width: 120px;
+    margin: 0;
+}
+.riga-pagamento-consegna > label { margin-bottom: 0; }
+.campo-pagamento-consegna label { margin: 0 0 8px; }
+.riga-pagamento-consegna select { width: 100%; }
+.riga-pagamento-consegna > .btn-costo-consegna {
+    flex: 0 1 190px;
+    width: auto;
+    min-width: 140px;
+    margin: 0;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+}
+
 nav:not(.home-links):not(.tab-container) {
     display: flex;
     flex-wrap: wrap;
@@ -217,6 +244,14 @@ button.stato-pagamento { cursor: pointer; }
 .account-toolbar .auth-logout { min-width: 0; min-height: 44px; justify-self: auto; padding: 6px 10px; }
 
 @media (max-width: 720px) {
+    .riga-pagamento-consegna { gap: 8px; }
+    .riga-pagamento-consegna > .btn-costo-consegna {
+        flex-basis: 160px;
+        min-width: 132px;
+        min-height: 44px;
+        padding: 6px 8px;
+        font-size: 12px;
+    }
     .account-toolbar {
         position: static;
         width: fit-content;
@@ -301,4 +336,11 @@ button.stato-pagamento { cursor: pointer; }
     .azioni { flex-wrap: wrap; padding-inline: 12px; }
     .riga-edit { grid-template-columns: minmax(0, 1fr) auto; }
     .account-toolbar { top: 8px; right: 8px; max-width: calc(100vw - 16px); }
+}
+
+@media (max-width: 350px) {
+    .riga-pagamento-consegna { flex-wrap: wrap; }
+    .riga-pagamento-consegna > label,
+    .riga-pagamento-consegna > .campo-pagamento-consegna,
+    .riga-pagamento-consegna > .btn-costo-consegna { flex: 1 1 100%; }
 }

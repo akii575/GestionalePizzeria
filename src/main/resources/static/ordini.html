@@ -41,7 +41,6 @@
         </div>
         <div id="campi-consegna" class="campi-consegna" hidden>
             <div class="consegna-intestazione"><strong>Dati consegna</strong><span>Indirizzo completo e numero di telefono</span></div>
-            <button id="btn-costo-consegna" class="btn-costo-consegna" type="button" aria-pressed="false">Aggiungi costo consegna (+2,00 €)</button>
             <div class="campo-consegna campo-indirizzo">
                 <label for="indirizzo-consegna">Indirizzo di consegna</label>
                 <input id="indirizzo-consegna" type="text" autocomplete="street-address" maxlength="300" placeholder="Via, numero civico, città">
@@ -62,13 +61,16 @@
                 <option value="pagato">Pagato</option>
             </select>
         </div>
-        <div id="campo-pagamento-consegna" hidden>
-            <label for="pagamento-consegna">Pagamento consegna</label>
-            <select id="pagamento-consegna">
-                <option value="non_pagato" selected>Non pagato</option>
-                <option value="pagato">Pagato</option>
-                <option value="pos">POS</option>
-            </select>
+        <div id="campo-pagamento-consegna" class="riga-pagamento-consegna" hidden>
+            <div class="campo-pagamento-consegna">
+                <label for="pagamento-consegna">Pagamento consegna</label>
+                <select id="pagamento-consegna">
+                    <option value="non_pagato" selected>Non pagato</option>
+                    <option value="pagato">Pagato</option>
+                    <option value="pos">POS</option>
+                </select>
+            </div>
+            <button id="btn-costo-consegna" class="btn-costo-consegna" type="button" aria-pressed="false">Aggiungi costo consegna (+2,00 €)</button>
         </div>
     </section>
     <section class="note-input">

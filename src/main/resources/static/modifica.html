@@ -47,14 +47,13 @@
         <label for="telefono-consegna">Numero di telefono
             <input id="telefono-consegna" type="tel" autocomplete="tel" maxlength="30" pattern="\+?[0-9\s().-]{6,30}" title="Inserisci un numero valido.">
         </label>
-        <button id="btn-costo-consegna" class="btn-costo-consegna" type="button" aria-pressed="false">Aggiungi costo consegna (+2,00 €)</button>
     </div>
     <div id="campo-orario" hidden>
         <label for="orario">Orario richiesto
             <input id="orario" type="time" required>
         </label>
     </div>
-    <div id="campo-pagamento" hidden>
+    <div id="campo-pagamento" class="riga-pagamento-consegna" hidden>
         <label for="stato-pagamento">Pagamento
             <select id="stato-pagamento">
                 <option value="">Da verificare</option>
@@ -63,6 +62,7 @@
                 <option value="pos">POS</option>
             </select>
         </label>
+        <button id="btn-costo-consegna" class="btn-costo-consegna" type="button" aria-pressed="false" hidden>Aggiungi costo consegna (+2,00 €)</button>
     </div>
     <label for="note">Note
         <textarea id="note" placeholder="Aggiungi una nota..."></textarea>
