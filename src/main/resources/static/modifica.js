@@ -3,6 +3,8 @@ const righe = document.getElementById("righe");
 let menu = [];
 let extra = [];
 let posFisso = false;
+let costoConsegna = 0;
+const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const CATEGORIE_CON_EXTRA = ["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"];
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const stato = testo => document.getElementById("stato").textContent = testo;
@@ -10,13 +12,22 @@ function oraLocale() {
 	const adesso = new Date();
 	return `${String(adesso.getHours()).padStart(2, "0")}:${String(adesso.getMinutes()).padStart(2, "0")}`;
 }
+function aggiornaBottoneCostoConsegna() {
+	const attivo = costoConsegna === 2;
+	bottoneCostoConsegna.hidden = document.getElementById("tipo-ordine").value !== "consegna";
+	bottoneCostoConsegna.setAttribute("aria-pressed", String(attivo));
+	bottoneCostoConsegna.textContent = attivo
+		? "Rimuovi costo consegna (2,00 €)"
+		: "Aggiungi costo consegna (+2,00 €)";
+}
 function riferimentoExtra(elemento) { return typeof elemento === "string" ? extra.find(item => item.nome === elemento) : elemento; }
 function aggiornaTotale() {
-	const totale = Array.from(document.querySelectorAll(".riga-edit")).reduce((somma, riga) => {
+	const totaleRighe = Array.from(document.querySelectorAll(".riga-edit")).reduce((somma, riga) => {
 		const prodotto = menu.find(item => item.nome === riga.querySelector(".prodotto")?.value);
 		const selezionati = JSON.parse(riga.querySelector(".extra-selezionati")?.dataset.extra || "[]");
 		return somma + Number(prodotto?.prezzo || 0) + selezionati.reduce((extraTotale, item) => extraTotale + Number(item.prezzo || 0), 0);
 	}, 0);
+	const totale = totaleRighe + (document.getElementById("tipo-ordine").value === "consegna" ? costoConsegna : 0);
 	document.getElementById("totale-modifica").textContent = `Totale: ${euro.format(totale)}`;
 }
 function aggiornaCampiConsegna() {
@@ -48,6 +59,7 @@ function aggiornaCampiConsegna() {
 	document.getElementById("cognome-banco").required = banco;
 	document.getElementById("indirizzo-consegna").required = consegna;
 	document.getElementById("telefono-consegna").required = consegna;
+	aggiornaBottoneCostoConsegna();
 }
 function renderExtraSelezionati(container, selezionati, onChange) {
 	container.innerHTML = "";
@@ -119,6 +131,7 @@ async function avvia() {
 			? ""
 			: ordine.orario || oraLocale();
 		document.getElementById("stato-pagamento").value = ordine.statoPagamento || "";
+		costoConsegna = Number(ordine.costoConsegna) === 2 ? 2 : 0;
 		posFisso = ordine.statoPagamento === "pos";
 		aggiornaCampiConsegna();
 		ordine.righe.forEach(rigaEdit);
@@ -130,10 +143,17 @@ document.getElementById("aggiungi").onclick = () => rigaEdit();
 document.getElementById("tipo-ordine").addEventListener("change", () => {
 	const tipo = document.getElementById("tipo-ordine").value;
 	const statoPagamento = document.getElementById("stato-pagamento");
+	if (tipo !== "consegna") costoConsegna = 0;
 	if (["ritiro", "consegna"].includes(tipo) && !statoPagamento.value && !posFisso) {
 		statoPagamento.value = "non_pagato";
 	}
 	aggiornaCampiConsegna();
+	aggiornaTotale();
+});
+bottoneCostoConsegna.addEventListener("click", () => {
+	costoConsegna = costoConsegna === 2 ? 0 : 2;
+	aggiornaBottoneCostoConsegna();
+	aggiornaTotale();
 });
 document.getElementById("salva").onclick = async () => {
 	const pulsante = document.getElementById("salva");
@@ -162,6 +182,7 @@ document.getElementById("salva").onclick = async () => {
 		numeroPersone: tavolo ? Number(document.getElementById("numero-persone").value) : null,
 		indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
 		telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",
+		costoConsegna: consegna ? costoConsegna : 0,
 		telefonoRitiro: ritiro ? document.getElementById("telefono-ritiro").value : "",
 		note: document.getElementById("note").value,
 		righe: Array.from(document.querySelectorAll(".riga-edit")).map(riga => ({

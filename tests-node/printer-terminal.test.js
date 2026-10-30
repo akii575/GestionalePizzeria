@@ -110,9 +110,9 @@ test("receipt prints the service first and uses the fixed-width uppercase layout
         tavoloOCliente: "Tavolo 4",
         numeroPersone: 3,
         dataOra: "2026-10-14T12:00:00.000Z",
-        righe: [{ prodotto: "Margherita", prezzoBase: 8.5, extra: [{ nome: "Bufala", prezzo: 1 }], totale: 9.5 }],
+        righe: [{ prodotto: "Margherita", prezzoBase: 8.5, extra: [{ nome: "Bufala", prezzo: 2 }], totale: 10.5 }],
         note: "Senza basilico",
-        totale: 9.5
+        totale: 10.5
     });
     assert.match(receipt, /^@@TITLE:TAVOLO X3@@/);
     assert.equal(receipt.split(/\r?\n/)[1], "-".repeat(24));
@@ -124,15 +124,37 @@ test("receipt prints the service first and uses the fixed-width uppercase layout
     assert.ok(receipt.indexOf("NOTE:") < receipt.indexOf("@@SECTION:"));
     assert.ok(receipt.indexOf("NOTE:") < receipt.indexOf("1X MARGHERITA"));
     assert.match(receipt, /^@@SECTION:PIZZE@@$/m);
-    assert.match(receipt, /1X MARGHERITA\s+EUR 9,50/);
+    assert.match(receipt, /1X MARGHERITA\s+EUR 10,50/);
     assert.match(receipt, /\+ BUFALA/);
     assert.doesNotMatch(receipt, /COMANDA #12/);
-    assert.ok(receipt.includes("EUR 9,50"));
+    assert.ok(receipt.includes("EUR 10,50"));
     assert.ok(receipt.split(/\r?\n/).every(line => (
         line.startsWith("@@TITLE:") || line.startsWith("@@SECTION:") || line.startsWith("@@BOLD:")
             ? true
             : Array.from(line).length <= 24
     )));
+});
+
+test("delivery surcharge is printed separately before the total within the paper width", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        tipo: "consegna",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        orario: "20:00",
+        indirizzoConsegna: "Via Roma 12",
+        telefonoConsegna: "3331234567",
+        costoConsegna: 2,
+        righe: [{ prodotto: "Margherita", prezzoBase: 5, totale: 5 }],
+        totale: 7
+    });
+    const lines = receipt.split(/\r?\n/);
+    const surcharge = lines.findIndex(line => line.includes("COSTO CONSEGNA"));
+    const total = lines.findIndex(line => line.startsWith("TOTALE"));
+
+    assert.equal(surcharge >= 0, true);
+    assert.ok(surcharge < total);
+    assert.match(lines[surcharge], /COSTO CONSEGNA\s+EUR 2,00/);
+    assert.equal(lines[surcharge].length, 24);
 });
 
 test("receipt groups products by menu category in catalog order with their prices", () => {
@@ -174,8 +196,8 @@ test("receipt combines identical product variants while keeping different extras
         dataOra: "2026-10-14T12:00:00.000Z",
         orario: "18:45",
         righe: [
-            { prodotto: "Margherita", prezzoBase: 5, extra: [{ id: "fior-di-latte", nome: "Fior di latte", prezzo: 1 }], totale: 6 },
-            { prodotto: "Margherita", prezzoBase: 5, extra: [{ id: "fior-di-latte", nome: "Fior di latte", prezzo: 1 }], totale: 6 },
+            { prodotto: "Margherita", prezzoBase: 5, extra: [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }], totale: 7 },
+            { prodotto: "Margherita", prezzoBase: 5, extra: [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }], totale: 7 },
             { prodotto: "Margherita", prezzoBase: 5, extra: [], totale: 5 }
         ],
         totale: 17
@@ -187,7 +209,7 @@ test("receipt combines identical product variants while keeping different extras
     assert.match(receipt, /ORARIO RICHIESTO 18:45/);
     assert.match(receipt, /TEL: 333 1234567/);
     assert.equal(itemLines.length, 2);
-    assert.ok(itemLines.some(line => line.startsWith("2X MARGHERITA") && line.includes("EUR 6,00")));
+    assert.ok(itemLines.some(line => line.startsWith("2X MARGHERITA") && line.includes("EUR 7,00")));
     assert.ok(itemLines.some(line => line.startsWith("1X MARGHERITA") && line.includes("EUR 5,00")));
 });
 

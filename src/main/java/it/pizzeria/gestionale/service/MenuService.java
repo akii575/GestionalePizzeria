@@ -102,7 +102,7 @@ public class MenuService {
                 new ProdottoMenu("Salsiccia, Provola e Porcini", "secondi", new BigDecimal("10.00")),
                 new ProdottoMenu("Salsiccia e Patatine", "secondi", new BigDecimal("9.00")),
                 // bibite
-                new ProdottoMenu("Acqua 0,5L", "bibite", new BigDecimal("1.50")),
+                new ProdottoMenu("Acqua 0,5L", "bibite", new BigDecimal("1.00")),
                 new ProdottoMenu("Acqua 1L", "bibite", new BigDecimal("3.00")),
                 new ProdottoMenu("Coca Cola / Zero 33cl", "bibite", new BigDecimal("2.00")),
                 new ProdottoMenu("Fanta 33cl", "bibite", new BigDecimal("2.00")),

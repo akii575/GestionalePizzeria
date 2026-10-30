@@ -49,6 +49,7 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 .order-card__ingredients { display: block; margin-top: 3px; color: #626760; font-size: 12px; line-height: 1.4; }
 .order-card__extra { display: block; margin-top: 3px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
 .order-card__note { margin: 10px 0 0; padding: 9px; border-left: 3px solid var(--rosso); background: #fff4ef; font-size: 16px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.order-card__delivery-fee { margin: 8px 0; padding: 8px; border-left: 3px solid #2563eb; background: #eff6ff; font-weight: 700; text-align: right; }
 .order-card__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 160px)); gap: 8px; padding: 0 14px 12px; }
 .order-card__actions button { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--bordo); background: #fff; font-size: 16px; line-height: 1.3; }
 .order-card__actions .pericolo { color: var(--rosso); }

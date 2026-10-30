@@ -32,22 +32,23 @@ public class ExtraMenu {
 
     public static List<ExtraMenu> catalogo() {
         List<ExtraMenu> catalogo = new ArrayList<ExtraMenu>(Arrays.asList(
-                extra("Fior di latte", "1.00"), extra("Mozzarella di bufala", "2.00"), extra("Provola affumicata", "1.50"),
-                extra("Provolone del Monaco", "2.00"), extra("Parmigiano Reggiano", "1.50"), extra("Pecorino romano", "1.50"),
-                extra("Gorgonzola DOP", "1.50"), extra("Taleggio", "1.50"), extra("Grana Padano", "1.50"), extra("Ricotta", "1.50"),
-                extra("Crema di bufala", "2.00"), extra("Fonduta di gorgonzola", "2.00"), extra("Prosciutto cotto", "1.50"),
-                extra("Prosciutto crudo di Parma", "2.50"), extra("Salame napoletano", "1.50"), extra("Spianata piccante", "1.50"),
-                extra("Nduja calabra", "1.50"), extra("Pancetta arrotolata/pepata", "1.50"), extra("Guanciale", "1.50"),
-                extra("Capocollo", "1.50"), extra("Mortadella", "1.50"), extra("Salsiccia", "1.50"), extra("Wurstel", "1.00"),
-                extra("Porchetta", "2.00"), extra("Alici di Cetara", "2.00"), extra("Tonno", "1.50"), extra("Melanzane", "1.00"),
-                extra("Zucchine", "1.00"), extra("Peperoni", "1.00"), extra("Peperoni cruschi", "1.50"), extra("Broccoli", "1.00"),
-                extra("Carciofi", "1.50"), extra("Olive taggiasche", "1.00"), extra("Olive nere", "1.00"), extra("Capperi", "1.00"),
-                extra("Scarola", "1.00"), extra("Cipolla di Tropea", "1.00"), extra("Patate lesse", "1.00"), extra("Patatine fritte", "2.00"),
-                extra("Vellutata di patate", "1.50"), extra("Porcini freschi", "2.00"), extra("Funghi champignons", "1.50"), extra("Vellutata di zucca", "1.50"),
-                extra("Vellutata di spinaci", "1.50"), extra("Rucola", "1.00"), extra("Mais", "1.00"), extra("Pomodorino datterino giallo", "1.00"),
-                extra("Pomodoro arrosto", "1.00"), extra("Crema di carbonara", "2.00"), extra("Crema/gherigli di noci", "2.00"),
-                extra("Crema/granella di pistacchi", "2.50"), extra("Lardo di Colonnata", "2.00"), extra("Crocché di patate", "1.50"),
-                extra("Panna", "1.00"), extra("Rosso d'uovo", "1.00")
+                extra("pom. Cotto", "2.00"), extra("Bocconcino", "2.00"), extra("Pepe", "1.00"),
+                extra("Pancetta", "2.00"), extra("Origano", "1.00"), extra("pat less", "2.00"),
+                extra("Crocche", "2.50"), extra("Patatine", "2.00"), extra("Rucola", "1.00"),
+                extra("senza latt", "2.50"), extra("Olive", "1.50"), extra("Champignon", "1.50"),
+                extra("Nduja", "1.50"), extra("Zucchine", "2.00"), extra("Provola", "2.00"),
+                extra("cipolla", "1.50"), extra("Mais", "1.00"), extra("Gorgonzola", "1.50"),
+                extra("Crudo", "2.50"), extra("Scarola", "1.50"), extra("Porcini", "2.00"),
+                extra("Melanzane", "2.00"), extra("Cotto", "2.00"), extra("Salame", "2.00"),
+                extra("Spianata", "2.00"), extra("Salsiccia", "2.00"), extra("Ricotta", "1.00"),
+                extra("Carciofino", "1.50"), extra("pom. Giallo", "1.50"), extra("Porchetta", "2.00"),
+                extra("Pecorino", "1.00"), extra("Lardo", "1.50"), extra("crema noci", "1.50"),
+                extra("Capicollo", "1.50"), extra("vell. Patate", "1.50"), extra("Zucca", "1.50"),
+                extra("Mortadella", "2.00"), extra("Wurstel", "1.00"), extra("Panna", "1.00"),
+                extra("Pep. Crusco", "1.50"), extra("noci", "1.00"), extra("tonno", "2.00"),
+                extra("prov monaco", "2.00"), extra("Bufala", "2.00"), extra("Broccoli", "2.00"),
+                extra("alici", "2.00"), extra("pom datt", "1.50"), extra("capperi", "1.00"),
+                extra("Scaglie", "2.00"), extra("Ruota di carro", "1.00"), extra("Peperoni", "1.50")
         ));
         Collections.sort(catalogo, new Comparator<ExtraMenu>() {
             @Override

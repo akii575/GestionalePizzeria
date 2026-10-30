@@ -20,8 +20,10 @@ const extraRiepilogo = document.getElementById("extra-riepilogo");
 const confermaModale = document.getElementById("conferma-modale");
 const confermaRiepilogo = document.getElementById("conferma-riepilogo");
 const confermaTotale = document.getElementById("conferma-totale");
+const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const CATEGORIE_CON_EXTRA = ["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"];
+let costoConsegna = 0;
 
 function categoriaConExtra() { return CATEGORIE_CON_EXTRA.includes(stato.categoria); }
 function mostraMessaggio(testo, classe) { messaggio.textContent = testo; messaggio.className = classe; }
@@ -29,6 +31,13 @@ function testoSicuro(valore) { const elemento = document.createElement("span"); 
 function oraLocale() {
     const adesso = new Date();
     return `${String(adesso.getHours()).padStart(2, "0")}:${String(adesso.getMinutes()).padStart(2, "0")}`;
+}
+function aggiornaBottoneCostoConsegna() {
+    const attivo = costoConsegna === 2;
+    bottoneCostoConsegna.setAttribute("aria-pressed", String(attivo));
+    bottoneCostoConsegna.textContent = attivo
+        ? "Rimuovi costo consegna (2,00 €)"
+        : "Aggiungi costo consegna (+2,00 €)";
 }
 function aggiornaTipoOrdine() {
     const consegna = tipoOrdine.value === "consegna";
@@ -51,9 +60,11 @@ function aggiornaTipoOrdine() {
     for (const id of ["indirizzo-consegna", "telefono-consegna"]) {
         document.getElementById(id).required = consegna;
     }
+    aggiornaBottoneCostoConsegna();
 }
 function nomiExtra(extra) { return (extra || []).map(elemento => typeof elemento === "string" ? elemento : elemento.nome); }
 function prezzoRiga(riga) { return Number(riga.prezzo || 0) + nomiExtra(riga.extra).reduce((somma, nome) => somma + Number(stato.extra.find(extra => extra.nome === nome)?.prezzo || 0), 0); }
+function totaleOrdine() { return stato.righe.reduce((totale, riga) => totale + prezzoRiga(riga), 0) + costoConsegna; }
 function renderExtra(container, selezionati, onChange) {
     container.innerHTML = "";
     stato.extra.forEach(extra => {
@@ -78,7 +89,26 @@ function aggiornaGestioneExtra() {
     if (modificabile) renderExtra(document.getElementById("extra-riepilogo-lista"), nomiExtra(riga.extra).map(nome => stato.extra.find(extra => extra.nome === nome)).filter(Boolean), selezionati => { riga.extra = selezionati; });
 }
 function aggiornaSelettoreRighe() { const scelto = selettoreRigaExtra.value; selettoreRigaExtra.innerHTML = '<option value="">Seleziona un prodotto</option>'; stato.righe.forEach((riga, indice) => { const opzione = document.createElement("option"); opzione.value = indice; opzione.textContent = `${riga.prodotto}${riga.extra.length ? ` + ${nomiExtra(riga.extra).join(", ")}` : ""}`; selettoreRigaExtra.appendChild(opzione); }); selettoreRigaExtra.disabled = !stato.righe.length; selettoreRigaExtra.value = scelto < stato.righe.length ? scelto : ""; aggiornaGestioneExtra(); }
-function renderRiepilogo() { riepilogo.innerHTML = ""; stato.righe.forEach((riga, indice) => { const voce = document.createElement("div"); voce.className = "riepilogo-item"; const descrizione = riga.ingredienti?.length ? `<small class="riepilogo-descrizione">${testoSicuro(riga.ingredienti.join(", "))}</small>` : ""; voce.innerHTML = `<div><strong>${testoSicuro(riga.prodotto)}</strong>${descrizione}<span>${riga.extra.length ? `Extra: ${testoSicuro(nomiExtra(riga.extra).join(", "))}` : "Nessun extra"}</span></div><button class="rimuovi" type="button" data-indice="${indice}">Rimuovi</button>`; riepilogo.appendChild(voce); }); if (!stato.righe.length) riepilogo.innerHTML = "<p>Nessun prodotto selezionato</p>"; riepilogo.querySelectorAll(".rimuovi").forEach(button => button.addEventListener("click", () => { stato.righe.splice(Number(button.dataset.indice), 1); renderRiepilogo(); })); document.getElementById("riepilogo-totale").textContent = `Totale: ${euro.format(stato.righe.reduce((totale, riga) => totale + prezzoRiga(riga), 0))}`; invia.disabled = !stato.righe.length; aggiornaSelettoreRighe(); }
+function renderRiepilogo() {
+    riepilogo.innerHTML = "";
+    stato.righe.forEach((riga, indice) => {
+        const voce = document.createElement("div");
+        voce.className = "riepilogo-item";
+        const descrizione = riga.ingredienti?.length
+            ? `<small class="riepilogo-descrizione">${testoSicuro(riga.ingredienti.join(", "))}</small>`
+            : "";
+        voce.innerHTML = `<div><strong>${testoSicuro(riga.prodotto)}</strong>${descrizione}<span>${riga.extra.length ? `Extra: ${testoSicuro(nomiExtra(riga.extra).join(", "))}` : "Nessun extra"}</span></div><button class="rimuovi" type="button" data-indice="${indice}">Rimuovi</button>`;
+        riepilogo.appendChild(voce);
+    });
+    if (!stato.righe.length) riepilogo.innerHTML = "<p>Nessun prodotto selezionato</p>";
+    riepilogo.querySelectorAll(".rimuovi").forEach(button => button.addEventListener("click", () => {
+        stato.righe.splice(Number(button.dataset.indice), 1);
+        renderRiepilogo();
+    }));
+    document.getElementById("riepilogo-totale").textContent = `Totale: ${euro.format(totaleOrdine())}`;
+    invia.disabled = !stato.righe.length;
+    aggiornaSelettoreRighe();
+}
 function apriConferma() {
     if (!stato.righe.length) return;
     const consegna = tipoOrdine.value === "consegna";
@@ -107,14 +137,17 @@ function apriConferma() {
     const dettaglioOrario = tipoOrdine.value === "tavolo"
         ? ""
         : `<div class="conferma-consegna"><span>Orario richiesto: ${testoSicuro(orario.value)}</span>${ritiro ? `<span>Pagamento: ${testoSicuro(pagamentoRitiro.selectedOptions[0].textContent)}</span>` : consegna ? `<span>Pagamento: ${testoSicuro(pagamentoConsegna.selectedOptions[0].textContent)}</span>` : ""}</div>`;
-    confermaRiepilogo.innerHTML = dettagliServizio + dettaglioOrario + stato.righe.map(riga => {
+    const dettaglioCostoConsegna = consegna && costoConsegna
+        ? `<div class="conferma-consegna"><span>Costo consegna</span><strong>${euro.format(costoConsegna)}</strong></div>`
+        : "";
+    confermaRiepilogo.innerHTML = dettagliServizio + dettaglioOrario + dettaglioCostoConsegna + stato.righe.map(riga => {
         const extra = nomiExtra(riga.extra).map(nome => {
             const dato = stato.extra.find(item => item.nome === nome);
             return `${testoSicuro(nome)} (${euro.format(Number(dato?.prezzo || 0))})`;
         }).join(", ");
         return `<div class="conferma-riga"><strong>${testoSicuro(riga.prodotto)} - ${euro.format(Number(riga.prezzo))}</strong>${riga.ingredienti?.length ? `<span>${testoSicuro(riga.ingredienti.join(", "))}</span>` : ""}${extra ? `<span>Extra: ${extra}</span>` : ""}<span>Totale riga: ${euro.format(prezzoRiga(riga))}</span></div>`;
     }).join("");
-    confermaTotale.textContent = `Totale: ${euro.format(stato.righe.reduce((totale, riga) => totale + prezzoRiga(riga), 0))}`;
+    confermaTotale.textContent = `Totale: ${euro.format(totaleOrdine())}`;
     confermaModale.hidden = false;
     document.body.classList.add("modale-aperta");
     document.getElementById("conferma-invio").focus();
@@ -143,6 +176,7 @@ async function inviaOrdine() {
                 numeroPersone: tavolo ? Number(numeroPersone.value) : null,
                 indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
                 telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",
+                costoConsegna: consegna ? costoConsegna : 0,
                 telefonoRitiro: ritiro ? document.getElementById("telefono-ritiro").value : "",
                 note: document.getElementById("note").value,
                 righe: stato.righe.map(riga => ({ prodotto: riga.prodotto, extra: riga.extra }))
@@ -152,6 +186,8 @@ async function inviaOrdine() {
         if (!risposta.ok) throw new Error(dati.errore || "Invio non riuscito.");
         mostraMessaggio(`Ordine #${dati.numero} salvato. ${dati.messaggioStampa}`, dati.stampaCompletata || dati.stampaInCoda ? "successo" : "errore");
         stato.righe = [];
+        costoConsegna = 0;
+        aggiornaBottoneCostoConsegna();
         document.getElementById("note").value = "";
         document.getElementById("cliente-ritiro").value = "";
         document.getElementById("telefono-ritiro").value = "";
@@ -168,9 +204,18 @@ async function inviaOrdine() {
     }
 }
 document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => { stato.categoria = tab.dataset.tab; document.querySelectorAll(".tab").forEach(elemento => elemento.classList.toggle("active", elemento === tab)); renderProdotti(); }));
-tipoOrdine.addEventListener("change", aggiornaTipoOrdine);
+tipoOrdine.addEventListener("change", () => {
+    if (tipoOrdine.value !== "consegna") costoConsegna = 0;
+    aggiornaTipoOrdine();
+    renderRiepilogo();
+});
+bottoneCostoConsegna.addEventListener("click", () => {
+    costoConsegna = costoConsegna === 2 ? 0 : 2;
+    aggiornaBottoneCostoConsegna();
+    renderRiepilogo();
+});
 orario.value = oraLocale();
 aggiornaTipoOrdine();
-selettoreRigaExtra.addEventListener("change", aggiornaGestioneExtra); document.getElementById("applica-extra").addEventListener("click", () => { renderRiepilogo(); mostraMessaggio("Extra aggiornati.", "successo"); }); invia.addEventListener("click", apriConferma); document.getElementById("conferma-invio").addEventListener("click", inviaOrdine); document.getElementById("annulla-invio").addEventListener("click", chiudiConferma); document.getElementById("btn-annulla").addEventListener("click", () => { stato.righe = []; renderRiepilogo(); mostraMessaggio("Ordine annullato.", ""); });
+selettoreRigaExtra.addEventListener("change", aggiornaGestioneExtra); document.getElementById("applica-extra").addEventListener("click", () => { renderRiepilogo(); mostraMessaggio("Extra aggiornati.", "successo"); }); invia.addEventListener("click", apriConferma); document.getElementById("conferma-invio").addEventListener("click", inviaOrdine); document.getElementById("annulla-invio").addEventListener("click", chiudiConferma); document.getElementById("btn-annulla").addEventListener("click", () => { stato.righe = []; costoConsegna = 0; aggiornaBottoneCostoConsegna(); renderRiepilogo(); mostraMessaggio("Ordine annullato.", ""); });
 document.addEventListener("keydown", evento => { if (evento.key === "Escape" && !confermaModale.hidden) chiudiConferma(); });
 Promise.all([fetch("/api/menu"), fetch("/api/extra")]).then(async risposte => { stato.menu = await risposte[0].json(); stato.extra = (await risposte[1].json()).sort((primo, secondo) => primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" })); renderExtra(document.getElementById("extra-lista"), stato.extraSelezionati, selezionati => stato.extraSelezionati = selezionati); renderProdotti(); }).catch(errore => mostraMessaggio(errore.message, "errore"));

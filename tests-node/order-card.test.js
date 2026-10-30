@@ -74,6 +74,22 @@ test("delivery fields share one row while pickup and counter names are inline", 
     assert.match(styles, /\.order-card__field--inline\s*\{\s*display:\s*flex;/);
 });
 
+test("delivery surcharge is included in order details only when present", () => {
+    const deliveryWithFee = render({
+        tipo: "consegna",
+        costoConsegna: 2,
+        indirizzoConsegna: "Via Roma 12"
+    });
+    const deliveryWithoutFee = render({
+        tipo: "consegna",
+        costoConsegna: 0,
+        indirizzoConsegna: "Via Roma 12"
+    });
+
+    assert.match(deliveryWithFee, /Costo consegna: 2,00\s*€/);
+    assert.doesNotMatch(deliveryWithoutFee, /order-card__delivery-fee/);
+});
+
 test("every order-list page loads the shared card renderer before its page script", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     for (const [page, renderer] of [

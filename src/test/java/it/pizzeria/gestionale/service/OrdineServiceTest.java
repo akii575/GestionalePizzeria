@@ -30,12 +30,12 @@ class OrdineServiceTest {
         richiesta.setNote("Senza pepe");
         NuovoOrdineRequest.RigaRequest riga = new NuovoOrdineRequest.RigaRequest();
         riga.setProdotto("Diavola");
-        riga.setExtra(Arrays.asList("Fior di latte"));
+        riga.setExtra(Arrays.asList("Bocconcino"));
         richiesta.setRighe(Arrays.asList(riga));
 
         OrdineResponse risposta = service.crea(richiesta);
 
-        assertEquals("7.00", risposta.getTotale().toPlainString());
+        assertEquals("8.00", risposta.getTotale().toPlainString());
         assertEquals(1, repository.ordini.size());
         assertEquals(false, risposta.getStampaCompletata());
     }

@@ -110,6 +110,9 @@ const orderCard = (() => {
         const note = order.note
             ? `<p class="order-card__note"><strong>Note:</strong> ${escapeHtml(order.note)}</p>`
             : "";
+        const deliveryFee = type === "consegna" && Number(order.costoConsegna) > 0
+            ? `<p class="order-card__delivery-fee">Costo consegna: ${euro.format(Number(order.costoConsegna))}</p>`
+            : "";
 
         return `
             <article class="order-card" data-order-type="${escapeHtml(type)}">
@@ -128,6 +131,7 @@ const orderCard = (() => {
                 <details class="order-card__details">
                     <summary>Apri il dettaglio dell'ordine</summary>
                     <ul class="order-card__products">${renderProducts(order.righe, menu)}</ul>
+                    ${deliveryFee}
                     ${note}
                 </details>
                 ${renderActions(order, canEdit)}

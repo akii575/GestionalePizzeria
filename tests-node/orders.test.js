@@ -6,7 +6,7 @@ test("validates an order and calculates product and extra totals", () => {
     const order = prepareOrder({
         tavoloOCliente: " Tavolo 1 ",
         note: "  Senza cipolla  ",
-        righe: [{ prodotto: "Margherita", extra: ["fior-di-latte"] }]
+        righe: [{ prodotto: "Margherita", extra: ["bocconcino"] }]
     });
 
     assert.equal(order.tavoloOCliente, "Tavolo 1");
@@ -15,13 +15,29 @@ test("validates an order and calculates product and extra totals", () => {
     assert.equal(order.statoPagamento, null);
     assert.equal(order.numeroPersone, 1);
     assert.equal(order.note, "Senza cipolla");
-    assert.equal(order.righe[0].totale, 6);
-    assert.equal(order.totale, 6);
+    assert.equal(order.righe[0].totale, 7);
+    assert.equal(order.totale, 7);
     assert.deepEqual(publicOrder({ ...order, numero: 1, dataOra: "2026-10-12T12:00:00.000Z" }).righe[0].extra[0], {
-        id: "fior-di-latte",
-        nome: "Fior di latte",
-        prezzo: 1
+        id: "bocconcino",
+        nome: "Bocconcino",
+        prezzo: 2
     });
+});
+
+test("uses the current beverage prices when calculating order totals", () => {
+    const water = prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Acqua 0,5L" }]
+    });
+    const cola = prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Coca Cola / Zero 33cl" }]
+    });
+
+    assert.equal(water.totale, 1);
+    assert.equal(cola.totale, 2);
 });
 
 test("requires delivery contact details and includes them in public order data", () => {
@@ -38,10 +54,40 @@ test("requires delivery contact details and includes them in public order data",
     assert.equal(publicData.indirizzoConsegna, "Via Roma 12, Napoli");
     assert.equal(publicData.telefonoConsegna, "+39 333 1234567");
     assert.equal(publicData.statoPagamento, "non_pagato");
+    assert.equal(publicData.costoConsegna, 0);
     assert.equal(publicOrder({
         ...order,
         tavoloOCliente: "Nome storico da non esporre"
     }).tavoloOCliente, "");
+});
+
+test("adds the fixed delivery surcharge only when requested", () => {
+    const order = prepareOrder({
+        tipo: "consegna",
+        orario: "19:45",
+        indirizzoConsegna: "Via Roma 12",
+        telefonoConsegna: "3331234567",
+        costoConsegna: 2,
+        righe: [{ prodotto: "Margherita" }]
+    });
+
+    assert.equal(order.costoConsegna, 2);
+    assert.equal(order.totale, 7);
+    assert.equal(publicOrder({ ...order, numero: 1 }).costoConsegna, 2);
+    assert.throws(() => prepareOrder({
+        tipo: "consegna",
+        orario: "19:45",
+        indirizzoConsegna: "Via Roma 12",
+        telefonoConsegna: "3331234567",
+        costoConsegna: 1,
+        righe: [{ prodotto: "Margherita" }]
+    }), /0 o 2 euro/);
+    assert.throws(() => prepareOrder({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        costoConsegna: 2,
+        righe: [{ prodotto: "Margherita" }]
+    }), /solo per gli ordini di consegna/);
 });
 
 test("supports table, counter, pickup and legacy dining-room orders", () => {
@@ -169,7 +215,7 @@ test("payment summary allows both paid and unpaid transitions but keeps POS fixe
 test("rejects missing order details and products outside the menu", () => {
     assert.throws(() => prepareOrder({ tavoloOCliente: "", righe: [{ prodotto: "Margherita" }] }), /obbligatorio/);
     assert.throws(() => prepareOrder({ tavoloOCliente: "Tavolo 1", righe: [{ prodotto: "Pizza inesistente" }] }), /menu/);
-    assert.throws(() => prepareOrder({ tavoloOCliente: "Tavolo 1", righe: [{ prodotto: "Acqua 0,5L", extra: ["fior-di-latte"] }] }), /non consente/);
+    assert.throws(() => prepareOrder({ tavoloOCliente: "Tavolo 1", righe: [{ prodotto: "Acqua 0,5L", extra: ["bocconcino"] }] }), /non consente/);
     assert.throws(() => prepareOrder({ tavoloOCliente: "Tavolo 1", righe: [{ prodotto: "Margherita", extra: ["extra-inventato"] }] }), /Extra non ammesso/);
     assert.throws(() => prepareOrder({ tipo: "consegna", tavoloOCliente: "Anna", telefonoConsegna: "3331234567", righe: [{ prodotto: "Margherita" }] }), /indirizzo/);
     assert.throws(() => prepareOrder({ tipo: "consegna", tavoloOCliente: "Anna", indirizzoConsegna: "Via Roma 12", telefonoConsegna: "telefono", righe: [{ prodotto: "Margherita" }] }), /telefono/);

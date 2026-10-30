@@ -198,6 +198,9 @@ function formatReceipt(order, paperWidthMm = 80) {
         }
         lines.push("", "", divider);
     }
+    if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
+        lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
+    }
     const amount = `EUR ${Number(order.totale || 0).toFixed(2).replace(".", ",")}`;
     const totalGap = receiptWidth - "TOTALE".length - amount.length;
     if (categories.length === 0) lines.push(divider);
