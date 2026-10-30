@@ -2,7 +2,11 @@
 param(
     [string]$PrinterHost,
     [string]$KitchenPrinterHost,
-    [string]$DiningPrinterHost
+    [string]$DiningPrinterHost,
+    [ValidateSet(58, 80)]
+    [int]$KitchenPaperWidthMm = 80,
+    [ValidateSet(58, 80)]
+    [int]$DiningPaperWidthMm = 80
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,6 +31,10 @@ if (-not (Test-Path -LiteralPath $nodeModulesPath -PathType Container)) {
 $existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($existingTask -and $existingTask.State -eq "Running") {
     throw "Il servizio e' gia' in esecuzione. Non e' stato interrotto per evitare di duplicare una stampa."
+}
+$existingListener = Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue
+if ($existingListener) {
+    throw "La porta 8765 e' gia' occupata. Esegui prima disattiva-stampa-automatica.bat per arrestare anche un eventuale processo residuo."
 }
 
 if (-not $KitchenPrinterHost) {
@@ -56,8 +64,8 @@ if ($KitchenPrinterHost -eq $DiningPrinterHost) {
 }
 
 $printerTargets = @(
-    @{ name = "Cucina"; host = $KitchenPrinterHost },
-    @{ name = "Sala"; host = $DiningPrinterHost }
+    @{ name = "Cucina"; host = $KitchenPrinterHost; paperWidthMm = $KitchenPaperWidthMm },
+    @{ name = "Sala"; host = $DiningPrinterHost; paperWidthMm = $DiningPaperWidthMm }
 )
 foreach ($printer in $printerTargets) {
     if ($printer.host -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {

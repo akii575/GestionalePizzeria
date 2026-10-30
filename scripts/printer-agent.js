@@ -3,14 +3,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { cert, getApps, initializeApp } = require("firebase-admin/app");
 const { FieldPath, FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
-const { listNetworkPrinters, sendEscPosReceipt } = require("./network-printer");
+const { DEFAULT_RECEIPT_WIDTH, listNetworkPrinters, sendEscPosReceipt } = require("./network-printer");
 const menu = require("../lib/menu.json");
 const extras = require("../lib/extras.json");
 
 const PROJECT_ID = "gestionalecivico7";
 const LEASE_MILLISECONDS = 120_000;
 const POLL_MILLISECONDS = 10_000;
-const RECEIPT_WIDTH = 28;
+const RECEIPT_WIDTH_58_MM = 16;
 const PRODUCT_CATEGORIES = [...new Set(menu.map(product => product.categoria))];
 const CATEGORY_BY_PRODUCT = new Map(menu.map(product => [product.nome, product.categoria]));
 const PRODUCT_BY_NAME = new Map(menu.map(product => [product.nome, product]));
@@ -56,8 +56,8 @@ function initializeFirestore() {
     return getFirestore(app);
 }
 
-function wrapReceiptText(value, width = RECEIPT_WIDTH) {
-    const paragraphs = String(value ?? "").replace(/\r\n?/g, "\n").split("\n");
+function wrapReceiptText(value, width = DEFAULT_RECEIPT_WIDTH) {
+    const paragraphs = String(value ?? "").toLocaleUpperCase("it-IT").replace(/\r\n?/g, "\n").split("\n");
     const lines = [];
     for (const paragraph of paragraphs) {
         const words = paragraph.trim().split(/\s+/).filter(Boolean);
@@ -101,61 +101,62 @@ function receiptUnitPrice(row) {
     return basePrice + (row.extra || []).reduce((sum, extra) => sum + receiptExtra(extra).price, 0);
 }
 
-function wrapReceiptItem(description, price) {
+function wrapReceiptItem(description, price, width) {
     const amount = `EUR ${price.toFixed(2).replace(".", ",")}`;
-    const descriptionWidth = Math.max(1, RECEIPT_WIDTH - amount.length - 1);
+    const descriptionWidth = Math.max(1, width - amount.length - 1);
     const wrapped = wrapReceiptText(description, descriptionWidth);
     const lastLine = wrapped.pop() || "";
-    const gap = Math.max(1, RECEIPT_WIDTH - Array.from(lastLine).length - amount.length);
+    const gap = Math.max(1, width - Array.from(lastLine).length - amount.length);
     return [...wrapped, `${lastLine}${" ".repeat(gap)}${amount}`];
 }
 
-function formatReceipt(order) {
-    const divider = "=".repeat(RECEIPT_WIDTH);
-    const date = new Date(order.dataOra).toLocaleString("it-IT", {
+function formatReceipt(order, paperWidthMm = 80) {
+    const receiptWidth = paperWidthMm === 58 ? RECEIPT_WIDTH_58_MM : DEFAULT_RECEIPT_WIDTH;
+    const divider = "-".repeat(receiptWidth);
+    const date = new Date(order.dataOra).toLocaleDateString("it-IT", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
+        timeZone: "Europe/Rome"
     });
     const tipo = ["banco", "ritiro", "consegna"].includes(order.tipo) ? order.tipo : "tavolo";
-    const title = tipo === "tavolo"
-        ? `TAVOLO${Number.isInteger(order.numeroPersone) && order.numeroPersone > 0 ? ` x${order.numeroPersone}` : ""}`
+    const serviceTitle = tipo === "tavolo"
+        ? `TAVOLO${Number.isInteger(order.numeroPersone) && order.numeroPersone > 0 ? ` X${order.numeroPersone}` : ""}`
         : tipo.toLocaleUpperCase("it-IT");
-    const destination = tipo === "consegna"
-        ? [
-            ...wrapReceiptText(`TEL: ${order.telefonoConsegna || ""}`),
-            ...wrapReceiptText(`INDIRIZZO: ${order.indirizzoConsegna || ""}`)
-        ]
-        : tipo === "ritiro"
-            ? [
-                ...wrapReceiptText(`CLIENTE: ${order.tavoloOCliente}`),
-                ...(order.telefonoRitiro ? wrapReceiptText(`TEL: ${order.telefonoRitiro}`) : [])
-            ]
-            : tipo === "tavolo"
-                ? [
-                    ...wrapReceiptText(`TAVOLO: ${order.tavoloOCliente}`),
-                    ...(Number.isInteger(order.numeroPersone) && order.numeroPersone > 0
-                        ? [`PERSONE: ${order.numeroPersone}`]
-                        : [])
-                ]
-                : tipo === "banco"
-                    ? wrapReceiptText(`COGNOME: ${order.cognomeBanco || ""}`)
-                    : [];
-    const lines = [];
-    lines.push(
-        divider,
-        `@@TITLE:${title}@@`,
-        divider,
-        ...destination,
-        ...wrapReceiptText(`DATA: ${date}`)
-    );
-    if (tipo !== "tavolo" && order.orario) {
-        lines.push(...wrapReceiptText(`ORARIO: ${order.orario}`));
+    const paymentTitle = {
+        pos: "POS",
+        pagato: "PAGATO",
+        non_pagato: "NON PAGATO"
+    }[order.statoPagamento];
+    const title = [serviceTitle, paymentTitle].filter(Boolean).join(" - ");
+    const lines = [`@@TITLE:${title}@@`, divider];
+    if (order.orario) {
+        lines.push(...wrapReceiptText(`ORARIO RICHIESTO ${order.orario}`, receiptWidth)
+            .map(line => `@@BOLD:${line}@@`));
     }
-    if (order.note) lines.push(divider, "NOTE", ...wrapReceiptText(order.note));
+    lines.push(...wrapReceiptText(`DATA: ${date}`, receiptWidth));
+    if (tipo === "consegna") {
+        lines.push(...wrapReceiptText(`TEL: ${order.telefonoConsegna || ""}`, receiptWidth));
+        lines.push("INDIRIZZO:");
+        if (order.indirizzoConsegna) {
+            lines.push(...wrapReceiptText(order.indirizzoConsegna, receiptWidth)
+                .map(line => `@@BOLD:${line}@@`));
+        }
+    } else if (tipo === "ritiro") {
+        if (order.telefonoRitiro) lines.push(...wrapReceiptText(`TEL: ${order.telefonoRitiro}`, receiptWidth));
+        if (order.tavoloOCliente) lines.push(...wrapReceiptText(`CLIENTE: ${order.tavoloOCliente}`, receiptWidth));
+    } else if (tipo === "tavolo") {
+        if (order.tavoloOCliente) lines.push(...wrapReceiptText(`TAVOLO: ${order.tavoloOCliente}`, receiptWidth));
+        if (Number.isInteger(order.numeroPersone) && order.numeroPersone > 0) {
+            lines.push(...wrapReceiptText(`PERSONE: ${order.numeroPersone}`, receiptWidth));
+        }
+    } else if (tipo === "banco" && order.cognomeBanco) {
+        lines.push(...wrapReceiptText(`COGNOME: ${order.cognomeBanco}`, receiptWidth));
+    }
     lines.push(divider);
+    if (typeof order.note === "string" && order.note.trim()) {
+        lines.push("NOTE:", ...wrapReceiptText(order.note, receiptWidth), divider);
+    }
     const rowsByCategory = new Map();
     for (const row of order.righe || []) {
         const category = row.categoria || CATEGORY_BY_PRODUCT.get(row.prodotto) || "altro";
@@ -167,7 +168,7 @@ function formatReceipt(order) {
         ...Array.from(rowsByCategory.keys()).filter(category => !PRODUCT_CATEGORIES.includes(category))
     ];
     for (const category of categories) {
-        lines.push("", `@@SECTION:${category.toLocaleUpperCase("it-IT")}@@`);
+        lines.push(`@@SECTION:${category.toLocaleUpperCase("it-IT")}@@`);
         const groupedRows = new Map();
         for (const row of rowsByCategory.get(category)) {
             const rowExtras = (row.extra || []).map(receiptExtra);
@@ -185,30 +186,31 @@ function formatReceipt(order) {
             }
         }
         for (const { row, rowExtras, price, quantity } of groupedRows.values()) {
-            lines.push(...wrapReceiptItem(`${quantity}x ${row.prodotto}`, price));
+            lines.push(...wrapReceiptItem(`${quantity}x ${row.prodotto}`, price, receiptWidth));
             for (const extra of rowExtras) {
                 const name = extra.name;
                 const prefix = "  + ";
-                const wrappedExtra = wrapReceiptText(name, RECEIPT_WIDTH - prefix.length);
+                const wrappedExtra = wrapReceiptText(name, receiptWidth - prefix.length);
                 lines.push(...wrappedExtra.map((line, index) => (
                     `${index === 0 ? prefix : " ".repeat(prefix.length)}${line}`
                 )));
             }
         }
+        lines.push("", "", divider);
     }
     const amount = `EUR ${Number(order.totale || 0).toFixed(2).replace(".", ",")}`;
-    const totalGap = RECEIPT_WIDTH - "TOTALE".length - amount.length;
-    lines.push(divider);
+    const totalGap = receiptWidth - "TOTALE".length - amount.length;
+    if (categories.length === 0) lines.push(divider);
     if (totalGap > 0) {
         lines.push(`TOTALE${" ".repeat(totalGap)}${amount}`);
     } else {
-        lines.push(...wrapReceiptText(`TOTALE ${amount}`));
+        lines.push(...wrapReceiptText(`TOTALE ${amount}`, receiptWidth));
     }
-    lines.push("", "");
+    lines.push(divider);
     return lines.join("\r\n");
 }
 
-async function sendToPrinter(order, printer, receipt = formatReceipt(order)) {
+async function sendToPrinter(order, printer, receipt = formatReceipt(order, printer.paperWidthMm)) {
     await sendEscPosReceipt(printer, receipt);
 }
 
@@ -220,10 +222,10 @@ async function sendOrderToPrinters(order, printers, {
     if (!Array.isArray(printers) || printers.length === 0) {
         throw new Error("printer_configuration_empty");
     }
-    const receipt = formatReceipt(order);
     const completed = new Set(alreadyPrinted);
     for (const printer of printers) {
         if (completed.has(printer.name)) continue;
+        const receipt = formatReceipt(order, printer.paperWidthMm);
         await print(order, printer, receipt);
         await onPrinterPrinted(printer.name);
         completed.add(printer.name);

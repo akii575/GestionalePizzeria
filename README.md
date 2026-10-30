@@ -146,7 +146,8 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   telefono richiamabile; la consegna richiede indirizzo e telefono, senza chiedere
   il nome. Il riepilogo consegne permette di scegliere l'app mappe e gli admin
   hanno riepiloghi separati per ciascun servizio, oltre alla vista completa. La
-  stampa mostra prima il servizio, poi le note e quindi i prodotti; non riporta il
+  comanda mostra servizio e stato pagamento, dati dell'ordine, note, categorie e
+  prodotti, quindi il totale; evidenzia orario richiesto e indirizzo, non riporta il
   numero ordine, mostra il prezzo unitario e aggrega le quantità di prodotti
   identici con gli stessi extra.
 - Il database SQLite `data/pizzeria.db` resta locale e non viene caricato né
@@ -196,10 +197,14 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   modifica a una comanda gia' stampata non la ristampa; quelle ancora in coda usano
   i dati aggiornati. Se il PC o l'agente si interrompe dopo l'invio dei dati ma prima
   della conferma Firestore, il job puo' essere ritentato e produrre una copia
-  duplicata: si privilegia non perdere una comanda. I titoli e le sezioni sono inviati
-  in ESC/POS con formato ingrandito; il taglio viene eseguito dalla taglierina della
-  stampante. La larghezza del rotolo va selezionata fisicamente (58 o 80 mm) e la
-  stampante va configurata per l'uso in rete.
+  duplicata: si privilegia non perdere una comanda. Il testo e' maiuscolo, a doppia
+  larghezza e altezza, con massimo 24 caratteri per riga su carta da 80 mm; i testi
+  lunghi vanno a capo. Le intestazioni sono centrate e le sezioni separate da trattini.
+  Le consegne mostrano orario richiesto, data, telefono e indirizzo in quest'ordine.
+  Il taglio viene eseguito dalla taglierina della stampante. Su rotoli da 58 mm
+  vengono usati 16 caratteri per riga. Se le stampanti usano rotoli da 58 mm, configura la larghezza con
+  `-KitchenPaperWidthMm 58 -DiningPaperWidthMm 58`; seleziona fisicamente la stessa
+  larghezza e configura la stampante per l'uso in rete.
   Riferimenti Epson: [TM-T20 Technical Reference Guide](https://download4.epson.biz/sec_pubs/bs/pdf/TM-T20_trg_en_revD.pdf) e
   [ESC/POS command reference](https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/index.html).
 La stampa usa solo software e servizi gia' previsti dal progetto e non richiede

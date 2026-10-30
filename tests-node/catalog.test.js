@@ -9,13 +9,21 @@ const services = path.join(__dirname, "..", "src", "main", "java", "it", "pizzer
 test("exports all products and ingredients from the existing Java menu", () => {
     const source = fs.readFileSync(path.join(services, "MenuService.java"), "utf8");
     const products = extractProducts(source);
-    assert.equal(products.length, 88);
+    assert.equal(products.length, 93);
     assert.deepEqual(products[0], {
         nome: "Margherita",
         categoria: "pizze",
         prezzo: 5,
         ingredienti: ["Pomodoro San Marzano", "fior di latte", "olio evo", "basilico"]
     });
+    const pizzas = products.filter(product => product.categoria === "pizze");
+    const pizzaNames = pizzas.map(product => product.nome.toLocaleLowerCase("it-IT"));
+    assert.equal(pizzas.length, 46);
+    assert.equal(new Set(pizzaNames).size, pizzas.length);
+    assert.ok(pizzas.some(product => product.nome === "L'Allardata"));
+    assert.equal(pizzas.some(product => product.nome === "Callardata"), false);
+    assert.ok(pizzas.some(product => product.nome === "Focaccia pom. cotto e lardo"));
+    assert.ok(pizzas.find(product => product.nome === "Nocina").ingredienti.includes("gherigli di noci"));
 });
 
 test("exports all existing extras in Italian alphabetical order", () => {

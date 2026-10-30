@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const PRINTER_CONFIG_PATH = path.join(__dirname, "..", "data", "printer-config.json");
 const DEFAULT_PORT = 9100;
+const DEFAULT_RECEIPT_WIDTH = 24;
 const CONNECT_TIMEOUT_MILLISECONDS = 3000;
 
 function isPrivateIpv4(host) {
@@ -44,18 +45,24 @@ function validatePrinterConfig(config) {
         const port = entry && typeof entry === "object" && entry.port !== undefined
             ? Number(entry.port)
             : DEFAULT_PORT;
+        const paperWidthMm = entry && typeof entry === "object" && entry.paperWidthMm !== undefined
+            ? Number(entry.paperWidthMm)
+            : 80;
         if (!isPrivateIpv4(host)) {
             throw new Error(`L'indirizzo della stampante ${name} deve essere un IPv4 privato della rete locale.`);
         }
         if (port !== DEFAULT_PORT) {
             throw new Error(`La stampante deve usare la porta ESC/POS ${DEFAULT_PORT}.`);
         }
+        if (![58, 80].includes(paperWidthMm)) {
+            throw new Error(`La larghezza carta della stampante ${name} deve essere 58 o 80 mm.`);
+        }
         if (names.has(name) || hosts.has(host)) {
             throw new Error("Ogni stampante deve avere un nome e un indirizzo IP univoci.");
         }
         names.add(name);
         hosts.add(host);
-        return { name, host, port: DEFAULT_PORT };
+        return { name, host, port: DEFAULT_PORT, paperWidthMm };
     });
     return { printers, port: DEFAULT_PORT };
 }
@@ -111,12 +118,13 @@ async function listNetworkPrinters(config = loadPrinterConfig()) {
 
 function toPrinterText(value) {
     return String(value)
+        .toLocaleUpperCase("it-IT")
         .normalize("NFKD")
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[’‘]/g, "'")
         .replace(/[“”]/g, '"')
         .replace(/[–—]/g, "-")
-        .replace(/[^\x20-\x7e]/g, "?");
+        .replace(/[^\x20-\x7e]/g, "");
 }
 
 function encodeEscPosReceipt(receipt) {
@@ -124,20 +132,26 @@ function encodeEscPosReceipt(receipt) {
     const text = value => commands.push(Buffer.from(toPrinterText(value), "ascii"));
     const bytes = (...values) => commands.push(Buffer.from(values));
     const lineFeed = () => bytes(0x0a);
+    const receiptLines = String(receipt).split(/\r?\n/);
+    const dividerWidth = receiptLines.find(line => /^[-=]+$/.test(line))?.length
+        || DEFAULT_RECEIPT_WIDTH;
     const normalText = () => {
-        bytes(0x1b, 0x45, 0, 0x1d, 0x21, 0, 0x1b, 0x61, 0);
+        bytes(0x1b, 0x45, 0, 0x1d, 0x21, 0x11, 0x1b, 0x61, 0);
     };
 
     bytes(0x1b, 0x40);
-    for (const line of String(receipt).split(/\r?\n/)) {
+    bytes(0x1b, 0x4d, 0x00);
+    normalText();
+    for (const line of receiptLines) {
         const section = /^@@SECTION:(.*)@@$/.exec(line);
         const title = /^@@TITLE:(.*)@@$/.exec(line);
+        const bold = /^@@BOLD:(.*)@@$/.exec(line);
         if (section) {
-            bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x10);
+            bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x11);
             text(section[1]);
             lineFeed();
             normalText();
-            text("----------------------------");
+            text("-".repeat(dividerWidth));
             lineFeed();
             continue;
         }
@@ -148,14 +162,21 @@ function encodeEscPosReceipt(receipt) {
             normalText();
             continue;
         }
-        if (line === "NOTE") {
+        if (bold) {
+            bytes(0x1b, 0x45, 1);
+            text(bold[1]);
+            lineFeed();
+            normalText();
+            continue;
+        }
+        if (line === "NOTE:") {
             bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1);
             text(line);
             lineFeed();
             normalText();
             continue;
         }
-        const item = /^\d+x /.test(line);
+        const item = /^\d+X /.test(line);
         if (item) bytes(0x1b, 0x45, 1);
         if (line.startsWith("TOTALE")) bytes(0x1b, 0x45, 1);
         text(line);
@@ -188,6 +209,7 @@ function sendEscPosReceipt(printer, receipt, timeout = 15000) {
 
 module.exports = {
     checkTcpConnection,
+    DEFAULT_RECEIPT_WIDTH,
     encodeEscPosReceipt,
     isPrivateIpv4,
     listNetworkPrinters,
