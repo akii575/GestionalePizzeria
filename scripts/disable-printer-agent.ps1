@@ -1,4 +1,17 @@
 $ErrorActionPreference = "Stop"
+
+$identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
+if (-not $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    $elevated = Start-Process `
+        -FilePath (Join-Path $PSHOME "powershell.exe") `
+        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" `
+        -Verb RunAs `
+        -Wait `
+        -PassThru
+    exit $elevated.ExitCode
+}
+
 $taskName = "GestionalePizzeriaPrinterAgent"
 $agentPath = Join-Path $PSScriptRoot "printer-terminal.js"
 

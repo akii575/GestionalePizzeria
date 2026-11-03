@@ -125,9 +125,10 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   disabilita solo l'attivita' pianificata, senza cancellare chiavi o configurazione.
   Attendi fino a 2 minuti per la scadenza del lock condiviso prima di affidare i job
   al nuovo PC.
-  Per aggiungere la seconda stampante a un PC gia' configurato, interrompi prima
-  l'agente con `disattiva-stampa-automatica.bat` e poi rilancia
-  `installa-stampa-automatica.bat`; inserisci gli IP distinti di Cucina e Sala.
+  Per migrare un'attivita' gia' configurata o aggiungere una stampante, interrompi
+  prima l'agente con `disattiva-stampa-automatica.bat` e poi rilancia
+  `installa-stampa-automatica.bat`; i due script chiedono UAC quando necessario.
+  Inserisci gli IP distinti di Cucina e Sala.
 - Ogni pagina applicativa verifica la sessione server-side; gli account admin
   accedono a tutto, i consegnatori solo alla pagina dedicata e gli altri ricevono
   "Accesso negato".
@@ -172,15 +173,21 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   una comanda; se una si scollega durante l'invio, la coda registra quella gia'
   riuscita e al tentativo successivo manda la copia solo alla stampante mancante.
   Non servono driver Epson/Windows e non va aperta alcuna porta del router; le
-  stampanti non vengono esposte a Internet. Il PC deve rimanere acceso, connesso a
-  Internet e con l'utente Windows collegato.
+  stampanti non vengono esposte a Internet. Il   PC deve rimanere acceso e connesso a Internet; l'agente viene avviato da Windows
+  all'accensione anche prima del login e continua a funzionare dopo il logout.
 - Per configurare l'agente, installa Node.js e le dipendenze del progetto una sola
   volta (`npm install`), assicurati che `service-account.json` sia presente solo sul
-  PC fidato, poi fai doppio clic su `installa-stampa-automatica.bat`. Lo script chiede
-  gli IP delle stampanti Cucina e Sala, verifica la porta `9100`, registra
-  un'attivita' pianificata all'accesso dell'utente corrente e avvia l'agente in
-  background. Se un IP cambia, riserva entrambi gli indirizzi nel router e riesegui
-  l'installazione quando l'agente e' fermo. Non e' necessario installare o
+  PC fidato, poi fai doppio clic su `installa-stampa-automatica.bat` e accetta UAC.
+  Lo script chiede gli IP delle stampanti Cucina e Sala, verifica la porta `9100`,
+  registra un'attivita' pianificata come `SYSTEM` all'avvio del PC e avvia l'agente
+  in background anche senza login. Il processo di supervisione lo riavvia dopo
+  un'uscita inattesa; Task Scheduler riprova anche se la supervisione termina.
+  L'installazione disattiva la sospensione automatica dove Windows lo consente e
+  prova a impedire lo spegnimento delle schede di rete; eventuali limiti dei driver
+  vengono segnalati. Una sospensione manuale, lo spegnimento o la perdita di rete
+  interrompono comunque temporaneamente la stampa. Se un IP cambia, riserva entrambi
+  gli indirizzi nel router e riesegui l'installazione quando l'agente e' fermo.
+  Non e' necessario installare o
   selezionare code stampante Windows per stampare.
 
   ```powershell

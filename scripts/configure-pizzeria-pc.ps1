@@ -7,6 +7,32 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+
+$identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
+if (-not $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    $arguments = @("-NoProfile", "-ExecutionPolicy Bypass", "-File", "`"$PSCommandPath`"")
+    foreach ($entry in @(
+        @{ Name = "PrinterHost"; Value = $PrinterHost },
+        @{ Name = "KitchenPrinterHost"; Value = $KitchenPrinterHost },
+        @{ Name = "DiningPrinterHost"; Value = $DiningPrinterHost }
+    )) {
+        if ($entry.Value) {
+            if ($entry.Value -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {
+                throw "Indirizzo stampante non valido: deve essere un IPv4."
+            }
+            $arguments += "-$($entry.Name) `"$($entry.Value)`""
+        }
+    }
+    $elevated = Start-Process `
+        -FilePath (Join-Path $PSHOME "powershell.exe") `
+        -ArgumentList ($arguments -join " ") `
+        -Verb RunAs `
+        -Wait `
+        -PassThru
+    exit $elevated.ExitCode
+}
+
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $taskName = "GestionalePizzeriaPrinterAgent"
 $credentialPath = Join-Path $projectRoot "service-account.json"
@@ -77,7 +103,9 @@ function Get-Node22Path {
     $systemNode = Get-Command node.exe -ErrorAction SilentlyContinue
     if ($systemNode) {
         $version = (& $systemNode.Source --version).Trim()
-        if ($version -match '^v22\.') {
+        $nodeFullPath = [System.IO.Path]::GetFullPath($systemNode.Source)
+        $userProfilePrefix = [System.IO.Path]::GetFullPath($env:USERPROFILE).TrimEnd('\') + '\'
+        if ($version -match '^v22\.' -and -not $nodeFullPath.StartsWith($userProfilePrefix, [StringComparison]::OrdinalIgnoreCase)) {
             return $systemNode.Source
         }
     }
