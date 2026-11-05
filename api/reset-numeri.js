@@ -1,6 +1,7 @@
 const { api, methodNotAllowed } = require("../lib/api");
 const { httpError, requireAdmin, requireSameOrigin } = require("../lib/auth");
 const { getFirebaseServices } = require("../lib/firebase-admin");
+const { isActivePrintingJob } = require("../lib/printer-jobs");
 
 module.exports = api(async (req, res) => {
     if (req.method !== "POST") {
@@ -14,8 +15,8 @@ module.exports = api(async (req, res) => {
     const control = db.collection("metadata").doc("printerControl");
     await control.set({ paused: true });
     try {
-        const activeJobs = await printerJobs.where("status", "==", "printing").limit(1).get();
-        if (!activeJobs.empty) {
+        const printingJobs = await printerJobs.where("status", "==", "printing").get();
+        if (printingJobs.docs.some(document => isActivePrintingJob(document.data()))) {
             throw httpError(409, "Attendi la fine della stampa prima di azzerare i numeri.");
         }
 

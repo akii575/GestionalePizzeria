@@ -2,6 +2,7 @@ const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { prepareOrder, preparePaymentUpdate, publicOrder } = require("../../lib/orders");
+const { isActivePrintingJob } = require("../../lib/printer-jobs");
 
 function orderNumber(req) {
     const value = Number(req.query.numero);
@@ -85,10 +86,11 @@ module.exports = api(async (req, res) => {
             const snapshot = await transaction.get(order);
             if (!snapshot.exists) throw httpError(404, `Ordine non trovato: ${numero}`);
             const jobSnapshot = await transaction.get(printerJob);
-            if (jobSnapshot.exists && jobSnapshot.data().status === "printing") {
+            const job = jobSnapshot.exists ? jobSnapshot.data() : null;
+            if (isActivePrintingJob(job)) {
                 throw httpError(409, "La comanda e' gia' in fase di stampa e non puo' essere eliminata.");
             }
-            if (jobSnapshot.exists && ["queued", "failed", "cancelled"].includes(jobSnapshot.data().status)) {
+            if (jobSnapshot.exists && ["queued", "failed", "cancelled", "printing"].includes(job.status)) {
                 transaction.delete(printerJob);
             }
             transaction.delete(order);
