@@ -42,7 +42,10 @@ async function eliminaOrdine(numero) {
     eliminazioniInCorso.add(id);
     try {
         const risposta = await fetch(`/api/ordini/${id}`, { method: "DELETE" });
-        if (!risposta.ok) throw new Error("Eliminazione non riuscita.");
+        if (!risposta.ok) {
+            const risultato = await risposta.json();
+            throw new Error(risultato.errore || "Eliminazione non riuscita.");
+        }
         stato.ordini = stato.ordini.filter(ordine => String(ordine.numero) !== id);
         render();
         if (window.themeToast) window.themeToast(`Ordine #${numero} eliminato`);
