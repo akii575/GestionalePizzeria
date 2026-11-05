@@ -29,7 +29,8 @@ require.cache[firebasePath] = {
 const resetHandler = require("../api/reset-numeri");
 const orderHandler = require("../api/ordini/[numero]");
 
-function createDatabase(seed = {}) {
+function createDatabase(seed = {}, { failQueueUnpause = 0 } = {}) {
+    let remainingUnpauseFailures = failQueueUnpause;
     const collections = new Map(
         Object.entries(seed).map(([name, documents]) => [name, new Map(Object.entries(documents))])
     );
@@ -102,7 +103,16 @@ function createDatabase(seed = {}) {
         async runTransaction(callback) {
             return callback({
                 get: documentRef => documentRef.get(),
-                set: (documentRef, value) => documentRef.set(value),
+                set: (documentRef, value) => {
+                    if (documentRef.collectionName === "metadata" && documentRef.id === "printerControl"
+                            && value.paused === false && remainingUnpauseFailures > 0) {
+                        remainingUnpauseFailures--;
+                        const error = new Error("deadline exceeded");
+                        error.code = 4;
+                        throw error;
+                    }
+                    return documentRef.set(value);
+                },
                 update: (documentRef, value) => documentRef.update(value),
                 delete: documentRef => documentRef.delete()
             });
@@ -172,6 +182,19 @@ test("an actively leased print job still blocks individual order deletion", asyn
     assert.equal(database.documents("printerJobs").has("000000000007"), true);
 });
 
+test("individual deletion clears a stale queue pause from an interrupted reset", async () => {
+    database = createDatabase({
+        orders: { "7": { numero: 7 } },
+        metadata: { printerControl: { paused: true } }
+    });
+
+    const response = await invoke(orderHandler, "DELETE", { numero: "7" });
+
+    assert.equal(response.statusCode, 204);
+    assert.equal(database.documents("orders").has("7"), false);
+    assert.equal(database.documents("metadata").get("printerControl").paused, false);
+});
+
 test("reset clears orders and expired print jobs but waits for active leases", async () => {
     database = createDatabase({
         orders: { "7": { numero: 7 } },
@@ -184,7 +207,7 @@ test("reset clears orders and expired print jobs but waits for active leases", a
         },
         metadata: {
             orderCounter: { value: 7 },
-            printerControl: { paused: false }
+            printerControl: { paused: true }
         }
     });
 
@@ -198,6 +221,20 @@ test("reset clears orders and expired print jobs but waits for active leases", a
 
     const secondResponse = await invoke(resetHandler, "POST");
     assert.equal(secondResponse.statusCode, 200);
+});
+
+test("reset retries a transient Firestore timeout when releasing its pause", async () => {
+    database = createDatabase({
+        metadata: {
+            orderCounter: { value: 7 },
+            printerControl: { paused: false }
+        }
+    }, { failQueueUnpause: 1 });
+
+    const response = await invoke(resetHandler, "POST");
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(database.documents("metadata").get("printerControl").paused, false);
 });
 
 test("reset does not remove orders while a print lease is active", async () => {

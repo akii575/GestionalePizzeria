@@ -2,6 +2,7 @@ const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { filterOrdersByType, prepareOrder, publicOrder } = require("../../lib/orders");
+const { hasExpiredPrinterQueuePause, isPrinterQueuePaused } = require("../../lib/printer-jobs");
 
 module.exports = api(async (req, res) => {
     await requireAdmin(req);
@@ -24,7 +25,8 @@ module.exports = api(async (req, res) => {
         const control = db.collection("metadata").doc("printerControl");
         const order = await db.runTransaction(async transaction => {
             const controlSnapshot = await transaction.get(control);
-            if (controlSnapshot.data()?.paused) {
+            const controlData = controlSnapshot.data();
+            if (isPrinterQueuePaused(controlData)) {
                 throw httpError(409, "La coda di stampa e' in manutenzione. Riprova tra poco.");
             }
             const counterSnapshot = await transaction.get(counter);
@@ -38,6 +40,9 @@ module.exports = api(async (req, res) => {
                 stampaInCoda: true,
                 messaggioStampa: "Comanda in coda per la stampa automatica."
             };
+            if (hasExpiredPrinterQueuePause(controlData)) {
+                transaction.set(control, { paused: false });
+            }
             transaction.set(counter, { value: numero });
             transaction.set(orders.doc(String(numero)), saved);
             transaction.set(db.collection("printerJobs").doc(String(numero).padStart(12, "0")), {

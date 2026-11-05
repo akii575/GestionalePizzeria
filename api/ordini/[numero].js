@@ -2,7 +2,11 @@ const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { prepareOrder, preparePaymentUpdate, publicOrder } = require("../../lib/orders");
-const { isActivePrintingJob } = require("../../lib/printer-jobs");
+const {
+    hasExpiredPrinterQueuePause,
+    isActivePrintingJob,
+    isPrinterQueuePaused
+} = require("../../lib/printer-jobs");
 
 function orderNumber(req) {
     const value = Number(req.query.numero);
@@ -25,7 +29,8 @@ module.exports = api(async (req, res) => {
         const prepared = prepareOrder(req.body);
         const saved = await db.runTransaction(async transaction => {
             const controlSnapshot = await transaction.get(printerControl);
-            if (controlSnapshot.data()?.paused) {
+            const controlData = controlSnapshot.data();
+            if (isPrinterQueuePaused(controlData)) {
                 throw httpError(409, "La coda di stampa e' in manutenzione. Riprova tra poco.");
             }
             const snapshot = await transaction.get(order);
@@ -53,6 +58,9 @@ module.exports = api(async (req, res) => {
                         ? "Comanda aggiornata; la copia gia' stampata non e' stata ristampata."
                         : previous.messaggioStampa || "Comanda aggiornata."
             };
+            if (hasExpiredPrinterQueuePause(controlData)) {
+                transaction.set(printerControl, { paused: false });
+            }
             transaction.set(order, updated);
             if (job && ["queued", "failed"].includes(job.status)) {
                 transaction.update(printerJob, {
@@ -80,7 +88,8 @@ module.exports = api(async (req, res) => {
         requireSameOrigin(req);
         await db.runTransaction(async transaction => {
             const controlSnapshot = await transaction.get(printerControl);
-            if (controlSnapshot.data()?.paused) {
+            const controlData = controlSnapshot.data();
+            if (isPrinterQueuePaused(controlData)) {
                 throw httpError(409, "La coda di stampa e' in manutenzione. Riprova tra poco.");
             }
             const snapshot = await transaction.get(order);
@@ -92,6 +101,9 @@ module.exports = api(async (req, res) => {
             }
             if (jobSnapshot.exists && ["queued", "failed", "cancelled", "printing"].includes(job.status)) {
                 transaction.delete(printerJob);
+            }
+            if (hasExpiredPrinterQueuePause(controlData)) {
+                transaction.set(printerControl, { paused: false });
             }
             transaction.delete(order);
         });
