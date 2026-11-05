@@ -94,7 +94,7 @@ if (window.paymentUI) {
     });
 }
 document.getElementById("reset-numeri").addEventListener("click", async () => {
-    if (!window.confirm("Sei sicuro di voler eliminare tutti gli ordini?")) return;
+    if (!window.confirm("Il reset eliminera' tutti gli ordini presenti e riportera' la numerazione a 1. Continuare?")) return;
     try {
         const risposta = await fetch("/api/reset-numeri", { method: "POST" });
         if (!risposta.ok) throw new Error("Reset non riuscito.");
