@@ -9,7 +9,7 @@ const services = path.join(__dirname, "..", "src", "main", "java", "it", "pizzer
 test("exports all products and ingredients from the existing Java menu", () => {
     const source = fs.readFileSync(path.join(services, "MenuService.java"), "utf8");
     const products = extractProducts(source);
-    assert.equal(products.length, 105);
+    assert.equal(products.length, 106);
     assert.deepEqual(products[0], {
         nome: "Margherita",
         categoria: "pizze",
@@ -34,7 +34,8 @@ test("exports all products and ingredients from the existing Java menu", () => {
         ["Coca Cola 1L (vetro)", ["bibite", 4.5]],
         ["Coca Cola 33cl", ["bibite", 2.5]],
         ["Fanta 33cl", ["bibite", 2.5]],
-        ["Heineken 66cl", ["bibite", 2.5]],
+        ["Heineken 66cl", ["bibite", 3.5]],
+        ["Ceres Lager", ["bibite", 4]],
         ["Peroni 33cl", ["bibite", 2.5]],
         ["Estrella (senza glutine)", ["bibite", 3]],
         ["Spumante Borgofulvia", ["vini", 11]],
