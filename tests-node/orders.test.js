@@ -33,11 +33,11 @@ test("uses the current beverage prices when calculating order totals", () => {
     const cola = prepareOrder({
         tipo: "banco",
         cognomeBanco: "Rossi",
-        righe: [{ prodotto: "Coca Cola / Zero 33cl" }]
+        righe: [{ prodotto: "Coca Cola 33cl" }]
     });
 
     assert.equal(water.totale, 1);
-    assert.equal(cola.totale, 2);
+    assert.equal(cola.totale, 2.5);
 });
 
 test("requires delivery contact details and includes them in public order data", () => {

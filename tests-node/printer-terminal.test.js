@@ -164,7 +164,7 @@ test("receipt groups products by menu category in catalog order with their price
         tavoloOCliente: "Tavolo 2",
         dataOra: "2026-10-14T12:00:00.000Z",
         righe: [
-            { prodotto: "Coca Cola / Zero 33cl" },
+            { prodotto: "Coca Cola 33cl" },
             { prodotto: "Patatine Piccole" },
             { prodotto: "Margherita" }
         ],
@@ -184,7 +184,7 @@ test("receipt groups products by menu category in catalog order with their price
     assert.ok(pizzaSection >= 0 && pizzaSection < friesSection && friesSection < drinksSection);
     assert.match(sectionText(pizzaSection), /1X MARGHERITA\s+EUR /);
     assert.match(sectionText(friesSection), /1X PATATINE\nPICCOLE\s+EUR /);
-    assert.match(sectionText(drinksSection), /1X COCA COLA \/\nZERO 33CL\s+EUR /);
+    assert.match(sectionText(drinksSection), /1X COCA COLA\n33CL\s+EUR /);
 });
 
 test("receipt combines identical product variants while keeping different extras separate", () => {

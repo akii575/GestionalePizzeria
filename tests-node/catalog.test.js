@@ -9,7 +9,7 @@ const services = path.join(__dirname, "..", "src", "main", "java", "it", "pizzer
 test("exports all products and ingredients from the existing Java menu", () => {
     const source = fs.readFileSync(path.join(services, "MenuService.java"), "utf8");
     const products = extractProducts(source);
-    assert.equal(products.length, 93);
+    assert.equal(products.length, 105);
     assert.deepEqual(products[0], {
         nome: "Margherita",
         categoria: "pizze",
@@ -24,8 +24,31 @@ test("exports all products and ingredients from the existing Java menu", () => {
     assert.equal(pizzas.some(product => product.nome === "Callardata"), false);
     assert.ok(pizzas.some(product => product.nome === "Focaccia pom. cotto e lardo"));
     assert.ok(pizzas.find(product => product.nome === "Nocina").ingredienti.includes("gherigli di noci"));
-    assert.equal(products.find(product => product.nome === "Acqua 0,5L").prezzo, 1);
-    assert.equal(products.find(product => product.nome === "Coca Cola / Zero 33cl").prezzo, 2);
+    const requestedProducts = new Map([
+        ["Acqua 1L", ["bibite", 2.5]],
+        ["Birra alla spina 0,20L", ["bibite", 2.5]],
+        ["Birra alla spina 0,40L", ["bibite", 5]],
+        ["Caffè", ["bibite", 1]],
+        ["Ceres", ["bibite", 4]],
+        ["Coca Cola 1L (plastica)", ["bibite", 3]],
+        ["Coca Cola 1L (vetro)", ["bibite", 4.5]],
+        ["Coca Cola 33cl", ["bibite", 2.5]],
+        ["Fanta 33cl", ["bibite", 2.5]],
+        ["Heineken 66cl", ["bibite", 2.5]],
+        ["Peroni 33cl", ["bibite", 2.5]],
+        ["Estrella (senza glutine)", ["bibite", 3]],
+        ["Spumante Borgofulvia", ["vini", 11]],
+        ["Vino in bottiglia Aglianico IGP", ["vini", 20]],
+        ["Vino della Casa Aglianico", ["vini", 8]],
+        ["Vino della Casa sfuso 0,5L", ["vini", 5]],
+        ["Vino della Casa sfuso 1L", ["vini", 10]]
+    ]);
+    for (const [name, [category, price]] of requestedProducts) {
+        const product = products.find(item => item.nome === name);
+        assert.ok(product, `Missing menu product: ${name}`);
+        assert.equal(product.categoria, category, `Unexpected category for ${name}`);
+        assert.equal(product.prezzo, price, `Unexpected price for ${name}`);
+    }
 });
 
 test("exports exactly the extras and prices from the pizzeria CSV", () => {
