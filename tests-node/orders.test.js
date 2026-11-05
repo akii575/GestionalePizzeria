@@ -148,14 +148,15 @@ test("supports table, counter, pickup and legacy dining-room orders", () => {
 });
 
 test("stores service time and validates service-specific payment choices", () => {
-    const delivery = prepareOrder({
+    const deliveryWithPayment = statoPagamento => prepareOrder({
         tipo: "consegna",
         orario: "19:45",
-        statoPagamento: "pos",
+        statoPagamento,
         indirizzoConsegna: "Via Roma 12",
         telefonoConsegna: "3331234567",
         righe: [{ prodotto: "Margherita" }]
     });
+    const delivery = deliveryWithPayment("pos");
     const paidPickup = prepareOrder({
         tipo: "ritiro",
         orario: "20:10",
@@ -167,6 +168,8 @@ test("stores service time and validates service-specific payment choices", () =>
 
     assert.equal(delivery.orario, "19:45");
     assert.equal(publicOrder({ ...delivery, numero: 9 }).statoPagamento, "pos");
+    assert.equal(deliveryWithPayment("pagato").statoPagamento, "pagato");
+    assert.equal(deliveryWithPayment("non_pagato").statoPagamento, "non_pagato");
     assert.equal(paidPickup.orario, "20:10");
     assert.equal(paidPickup.statoPagamento, "pagato");
     assert.equal(prepareOrder({

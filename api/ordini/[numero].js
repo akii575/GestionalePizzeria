@@ -52,9 +52,6 @@ module.exports = api(async (req, res) => {
                         ? "Comanda aggiornata; la copia gia' stampata non e' stata ristampata."
                         : previous.messaggioStampa || "Comanda aggiornata."
             };
-            if (previous.statoPagamento === "pos" && updated.statoPagamento !== "pos") {
-                throw httpError(409, "Il pagamento POS e' fisso e non puo' essere modificato.");
-            }
             transaction.set(order, updated);
             if (job && ["queued", "failed"].includes(job.status)) {
                 transaction.update(printerJob, {

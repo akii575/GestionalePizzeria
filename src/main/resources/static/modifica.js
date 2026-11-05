@@ -2,7 +2,6 @@ const numero = new URLSearchParams(window.location.search).get("numero");
 const righe = document.getElementById("righe");
 let menu = [];
 let extra = [];
-let posFisso = false;
 let costoConsegna = 0;
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const CATEGORIE_CON_EXTRA = ["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"];
@@ -49,8 +48,6 @@ function aggiornaCampiConsegna() {
 	document.getElementById("campo-pagamento").hidden = !ritiro && !consegna;
 	document.querySelector('#stato-pagamento option[value="pos"]').hidden = !consegna;
 	orario.required = !tavolo;
-	statoPagamento.disabled = posFisso;
-	document.getElementById("tipo-ordine").disabled = posFisso;
 	document.querySelector("#destinazione-label span").textContent = ritiro
 		? "Nome cliente"
 		: "Tavolo";
@@ -132,7 +129,6 @@ async function avvia() {
 			: ordine.orario || oraLocale();
 		document.getElementById("stato-pagamento").value = ordine.statoPagamento || "";
 		costoConsegna = Number(ordine.costoConsegna) === 2 ? 2 : 0;
-		posFisso = ordine.statoPagamento === "pos";
 		aggiornaCampiConsegna();
 		ordine.righe.forEach(rigaEdit);
 	} catch (errore) {
@@ -144,7 +140,10 @@ document.getElementById("tipo-ordine").addEventListener("change", () => {
 	const tipo = document.getElementById("tipo-ordine").value;
 	const statoPagamento = document.getElementById("stato-pagamento");
 	if (tipo !== "consegna") costoConsegna = 0;
-	if (["ritiro", "consegna"].includes(tipo) && !statoPagamento.value && !posFisso) {
+	if (tipo !== "consegna" && statoPagamento.value === "pos") {
+		statoPagamento.value = "non_pagato";
+	}
+	if (["ritiro", "consegna"].includes(tipo) && !statoPagamento.value) {
 		statoPagamento.value = "non_pagato";
 	}
 	aggiornaCampiConsegna();

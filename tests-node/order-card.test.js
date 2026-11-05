@@ -103,6 +103,16 @@ test("delivery surcharge toggle is placed beside payment and adapts to narrow sc
     assert.match(theme, /@media \(max-width: 350px\)[\s\S]*?\.riga-pagamento-consegna \{ flex-wrap: wrap; \}/);
 });
 
+test("order edit allows changing POS payment status and clears it when switching to pickup", () => {
+    const editScript = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "modifica.js"),
+        "utf8"
+    );
+
+    assert.doesNotMatch(editScript, /posFisso|statoPagamento\.disabled\s*=|tipo-ordine"\)\.disabled\s*=/);
+    assert.match(editScript, /tipo !== "consegna" && statoPagamento\.value === "pos"[\s\S]*?statoPagamento\.value = "non_pagato"/);
+});
+
 test("every order-list page loads the shared card renderer before its page script", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     for (const [page, renderer] of [
