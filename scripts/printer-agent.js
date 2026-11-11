@@ -189,7 +189,8 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             }
         }
         for (const { row, rowExtras, price, quantity } of groupedRows.values()) {
-            lines.push(...wrapReceiptItem(`${quantity}x ${row.prodotto}`, price, receiptWidth));
+            const lineTotal = Math.round(price * quantity * 100) / 100;
+            lines.push(...wrapReceiptItem(`${quantity}x ${row.prodotto}`, lineTotal, receiptWidth));
             for (const extra of rowExtras) {
                 const name = extra.name;
                 const prefix = "  + ";

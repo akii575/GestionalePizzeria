@@ -187,6 +187,21 @@ test("receipt groups products by menu category in catalog order with their price
     assert.match(sectionText(drinksSection), /1X COCA COLA\n33CL\s+EUR /);
 });
 
+test("grouped identical products print their combined line total", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [
+            { prodotto: "Margherita", prezzoBase: 5, totale: 5 },
+            { prodotto: "Margherita", prezzoBase: 5, totale: 5 }
+        ],
+        totale: 10
+    });
+
+    assert.match(receipt, /2X MARGHERITA\s+EUR 10,00/);
+});
+
 test("receipt combines identical product variants while keeping different extras separate", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
@@ -209,7 +224,8 @@ test("receipt combines identical product variants while keeping different extras
     assert.match(receipt, /ORARIO RICHIESTO 18:45/);
     assert.match(receipt, /TEL: 333 1234567/);
     assert.equal(itemLines.length, 2);
-    assert.ok(itemLines.some(line => line.startsWith("2X MARGHERITA") && line.includes("EUR 7,00")));
+    assert.ok(itemLines.some(line => line.startsWith("2X MARGHERITA") && line.includes("EUR 14,00")));
+    assert.equal((receipt.match(/\+ BOCCONCINO/g) || []).length, 1);
     assert.ok(itemLines.some(line => line.startsWith("1X MARGHERITA") && line.includes("EUR 5,00")));
 });
 
