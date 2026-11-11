@@ -1,6 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { isValidPrinterSelection, jobId } = require("../lib/printer-jobs");
+const { prepareOrder } = require("../lib/orders");
+const menu = require("../lib/menu.json");
 
 const authPath = require.resolve("../lib/auth");
 const firebasePath = require.resolve("../lib/firebase-admin");
@@ -143,6 +145,30 @@ async function invoke(handler, method, query = {}, body = {}) {
 
 function lease(expiresAt) {
     return { toMillis: () => expiresAt };
+}
+
+function storedOrder(input, overrides = {}) {
+    return {
+        ...prepareOrder({
+            tipo: "tavolo",
+            tavoloOCliente: "Tavolo 7",
+            righe: [],
+            ...input
+        }),
+        numero: 7,
+        dataOra: "2026-10-12T12:00:00.000Z",
+        stampaCompletata: true,
+        stampaInCoda: false,
+        ...overrides
+    };
+}
+
+function updateOrderBody(input) {
+    return {
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 7",
+        ...input
+    };
 }
 
 test("print job IDs and printer selection validation use the shared format", () => {
@@ -305,6 +331,104 @@ test("order updates keep queued main jobs as complete receipts", async () => {
     assert.equal(database.documents("printerJobs").get("000000000007").tipoStampa, "completa");
     assert.equal(database.documents("printerJobs").get("000000000007").motivo, undefined);
     assert.deepEqual(database.documents("printerJobs").get("000000000007").printedPrinters, []);
+});
+
+test("editing a printed order queues only newly added rows", async () => {
+    const oldOrder = storedOrder({ righe: [{ prodotto: "Margherita" }] });
+    database = createDatabase({
+        orders: { "7": oldOrder },
+        printerJobs: {
+            "000000000007": { numero: 7, status: "printed" }
+        }
+    });
+
+    const response = await invoke(orderHandler, "PUT", { numero: "7" }, updateOrderBody({
+        righe: [{ prodotto: "Margherita" }, { prodotto: "Patatine Piccole" }]
+    }));
+
+    const newJob = database.documents("printerJobs").get("000000000007-01");
+    const expectedAddition = prepareOrder({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 7",
+        righe: [{ prodotto: "Patatine Piccole" }]
+    }).righe[0];
+    expectedAddition.categoria = menu.find(product => product.nome === "Patatine Piccole").categoria;
+    assert.equal(response.statusCode, 200);
+    assert.equal(newJob.tipoStampa, "aggiunta");
+    assert.equal(newJob.status, "queued");
+    assert.deepEqual(newJob.righe, [expectedAddition]);
+    assert.equal(Object.prototype.hasOwnProperty.call(newJob, "stampanti"), false);
+    assert.equal(database.documents("orders").get("7").stampaInCoda, true);
+    assert.equal(database.documents("orders").get("7").messaggioStampa, "Aggiunta in coda per la stampa.");
+});
+
+test("removing rows from a printed order queues a full reprint and cancels pending additions", async () => {
+    database = createDatabase({
+        orders: {
+            "7": storedOrder({
+                righe: [{ prodotto: "Margherita" }, { prodotto: "Patatine Piccole" }]
+            }, { contatoreStampe: 1 })
+        },
+        printerJobs: {
+            "000000000007": { numero: 7, status: "printed" },
+            "000000000007-01": {
+                numero: 7,
+                status: "queued",
+                tipoStampa: "aggiunta",
+                righe: [{ prodotto: "Patatine Piccole" }]
+            }
+        }
+    });
+
+    const response = await invoke(orderHandler, "PUT", { numero: "7" }, updateOrderBody({
+        righe: [{ prodotto: "Margherita" }]
+    }));
+
+    assert.equal(response.statusCode, 200, JSON.stringify(response.body));
+    const reprint = database.documents("printerJobs").get("000000000007-02");
+    const pendingAddition = database.documents("printerJobs").get("000000000007-01");
+    assert.equal(reprint.tipoStampa, "ristampa");
+    assert.equal(reprint.motivo, "modificata");
+    assert.equal(reprint.status, "queued");
+    assert.equal(Object.prototype.hasOwnProperty.call(reprint, "stampanti"), false);
+    assert.equal(pendingAddition.status, "cancelled");
+    assert.equal(pendingAddition.lastError, "sostituita_da_ristampa");
+    assert.equal(database.documents("orders").get("7").messaggioStampa, "Comanda modificata: ristampa in coda.");
+});
+
+test("editing only notes on a printed order does not create another print job", async () => {
+    database = createDatabase({
+        orders: { "7": storedOrder({ righe: [{ prodotto: "Margherita" }] }) },
+        printerJobs: {
+            "000000000007": { numero: 7, status: "printed" }
+        }
+    });
+
+    const response = await invoke(orderHandler, "PUT", { numero: "7" }, updateOrderBody({
+        righe: [{ prodotto: "Margherita" }],
+        note: "Senza basilico"
+    }));
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(database.documents("printerJobs").size, 1);
+    assert.equal(database.documents("orders").get("7").note, "Senza basilico");
+    assert.equal(database.documents("orders").get("7").stampaInCoda, false);
+});
+
+test("editing an order with a queued main job does not create a new print job", async () => {
+    database = createDatabase({
+        orders: { "7": storedOrder({ righe: [{ prodotto: "Margherita" }] }) },
+        printerJobs: {
+            "000000000007": { numero: 7, status: "queued" }
+        }
+    });
+
+    const response = await invoke(orderHandler, "PUT", { numero: "7" }, updateOrderBody({
+        righe: [{ prodotto: "Margherita" }, { prodotto: "Patatine Piccole" }]
+    }));
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(database.documents("printerJobs").size, 1);
 });
 
 test("order deletion removes every queued print job", async () => {

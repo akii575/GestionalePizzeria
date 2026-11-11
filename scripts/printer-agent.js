@@ -104,8 +104,28 @@ function receiptUnitPrice(row) {
 function wrapReceiptItem(description, price, width) {
     const amount = `EUR ${price.toFixed(2).replace(".", ",")}`;
     const descriptionWidth = Math.max(1, width - amount.length - 1);
-    const wrapped = wrapReceiptText(description, descriptionWidth);
+    const wrapped = [];
+    let line = "";
+    const words = String(description).toLocaleUpperCase("it-IT").split(/\s+/).filter(Boolean);
+    for (const word of words) {
+        const wordLength = Array.from(word).length;
+        if (wordLength > width) {
+            if (line) wrapped.push(line);
+            line = "";
+            wrapped.push(...wrapReceiptText(word, width));
+        } else if (line && Array.from(line).length + 1 + wordLength > descriptionWidth) {
+            wrapped.push(line);
+            line = word;
+        } else {
+            line = line ? `${line} ${word}` : word;
+        }
+    }
+    if (line) wrapped.push(line);
     const lastLine = wrapped.pop() || "";
+    if (Array.from(lastLine).length + amount.length + 1 > width) {
+        if (lastLine) wrapped.push(lastLine);
+        return [...wrapped, `${" ".repeat(Math.max(0, width - amount.length))}${amount}`];
+    }
     const gap = Math.max(1, width - Array.from(lastLine).length - amount.length);
     return [...wrapped, `${lastLine}${" ".repeat(gap)}${amount}`];
 }
@@ -131,7 +151,7 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
     const title = [serviceTitle, paymentTitle].filter(Boolean).join(" - ");
     const receiptTitle = options.tipoStampa === "ristampa"
         ? `${options.motivo === "modificata" ? "RISTAMPA MODIFICATA" : "RISTAMPA"} - ${title}`
-        : title;
+        : options.tipoStampa === "aggiunta" ? `AGGIUNTA - ${title}` : title;
     const lines = [`@@TITLE:${receiptTitle}@@`, divider];
     if (order.orario) {
         lines.push(...wrapReceiptText(`ORARIO RICHIESTO ${order.orario}`, receiptWidth)
@@ -161,7 +181,8 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         lines.push("NOTE:", ...wrapReceiptText(order.note, receiptWidth), divider);
     }
     const rowsByCategory = new Map();
-    for (const row of order.righe || []) {
+    const receiptRows = options.tipoStampa === "aggiunta" ? options.righe || [] : order.righe || [];
+    for (const row of receiptRows) {
         const category = row.categoria || CATEGORY_BY_PRODUCT.get(row.prodotto) || "altro";
         if (!rowsByCategory.has(category)) rowsByCategory.set(category, []);
         rowsByCategory.get(category).push(row);
@@ -202,15 +223,19 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         }
         lines.push("", "", divider);
     }
-    if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
+    if (options.tipoStampa === "aggiunta") {
+        const totalAdded = Math.round(receiptRows.reduce((sum, row) => sum + receiptUnitPrice(row), 0) * 100) / 100;
+        lines.push(...wrapReceiptItem("TOTALE AGGIUNTA", totalAdded, receiptWidth));
+        lines.push(...wrapReceiptItem("NUOVO TOTALE", Number(order.totale || 0), receiptWidth));
+    } else if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
         lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
     }
     const amount = `EUR ${Number(order.totale || 0).toFixed(2).replace(".", ",")}`;
     const totalGap = receiptWidth - "TOTALE".length - amount.length;
     if (categories.length === 0) lines.push(divider);
-    if (totalGap > 0) {
+    if (options.tipoStampa !== "aggiunta" && totalGap > 0) {
         lines.push(`TOTALE${" ".repeat(totalGap)}${amount}`);
-    } else {
+    } else if (options.tipoStampa !== "aggiunta") {
         lines.push(...wrapReceiptText(`TOTALE ${amount}`, receiptWidth));
     }
     lines.push(divider);
@@ -375,6 +400,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                     ? "Comanda in attesa di stampa automatica."
                     : job.tipoStampa === "ristampa"
                         ? "Ristampa inviata alla stampante."
+                        : job.tipoStampa === "aggiunta"
+                            ? "Aggiunta inviata alla stampante."
                         : "Comanda inviata alla stampante."
             });
             return {
@@ -385,6 +412,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 tipoStampa: job.tipoStampa || "completa",
                 stampanti: job.stampanti,
                 motivo: job.motivo,
+                righe: job.righe,
                 printedPrinters: Array.isArray(job.printedPrinters) ? [...job.printedPrinters] : []
             };
         });
@@ -419,7 +447,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             const completed = !error;
             const label = job.tipoStampa === "ristampa"
                 ? "Ristampa"
-                : job.tipoStampa === "completa" ? "Comanda" : "Stampa aggiuntiva";
+                : job.tipoStampa === "aggiunta" ? "Aggiunta" : "Comanda";
             transaction.update(job.jobRef, {
                 status: completed ? "printed" : "failed",
                 printedAt: completed ? Timestamp.now() : FieldValue.delete(),
@@ -434,6 +462,12 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                     stampaInCoda: anotherQueuedJob,
                     messaggioStampa: anotherQueuedJob
                         ? "Comanda in attesa di stampa automatica."
+                        : job.tipoStampa === "aggiunta"
+                        ? completed
+                            ? "Aggiunta completata."
+                            : job.printedPrinters.length > 0
+                                ? "Aggiunta riuscita su almeno una stampante, ma non su tutte. Verifica la connessione e premi Riprova sulla Home."
+                                : "Aggiunta non riuscita. Verifica le stampanti e premi Riprova sulla Home."
                         : completed
                             ? job.tipoStampa === "completa" ? "Comanda stampata." : `${label} completata.`
                             : job.printedPrinters.length > 0
@@ -459,7 +493,11 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 alreadyPrinted: job.printedPrinters,
                 print: submitPrint,
                 onPrinterPrinted: printerName => recordPrinterPrinted(job, printerName),
-                receiptOptions: { tipoStampa: job.tipoStampa, motivo: job.motivo }
+                receiptOptions: {
+                    tipoStampa: job.tipoStampa,
+                    motivo: job.motivo,
+                    righe: job.righe
+                }
             });
         } catch (error) {
             await finishJob(job, error);

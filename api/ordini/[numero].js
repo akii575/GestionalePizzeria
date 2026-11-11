@@ -2,6 +2,8 @@ const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { prepareOrder, preparePaymentUpdate, publicOrder } = require("../../lib/orders");
+const { diffRighe } = require("../../lib/order-diff");
+const menu = require("../../lib/menu.json");
 const {
     hasExpiredPrinterQueuePause,
     isActivePrintingJob,
@@ -91,7 +93,40 @@ module.exports = api(async (req, res) => {
             if (jobs.some(job => job.status === "printing")) {
                 throw httpError(409, "La comanda e' gia' in fase di stampa e non puo' essere modificata.");
             }
-            const queued = jobs.some(job => job.status === "queued");
+            const mainJob = jobs.find(job => job.ref.id === jobId(numero));
+            const rowDiff = mainJob?.status === "printed"
+                ? diffRighe(previous.righe || [], prepared.righe)
+                : null;
+            const tipoNuovoJob = rowDiff?.rimosse.length
+                ? "ristampa"
+                : rowDiff?.aggiunte.length ? "aggiunta" : null;
+            let contatoreStampe = previous.contatoreStampe;
+            let nuovoJob = null;
+            if (tipoNuovoJob) {
+                contatoreStampe = previous.contatoreStampe === undefined ? 0 : previous.contatoreStampe;
+                if (!Number.isSafeInteger(contatoreStampe)
+                        || contatoreStampe < 0 || contatoreStampe === Number.MAX_SAFE_INTEGER) {
+                    throw httpError(409, "Impossibile creare un nuovo lavoro di stampa per questo ordine.");
+                }
+                contatoreStampe++;
+                nuovoJob = {
+                    numero,
+                    status: "queued",
+                    createdAt: new Date().toISOString(),
+                    attemptCount: 0,
+                    printedPrinters: [],
+                    tipoStampa: tipoNuovoJob,
+                    ...(tipoNuovoJob === "ristampa"
+                        ? { motivo: "modificata" }
+                        : {
+                            righe: rowDiff.aggiunte.map(row => ({
+                                ...row,
+                                categoria: row.categoria || menu.find(product => product.nome === row.prodotto)?.categoria
+                            }))
+                        })
+                };
+            }
+            const queued = Boolean(nuovoJob) || jobs.some(job => job.status === "queued");
             const updated = {
                 ...prepared,
                 statoPagamento: Object.prototype.hasOwnProperty.call(req.body, "statoPagamento")
@@ -101,10 +136,15 @@ module.exports = api(async (req, res) => {
                         : null,
                 numero,
                 dataOra: previous.dataOra,
+                ...(typeof contatoreStampe === "undefined" ? {} : { contatoreStampe }),
                 stampaCompletata: previous.stampaCompletata === true,
                 stampaInCoda: queued,
-                messaggioStampa: queued
-                    ? "Comanda aggiornata, in attesa di stampa automatica."
+                messaggioStampa: nuovoJob?.tipoStampa === "aggiunta"
+                    ? "Aggiunta in coda per la stampa."
+                    : nuovoJob?.tipoStampa === "ristampa"
+                        ? "Comanda modificata: ristampa in coda."
+                        : queued
+                            ? "Comanda aggiornata, in attesa di stampa automatica."
                     : previous.stampaCompletata
                         ? "Comanda aggiornata; la copia gia' stampata non e' stata ristampata."
                         : previous.messaggioStampa || "Comanda aggiornata."
@@ -118,6 +158,19 @@ module.exports = api(async (req, res) => {
                     updatedAt: new Date().toISOString(),
                     printedPrinters: []
                 });
+            }
+            if (nuovoJob?.tipoStampa === "ristampa") {
+                for (const job of jobs.filter(job => (
+                    job.tipoStampa === "aggiunta" && job.status === "queued"
+                ))) {
+                    transaction.update(job.ref, {
+                        status: "cancelled",
+                        lastError: "sostituita_da_ristampa"
+                    });
+                }
+            }
+            if (nuovoJob) {
+                transaction.set(printerJobs.doc(jobId(numero, contatoreStampe)), nuovoJob);
             }
             return updated;
         });
