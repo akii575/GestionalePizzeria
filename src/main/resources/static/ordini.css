@@ -460,3 +460,120 @@ button {
         overflow-x: hidden;
     }
 }
+
+/* Ricerca prodotti */
+.tab-ricerca {
+    min-width: 64px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.tab-ricerca svg {
+    display: block;
+}
+.ricerca-modale {
+    position: fixed;
+    inset: 0;
+    /* Sopra la barra account (9999): il pannello non deve essere coperto. */
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: max(16px, env(safe-area-inset-top)) 16px 16px;
+    background: rgba(36, 33, 31, 0.58);
+    overscroll-behavior: contain;
+}
+.ricerca-modale[hidden] {
+    display: none;
+}
+.ricerca-contenuto {
+    width: min(640px, 100%);
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    display: flex;
+    flex-direction: column;
+    background: var(--crema);
+    border: 1px solid var(--bordo);
+    border-radius: 8px;
+    box-shadow: 0 18px 50px rgba(36, 33, 31, 0.28);
+    overflow: hidden;
+}
+.ricerca-barra {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--bordo);
+}
+.ricerca-barra input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 1px solid var(--bordo);
+    border-radius: 8px;
+    background: #fff;
+    /* 16px evita lo zoom automatico di iOS sul focus. */
+    font: inherit;
+    font-size: 16px;
+}
+.ricerca-chiudi {
+    flex: 0 0 48px;
+    min-height: 48px;
+    border: 1px solid var(--bordo);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 26px;
+    line-height: 1;
+}
+.ricerca-risultati {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+.ricerca-risultato {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "nome prezzo"
+        "categoria prezzo";
+    align-items: center;
+    gap: 2px 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--bordo);
+    background: #fff;
+    text-align: left;
+    touch-action: manipulation;
+}
+.ricerca-risultato:hover,
+.ricerca-risultato:focus-visible {
+    background: rgba(23, 99, 69, 0.08);
+}
+.ricerca-risultato:active {
+    background: rgba(23, 99, 69, 0.16);
+}
+.ricerca-nome {
+    grid-area: nome;
+    font-weight: bold;
+    overflow-wrap: anywhere;
+}
+.ricerca-categoria {
+    grid-area: categoria;
+    font-size: 14px;
+    color: var(--theme-muted);
+}
+.ricerca-prezzo {
+    grid-area: prezzo;
+    font-weight: bold;
+    color: var(--rosso);
+    white-space: nowrap;
+}
+.ricerca-vuota {
+    margin: 0;
+    padding: 16px;
+    text-align: center;
+    color: var(--theme-muted);
+}

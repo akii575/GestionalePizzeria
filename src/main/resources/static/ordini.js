@@ -21,8 +21,16 @@ const confermaModale = document.getElementById("conferma-modale");
 const confermaRiepilogo = document.getElementById("conferma-riepilogo");
 const confermaTotale = document.getElementById("conferma-totale");
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
+const bottoneRicerca = document.getElementById("btn-ricerca");
+const ricercaModale = document.getElementById("ricerca-modale");
+const ricercaInput = document.getElementById("ricerca-input");
+const ricercaRisultati = document.getElementById("ricerca-risultati");
+const paginaPrincipale = document.querySelector("main");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
-const CATEGORIE_CON_EXTRA = ["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"];
+const { CATEGORIE_CON_EXTRA, filtraProdotti, creaRiga } = window.prodottiUI;
+const etichetteCategorie = Object.fromEntries(
+    [...document.querySelectorAll(".tab[data-tab]")].map(tab => [tab.dataset.tab, tab.textContent.trim()])
+);
 let costoConsegna = 0;
 
 function categoriaConExtra() {
@@ -121,26 +129,68 @@ function renderProdotti() {
                 ? `<span class="ingredienti">${testoSicuro(prodotto.ingredienti.join(", "))}</span>`
                 : "";
             bottone.innerHTML = `<strong>${testoSicuro(prodotto.nome)}</strong><span class="prezzo-prodotto">${euro.format(Number(prodotto.prezzo))}</span>${ingredienti}`;
-            bottone.addEventListener("click", () => {
-                stato.righe.push({
-                    prodotto: prodotto.nome,
-                    prezzo: prodotto.prezzo,
-                    categoria: prodotto.categoria,
-                    ingredienti: prodotto.ingredienti || [],
-                    extra: stato.extraSelezionati
-                });
-                stato.extraSelezionati = [];
-                renderExtra(
-                    document.getElementById("extra-lista"),
-                    stato.extraSelezionati,
-                    selezionati => (stato.extraSelezionati = selezionati)
-                );
-                renderRiepilogo();
-            });
+            bottone.addEventListener("click", () => aggiungiProdotto(prodotto));
             pagina.appendChild(bottone);
         });
         prodotti.appendChild(pagina);
     }
+}
+// Unico punto di aggiunta al conto: usato dalle tab delle categorie e dalla ricerca.
+function aggiungiProdotto(prodotto) {
+    const { riga, extraRimanenti } = creaRiga(prodotto, stato.extraSelezionati);
+    stato.righe.push(riga);
+    stato.extraSelezionati = extraRimanenti;
+    renderExtra(
+        document.getElementById("extra-lista"),
+        stato.extraSelezionati,
+        selezionati => (stato.extraSelezionati = selezionati)
+    );
+    renderRiepilogo();
+}
+function renderRisultatiRicerca() {
+    const testo = ricercaInput.value;
+    const trovati = filtraProdotti(stato.menu, testo);
+    ricercaRisultati.innerHTML = "";
+    if (!testo.trim()) return;
+    if (!trovati.length) {
+        ricercaRisultati.innerHTML = '<p class="ricerca-vuota">Nessun prodotto trovato</p>';
+        return;
+    }
+    trovati.forEach(prodotto => {
+        const bottone = document.createElement("button");
+        bottone.type = "button";
+        bottone.className = "ricerca-risultato";
+        bottone.innerHTML = `<span class="ricerca-nome">${testoSicuro(prodotto.nome)}</span><span class="ricerca-categoria">${testoSicuro(etichetteCategorie[prodotto.categoria] || prodotto.categoria)}</span><span class="ricerca-prezzo">${euro.format(Number(prodotto.prezzo))}</span>`;
+        bottone.addEventListener("click", () => {
+            aggiungiProdotto(prodotto);
+            chiudiRicerca();
+            // Gli extra non applicabili (es. a una bibita) restano in attesa: lo segnaliamo.
+            const extraInAttesa = stato.extraSelezionati.length
+                ? ` (extra in attesa per il prossimo piatto: ${nomiExtra(stato.extraSelezionati).join(", ")})`
+                : "";
+            mostraMessaggio(`Aggiunto: ${prodotto.nome}${extraInAttesa}`, "successo");
+        });
+        ricercaRisultati.appendChild(bottone);
+    });
+}
+function apriRicerca() {
+    ricercaInput.value = "";
+    renderRisultatiRicerca();
+    ricercaModale.hidden = false;
+    bottoneRicerca.setAttribute("aria-expanded", "true");
+    document.body.classList.add("modale-aperta");
+    // La pagina sotto diventa non interattiva: Tab resta dentro il pannello.
+    paginaPrincipale.inert = true;
+    // Focus sincrono nel gesto dell'utente: necessario perché iPad/Android aprano la tastiera.
+    ricercaInput.focus();
+}
+function chiudiRicerca() {
+    if (ricercaModale.hidden) return;
+    ricercaModale.hidden = true;
+    bottoneRicerca.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("modale-aperta");
+    paginaPrincipale.inert = false;
+    bottoneRicerca.focus({ preventScroll: true });
 }
 function aggiornaGestioneExtra() {
     const riga = stato.righe[Number(selettoreRigaExtra.value)];
@@ -308,13 +358,22 @@ async function inviaOrdine() {
         invia.disabled = false;
     }
 }
-document.querySelectorAll(".tab").forEach(tab =>
+document.querySelectorAll(".tab[data-tab]").forEach(tab =>
     tab.addEventListener("click", () => {
         stato.categoria = tab.dataset.tab;
-        document.querySelectorAll(".tab").forEach(elemento => elemento.classList.toggle("active", elemento === tab));
+        document
+            .querySelectorAll(".tab[data-tab]")
+            .forEach(elemento => elemento.classList.toggle("active", elemento === tab));
         renderProdotti();
     })
 );
+bottoneRicerca.addEventListener("click", apriRicerca);
+ricercaInput.addEventListener("input", renderRisultatiRicerca);
+document.getElementById("ricerca-chiudi").addEventListener("click", chiudiRicerca);
+// Tocco/click sullo sfondo (fuori dal pannello) chiude la ricerca.
+ricercaModale.addEventListener("click", evento => {
+    if (evento.target === ricercaModale) chiudiRicerca();
+});
 tipoOrdine.addEventListener("change", () => {
     if (tipoOrdine.value !== "consegna") costoConsegna = 0;
     aggiornaTipoOrdine();
@@ -343,7 +402,9 @@ document.getElementById("btn-annulla").addEventListener("click", () => {
     mostraMessaggio("Ordine annullato.", "");
 });
 document.addEventListener("keydown", evento => {
-    if (evento.key === "Escape" && !confermaModale.hidden) chiudiConferma();
+    if (evento.key !== "Escape") return;
+    if (!ricercaModale.hidden) chiudiRicerca();
+    else if (!confermaModale.hidden) chiudiConferma();
 });
 Promise.all([fetch("/api/menu"), fetch("/api/extra")])
     .then(async risposte => {
@@ -357,5 +418,7 @@ Promise.all([fetch("/api/menu"), fetch("/api/extra")])
             selezionati => (stato.extraSelezionati = selezionati)
         );
         renderProdotti();
+        // Se la ricerca è stata aperta prima che il menu arrivasse, aggiorna i risultati.
+        if (!ricercaModale.hidden) renderRisultatiRicerca();
     })
     .catch(errore => mostraMessaggio(errore.message, "errore"));

@@ -128,6 +128,29 @@
                 <textarea id="note" placeholder="Aggiungi una nota..."></textarea>
             </section>
             <nav class="tab-container" aria-label="Categorie">
+                <button
+                    id="btn-ricerca"
+                    class="tab tab-ricerca"
+                    type="button"
+                    aria-label="Cerca prodotto"
+                    title="Cerca prodotto"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                    aria-controls="ricerca-modale"
+                >
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                        <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.5" />
+                        <line
+                            x1="15.5"
+                            y1="15.5"
+                            x2="21"
+                            y2="21"
+                            stroke="currentColor"
+                            stroke-width="2.5"
+                            stroke-linecap="round"
+                        />
+                    </svg>
+                </button>
                 <button class="tab active" data-tab="pizze">Pizze</button>
                 <button class="tab" data-tab="ripieni">Ripieni</button>
                 <button class="tab" data-tab="panuozzi">Panuozzi</button>
@@ -185,6 +208,36 @@
                 </div>
             </div>
         </div>
+        <div
+            id="ricerca-modale"
+            class="ricerca-modale"
+            hidden
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cerca prodotto"
+        >
+            <div class="ricerca-contenuto">
+                <div class="ricerca-barra">
+                    <input
+                        id="ricerca-input"
+                        type="search"
+                        placeholder="Cerca un prodotto..."
+                        aria-label="Cerca un prodotto in tutte le categorie"
+                        aria-controls="ricerca-risultati"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        enterkeyhint="search"
+                    />
+                    <button id="ricerca-chiudi" class="ricerca-chiudi" type="button" aria-label="Chiudi ricerca">
+                        &times;
+                    </button>
+                </div>
+                <div id="ricerca-risultati" class="ricerca-risultati"></div>
+            </div>
+        </div>
+        <script src="/prodotti-ui.js"></script>
         <script src="/ordini.js"></script>
         <script src="/theme.js"></script>
     </body>
