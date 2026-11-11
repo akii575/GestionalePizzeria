@@ -405,7 +405,6 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     }
 
     async function processOneJob(printers) {
-        if (await recoverExpiredJob()) return;
         const job = await claimNextJob();
         if (!job) return;
         try {
@@ -441,6 +440,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             workerState = "another_terminal_active";
             return;
         }
+        if (await recoverExpiredJob()) return;
         const printers = await selectedPrinters();
         if (!printers) {
             workerState = "printer_unavailable";
