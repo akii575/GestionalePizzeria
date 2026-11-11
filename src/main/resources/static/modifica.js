@@ -36,7 +36,6 @@ function aggiornaCampiConsegna() {
 	const ritiro = tipo === "ritiro";
 	const banco = tipo === "banco";
 	const orario = document.getElementById("orario");
-	const statoPagamento = document.getElementById("stato-pagamento");
 	document.getElementById("campo-banco").hidden = !banco;
 	const destinazione = document.getElementById("tavolo");
 	document.getElementById("destinazione-label").hidden = !tavolo && !ritiro;

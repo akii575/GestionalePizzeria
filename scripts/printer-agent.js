@@ -1,7 +1,7 @@
 const { randomUUID } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const { cert, getApps, initializeApp } = require("firebase-admin/app");
+const { cert, initializeApp } = require("firebase-admin/app");
 const { FieldPath, FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { DEFAULT_RECEIPT_WIDTH, listNetworkPrinters, sendEscPosReceipt } = require("./network-printer");
 const menu = require("../lib/menu.json");
