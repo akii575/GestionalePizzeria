@@ -116,9 +116,7 @@ module.exports = api(async (req, res) => {
             for (const job of jobs.filter(job => ["queued", "failed"].includes(job.status))) {
                 transaction.update(job.ref, {
                     updatedAt: new Date().toISOString(),
-                    printedPrinters: [],
-                    tipoStampa: "ristampa",
-                    motivo: "modificata"
+                    printedPrinters: []
                 });
             }
             return updated;
