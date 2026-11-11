@@ -2,6 +2,7 @@ const stato = { ordini: [], timer: null };
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const lista = document.getElementById("lista-consegne");
 const statoPagina = document.getElementById("stato");
+window.orderCard.bindReprints(lista);
 
 function mostraStato(testo, classe = "") {
     statoPagina.textContent = testo;

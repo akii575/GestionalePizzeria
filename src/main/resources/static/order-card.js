@@ -94,7 +94,66 @@ const orderCard = (() => {
     function renderActions(order, canEdit) {
         if (!canEdit) return "";
         const number = Number(order.numero);
-        return `<div class="order-card__actions"><button type="button" data-modifica="${number}">Modifica ordine</button><button type="button" data-elimina="${number}" class="pericolo">Elimina</button></div>`;
+        return `<div class="order-card__actions"><button type="button" data-modifica="${number}">Modifica ordine</button><button type="button" data-ristampa="${number}" aria-haspopup="dialog">Ristampa</button><button type="button" data-elimina="${number}" class="pericolo">Elimina</button></div>`;
+    }
+
+    function bindReprints(container) {
+        let triggerButton = null;
+        const dialog = document.createElement("dialog");
+        dialog.className = "app-mappe-dialog app-ristampa-dialog";
+        dialog.setAttribute("aria-labelledby", "app-ristampa-titolo");
+        dialog.innerHTML = `
+            <form method="dialog" class="app-mappe-chiudi"><button type="submit" aria-label="Chiudi">×</button></form>
+            <h2 id="app-ristampa-titolo">Ristampa comanda</h2>
+            <p>Scegli la stampante su cui inviare la ristampa.</p>
+            <div class="app-ristampa-opzioni">
+                <button class="app-ristampa-opzione" type="button" data-stampanti="Cucina">Cucina</button>
+                <button class="app-ristampa-opzione" type="button" data-stampanti="Sala">Sala</button>
+                <button class="app-ristampa-opzione" type="button" data-stampanti="Entrambe">Entrambe</button>
+            </div>
+            <p class="app-ristampa-stato" role="status" aria-live="polite"></p>
+        `;
+        const status = dialog.querySelector(".app-ristampa-stato");
+        const options = dialog.querySelectorAll("[data-stampanti]");
+        dialog.addEventListener("click", async event => {
+            const option = event.target.closest("[data-stampanti]");
+            if (!option || !triggerButton || option.disabled) return;
+            const stampanti = option.dataset.stampanti === "Entrambe"
+                ? ["Cucina", "Sala"]
+                : [option.dataset.stampanti];
+            const numero = triggerButton.dataset.ristampa;
+            triggerButton.disabled = true;
+            options.forEach(button => { button.disabled = true; });
+            status.className = "app-ristampa-stato";
+            status.textContent = "Invio ristampa...";
+            try {
+                const response = await fetch(`/api/ordini/${encodeURIComponent(numero)}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ azione: "ristampa", stampanti })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.errore || "Ristampa non riuscita.");
+                status.textContent = result.messaggioStampa || "Ristampa in coda.";
+                if (window.themeToast) window.themeToast(status.textContent);
+            } catch (error) {
+                status.classList.add("errore");
+                status.textContent = error.message || "Ristampa non riuscita.";
+            } finally {
+                triggerButton.disabled = false;
+                options.forEach(button => { button.disabled = false; });
+            }
+        });
+        document.body.append(dialog);
+        container.addEventListener("click", event => {
+            const button = event.target.closest("[data-ristampa]");
+            if (!button || !container.contains(button)) return;
+            triggerButton = button;
+            status.className = "app-ristampa-stato";
+            status.textContent = "";
+            if (typeof dialog.showModal === "function") dialog.showModal();
+            else dialog.setAttribute("open", "");
+        });
     }
 
     function render(order, options = {}) {
@@ -139,7 +198,7 @@ const orderCard = (() => {
         `;
     }
 
-    return Object.freeze({ render });
+    return Object.freeze({ bindReprints, render });
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = orderCard;

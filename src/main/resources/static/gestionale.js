@@ -4,6 +4,7 @@ const lista = document.getElementById("lista-ordini");
 const statoPagina = document.getElementById("stato");
 const eliminazioniInCorso = new Set();
 const tipoServizio = document.body.dataset.serviceType || "";
+window.orderCard.bindReprints(lista);
 
 function mostraStato(testo, classe) { statoPagina.textContent = testo; statoPagina.className = classe || ""; }
 function tipoNormalizzato(tipo) { return tipo === "sala" ? "tavolo" : tipo || "tavolo"; }

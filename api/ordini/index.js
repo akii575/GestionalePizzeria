@@ -2,7 +2,7 @@ const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { filterOrdersByType, prepareOrder, publicOrder } = require("../../lib/orders");
-const { hasExpiredPrinterQueuePause, isPrinterQueuePaused } = require("../../lib/printer-jobs");
+const { hasExpiredPrinterQueuePause, isPrinterQueuePaused, jobId } = require("../../lib/printer-jobs");
 
 module.exports = api(async (req, res) => {
     await requireAdmin(req);
@@ -45,7 +45,7 @@ module.exports = api(async (req, res) => {
             }
             transaction.set(counter, { value: numero });
             transaction.set(orders.doc(String(numero)), saved);
-            transaction.set(db.collection("printerJobs").doc(String(numero).padStart(12, "0")), {
+            transaction.set(db.collection("printerJobs").doc(jobId(numero)), {
                 numero,
                 status: "queued",
                 createdAt: now,

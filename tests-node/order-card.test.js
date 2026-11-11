@@ -40,8 +40,14 @@ test("all order services use the same card structure and field styling", () => {
         assert.equal((html.match(/class="order-card__field(?: |")/g) || []).length, order.tipo === "banco" ? 1 : 2);
         assert.doesNotMatch(html, /consegna--tutti-ordini|consegna-recapiti/);
         assert.equal((html.match(/data-modifica=/g) || []).length, 1);
+        assert.equal((html.match(/data-ristampa=/g) || []).length, 1);
         assert.equal((html.match(/data-elimina=/g) || []).length, 1);
     }
+});
+
+test("reprint controls are available only on editable order cards", () => {
+    assert.match(render({ tipo: "tavolo" }), /data-ristampa="8"[^>]*>Ristampa/);
+    assert.doesNotMatch(render({ tipo: "tavolo" }, { canEdit: false }), /data-ristampa=/);
 });
 
 test("delivery fields share one row while pickup and counter names are inline", () => {

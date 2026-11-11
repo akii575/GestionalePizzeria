@@ -5,7 +5,10 @@ const { prepareOrder, preparePaymentUpdate, publicOrder } = require("../../lib/o
 const {
     hasExpiredPrinterQueuePause,
     isActivePrintingJob,
-    isPrinterQueuePaused
+    isPrinterQueuePaused,
+    isValidPrinterSelection,
+    jobId,
+    PRINTER_NAMES
 } = require("../../lib/printer-jobs");
 
 function orderNumber(req) {
@@ -21,9 +24,56 @@ module.exports = api(async (req, res) => {
     const numero = orderNumber(req);
     const { db } = getFirebaseServices();
     const order = db.collection("orders").doc(String(numero));
-    const printerJob = db.collection("printerJobs").doc(String(numero).padStart(12, "0"));
+    const printerJobs = db.collection("printerJobs");
     const printerControl = db.collection("metadata").doc("printerControl");
 
+    if (req.method === "POST") {
+        requireSameOrigin(req);
+        if (req.body?.azione !== "ristampa") {
+            throw httpError(400, "Azione non valida.");
+        }
+        if (!isValidPrinterSelection(req.body.stampanti)) {
+            throw httpError(400, "Seleziona almeno una stampante valida.");
+        }
+        const stampanti = PRINTER_NAMES.filter(stampante => req.body.stampanti.includes(stampante));
+        const nomiStampanti = stampanti.length === 2 ? "Cucina e Sala" : stampanti[0];
+        const saved = await db.runTransaction(async transaction => {
+            const controlSnapshot = await transaction.get(printerControl);
+            const controlData = controlSnapshot.data();
+            if (isPrinterQueuePaused(controlData)) {
+                throw httpError(409, "La coda di stampa e' in manutenzione. Riprova tra poco.");
+            }
+            const orderSnapshot = await transaction.get(order);
+            if (!orderSnapshot.exists) throw httpError(404, `Ordine non trovato: ${numero}`);
+            const orderData = orderSnapshot.data();
+            const contatore = orderData.contatoreStampe === undefined ? 0 : orderData.contatoreStampe;
+            if (!Number.isSafeInteger(contatore) || contatore < 0 || contatore === Number.MAX_SAFE_INTEGER) {
+                throw httpError(409, "Impossibile creare un nuovo lavoro di stampa per questo ordine.");
+            }
+            const progressivo = contatore + 1;
+            const createdAt = new Date().toISOString();
+            const messaggioStampa = `Ristampa in coda (${nomiStampanti})`;
+            transaction.update(order, {
+                contatoreStampe: progressivo,
+                stampaInCoda: true,
+                messaggioStampa
+            });
+            transaction.set(printerJobs.doc(jobId(numero, progressivo)), {
+                numero,
+                tipoStampa: "ristampa",
+                stampanti,
+                status: "queued",
+                createdAt,
+                attemptCount: 0,
+                printedPrinters: []
+            });
+            if (hasExpiredPrinterQueuePause(controlData)) {
+                transaction.set(printerControl, { paused: false });
+            }
+            return { messaggioStampa };
+        });
+        return res.status(202).json({ ok: true, ...saved });
+    }
     if (req.method === "PUT") {
         requireSameOrigin(req);
         const prepared = prepareOrder(req.body);
@@ -35,12 +85,13 @@ module.exports = api(async (req, res) => {
             }
             const snapshot = await transaction.get(order);
             if (!snapshot.exists) throw httpError(404, `Ordine non trovato: ${numero}`);
-            const jobSnapshot = await transaction.get(printerJob);
+            const jobSnapshot = await transaction.get(printerJobs.where("numero", "==", numero));
             const previous = snapshot.data();
-            const job = jobSnapshot.exists ? jobSnapshot.data() : null;
-            if (job && job.status === "printing") {
+            const jobs = jobSnapshot.docs.map(document => ({ ref: document.ref, ...document.data() }));
+            if (jobs.some(job => job.status === "printing")) {
                 throw httpError(409, "La comanda e' gia' in fase di stampa e non puo' essere modificata.");
             }
+            const queued = jobs.some(job => job.status === "queued");
             const updated = {
                 ...prepared,
                 statoPagamento: Object.prototype.hasOwnProperty.call(req.body, "statoPagamento")
@@ -51,8 +102,8 @@ module.exports = api(async (req, res) => {
                 numero,
                 dataOra: previous.dataOra,
                 stampaCompletata: previous.stampaCompletata === true,
-                stampaInCoda: job && job.status === "queued",
-                messaggioStampa: job && job.status === "queued"
+                stampaInCoda: queued,
+                messaggioStampa: queued
                     ? "Comanda aggiornata, in attesa di stampa automatica."
                     : previous.stampaCompletata
                         ? "Comanda aggiornata; la copia gia' stampata non e' stata ristampata."
@@ -62,10 +113,12 @@ module.exports = api(async (req, res) => {
                 transaction.set(printerControl, { paused: false });
             }
             transaction.set(order, updated);
-            if (job && ["queued", "failed"].includes(job.status)) {
-                transaction.update(printerJob, {
+            for (const job of jobs.filter(job => ["queued", "failed"].includes(job.status))) {
+                transaction.update(job.ref, {
                     updatedAt: new Date().toISOString(),
-                    printedPrinters: []
+                    printedPrinters: [],
+                    tipoStampa: "ristampa",
+                    motivo: "modificata"
                 });
             }
             return updated;
@@ -94,14 +147,11 @@ module.exports = api(async (req, res) => {
             }
             const snapshot = await transaction.get(order);
             if (!snapshot.exists) throw httpError(404, `Ordine non trovato: ${numero}`);
-            const jobSnapshot = await transaction.get(printerJob);
-            const job = jobSnapshot.exists ? jobSnapshot.data() : null;
-            if (isActivePrintingJob(job)) {
+            const jobSnapshot = await transaction.get(printerJobs.where("numero", "==", numero));
+            if (jobSnapshot.docs.some(document => isActivePrintingJob(document.data()))) {
                 throw httpError(409, "La comanda e' gia' in fase di stampa e non puo' essere eliminata.");
             }
-            if (jobSnapshot.exists && ["queued", "failed", "cancelled", "printing"].includes(job.status)) {
-                transaction.delete(printerJob);
-            }
+            for (const document of jobSnapshot.docs) transaction.delete(document.ref);
             if (hasExpiredPrinterQueuePause(controlData)) {
                 transaction.set(printerControl, { paused: false });
             }
@@ -109,5 +159,5 @@ module.exports = api(async (req, res) => {
         });
         return res.status(204).end();
     }
-    return methodNotAllowed(res, ["PUT", "PATCH", "DELETE"]);
+    return methodNotAllowed(res, ["POST", "PUT", "PATCH", "DELETE"]);
 });

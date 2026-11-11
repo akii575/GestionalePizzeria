@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { isValidPrinterSelection, jobId } = require("../lib/printer-jobs");
 
 const authPath = require.resolve("../lib/auth");
 const firebasePath = require.resolve("../lib/firebase-admin");
@@ -121,7 +122,7 @@ function createDatabase(seed = {}, { failQueueUnpause = 0 } = {}) {
     };
 }
 
-async function invoke(handler, method, query = {}) {
+async function invoke(handler, method, query = {}, body = {}) {
     const response = {
         status(code) {
             this.statusCode = code;
@@ -136,13 +137,86 @@ async function invoke(handler, method, query = {}) {
         },
         setHeader() {}
     };
-    await handler({ method, query, headers: {} }, response);
+    await handler({ method, query, headers: {}, body }, response);
     return response;
 }
 
 function lease(expiresAt) {
     return { toMillis: () => expiresAt };
 }
+
+test("print job IDs and printer selection validation use the shared format", () => {
+    assert.equal(jobId(7), "000000000007");
+    assert.equal(jobId(7, 1), "000000000007-01");
+    assert.equal(jobId(7, 100), "000000000007-100");
+    assert.equal(isValidPrinterSelection(["Cucina"]), true);
+    assert.equal(isValidPrinterSelection(["Sala", "Cucina"]), true);
+    assert.equal(isValidPrinterSelection([]), false);
+    assert.equal(isValidPrinterSelection(["Cucina", "Forno"]), false);
+    assert.equal(isValidPrinterSelection(["Cucina", "Cucina"]), false);
+});
+
+test("manual reprints create incremented jobs with a canonical printer selection", async () => {
+    database = createDatabase({
+        orders: {
+            "7": { numero: 7, contatoreStampe: 0, stampaCompletata: true, stampaInCoda: false }
+        }
+    });
+
+    const first = await invoke(orderHandler, "POST", { numero: "7" }, {
+        azione: "ristampa",
+        stampanti: ["Sala", "Cucina"]
+    });
+    const second = await invoke(orderHandler, "POST", { numero: "7" }, {
+        azione: "ristampa",
+        stampanti: ["Sala"]
+    });
+
+    assert.equal(first.statusCode, 202);
+    assert.equal(first.body.messaggioStampa, "Ristampa in coda (Cucina e Sala)");
+    assert.equal(second.statusCode, 202);
+    assert.equal(second.body.messaggioStampa, "Ristampa in coda (Sala)");
+    assert.equal(database.documents("orders").get("7").contatoreStampe, 2);
+    const firstJob = database.documents("printerJobs").get("000000000007-01");
+    assert.equal(firstJob.numero, 7);
+    assert.equal(firstJob.tipoStampa, "ristampa");
+    assert.deepEqual(firstJob.stampanti, ["Cucina", "Sala"]);
+    assert.equal(firstJob.status, "queued");
+    assert.ok(Number.isFinite(Date.parse(firstJob.createdAt)));
+    assert.equal(firstJob.attemptCount, 0);
+    assert.deepEqual(firstJob.printedPrinters, []);
+    assert.equal(database.documents("printerJobs").get("000000000007-02").tipoStampa, "ristampa");
+    assert.deepEqual(database.documents("printerJobs").get("000000000007-02").stampanti, ["Sala"]);
+    assert.equal(database.documents("orders").get("7").stampaInCoda, true);
+});
+
+test("manual reprints reject invalid printer selections", async () => {
+    database = createDatabase({ orders: { "7": { numero: 7 } } });
+
+    const response = await invoke(orderHandler, "POST", { numero: "7" }, {
+        azione: "ristampa",
+        stampanti: ["Forno"]
+    });
+
+    assert.equal(response.statusCode, 400);
+    assert.match(response.body.errore, /stampante valida/);
+    assert.equal(database.documents("printerJobs").size, 0);
+});
+
+test("manual reprints reject a paused print queue", async () => {
+    database = createDatabase({
+        orders: { "7": { numero: 7 } },
+        metadata: { printerControl: { paused: true, pausedUntil: Date.now() + 60_000 } }
+    });
+
+    const response = await invoke(orderHandler, "POST", { numero: "7" }, {
+        azione: "ristampa",
+        stampanti: ["Cucina"]
+    });
+
+    assert.equal(response.statusCode, 409);
+    assert.equal(database.documents("printerJobs").size, 0);
+});
 
 test("expired printing leases do not block individual order deletion", async () => {
     database = createDatabase({
@@ -152,6 +226,10 @@ test("expired printing leases do not block individual order deletion", async () 
                 numero: 7,
                 status: "printing",
                 leaseUntil: lease(Date.now() - 1)
+            },
+            "000000000007-01": {
+                numero: 7,
+                status: "queued"
             }
         }
     });
@@ -163,11 +241,11 @@ test("expired printing leases do not block individual order deletion", async () 
     assert.equal(database.documents("printerJobs").has("000000000007"), false);
 });
 
-test("an actively leased print job still blocks individual order deletion", async () => {
+test("an actively leased secondary print job still blocks individual order deletion", async () => {
     database = createDatabase({
         orders: { "7": { numero: 7 } },
         printerJobs: {
-            "000000000007": {
+            "000000000007-01": {
                 numero: 7,
                 status: "printing",
                 leaseUntil: lease(Date.now() + 60_000)
@@ -179,7 +257,62 @@ test("an actively leased print job still blocks individual order deletion", asyn
 
     assert.equal(response.statusCode, 409);
     assert.equal(database.documents("orders").has("7"), true);
-    assert.equal(database.documents("printerJobs").has("000000000007"), true);
+    assert.equal(database.documents("printerJobs").has("000000000007-01"), true);
+});
+
+test("order updates reject a secondary print job even when its lease expired", async () => {
+    database = createDatabase({
+        orders: { "7": { numero: 7, dataOra: "2026-10-12T12:00:00.000Z" } },
+        printerJobs: {
+            "000000000007-01": {
+                numero: 7,
+                status: "printing",
+                leaseUntil: lease(Date.now() - 1)
+            }
+        }
+    });
+
+    const response = await invoke(orderHandler, "PUT", { numero: "7" }, {
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 7",
+        righe: [{ prodotto: "Margherita" }]
+    });
+
+    assert.equal(response.statusCode, 409);
+    assert.equal(database.documents("printerJobs").get("000000000007-01").status, "printing");
+});
+
+test("order updates mark pending jobs as modified reprints", async () => {
+    database = createDatabase({
+        orders: { "7": { numero: 7, dataOra: "2026-10-12T12:00:00.000Z" } },
+        printerJobs: { "000000000007": { numero: 7, status: "queued", printedPrinters: ["Cucina"] } }
+    });
+
+    const response = await invoke(orderHandler, "PUT", { numero: "7" }, {
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 7",
+        righe: [{ prodotto: "Margherita" }]
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(database.documents("printerJobs").get("000000000007").tipoStampa, "ristampa");
+    assert.equal(database.documents("printerJobs").get("000000000007").motivo, "modificata");
+    assert.deepEqual(database.documents("printerJobs").get("000000000007").printedPrinters, []);
+});
+
+test("order deletion removes every queued print job", async () => {
+    database = createDatabase({
+        orders: { "7": { numero: 7 } },
+        printerJobs: {
+            "000000000007": { numero: 7, status: "queued" },
+            "000000000007-01": { numero: 7, status: "queued" }
+        }
+    });
+
+    const response = await invoke(orderHandler, "DELETE", { numero: "7" });
+
+    assert.equal(response.statusCode, 204);
+    assert.equal(database.documents("printerJobs").size, 0);
 });
 
 test("individual deletion clears a stale queue pause from an interrupted reset", async () => {
@@ -203,6 +336,10 @@ test("reset clears orders and expired print jobs but waits for active leases", a
                 numero: 7,
                 status: "printing",
                 leaseUntil: lease(Date.now() - 1)
+            },
+            "000000000007-01": {
+                numero: 7,
+                status: "queued"
             }
         },
         metadata: {
@@ -221,6 +358,29 @@ test("reset clears orders and expired print jobs but waits for active leases", a
 
     const secondResponse = await invoke(resetHandler, "POST");
     assert.equal(secondResponse.statusCode, 200);
+});
+
+test("reset waits for an actively leased secondary print job", async () => {
+    database = createDatabase({
+        orders: { "7": { numero: 7 } },
+        printerJobs: {
+            "000000000007-01": {
+                numero: 7,
+                status: "printing",
+                leaseUntil: lease(Date.now() + 60_000)
+            }
+        },
+        metadata: {
+            orderCounter: { value: 7 },
+            printerControl: { paused: false }
+        }
+    });
+
+    const response = await invoke(resetHandler, "POST");
+
+    assert.equal(response.statusCode, 409);
+    assert.equal(database.documents("orders").has("7"), true);
+    assert.equal(database.documents("printerJobs").has("000000000007-01"), true);
 });
 
 test("reset retries a transient Firestore timeout when releasing its pause", async () => {
