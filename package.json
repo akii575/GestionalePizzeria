@@ -8,7 +8,11 @@
     "printer-terminal": "node scripts/printer-terminal.js",
     "set-admin": "node scripts/set-admin.js",
     "set-delivery": "node scripts/set-delivery.js",
-    "test": "node scripts/export-menu.js && node scripts/copy-static.js && node --test"
+    "test": "node scripts/export-menu.js && node scripts/copy-static.js && node --test",
+    "lint": "eslint .",
+    "typecheck": "node scripts/check-syntax.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": "22.x"
@@ -21,5 +25,11 @@
     "jwks-rsa": {
       "jose": "4.15.9"
     }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10"
   }
 }

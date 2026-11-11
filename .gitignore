@@ -4,11 +4,10 @@ data/printer-config.json
 pizzeria-pc-setup.zip
 .env
 .env.*
-!.env.example
 .idea/
 .vscode/
 *.log
-.claude/
+.claude/settings.local.json
 .tools/
 .vercel/
 node_modules/
@@ -17,3 +16,4 @@ lib/generated-pages.js
 service-account*.json
 .vercel
 .env*
+!.env.example

@@ -1,0 +1,12 @@
+public/
+target/
+.tools/
+node_modules/
+data/
+.vercel/
+lib/generated-pages.js
+lib/menu.json
+lib/extras.json
+package-lock.json
+*.md
+*.csv

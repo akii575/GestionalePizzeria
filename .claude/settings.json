@@ -1,0 +1,74 @@
+{
+    "$schema": "https://json.schemastore.org/claude-code-settings.json",
+    "permissions": {
+        "allow": [
+            "Bash(npm test)",
+            "Bash(npm test *)",
+            "Bash(npm run lint)",
+            "Bash(npm run lint *)",
+            "Bash(npm run typecheck)",
+            "Bash(npm run format)",
+            "Bash(npm run format:check)",
+            "Bash(npm run build)",
+            "Bash(npx eslint *)",
+            "Bash(npx prettier *)",
+            "Bash(node --test *)",
+            "Bash(mvn test)",
+            "Bash(mvn -q test)",
+            "Bash(git status *)",
+            "Bash(git status)",
+            "Bash(git diff *)",
+            "Bash(git diff)",
+            "Bash(git add *)",
+            "Bash(git commit *)",
+            "PowerShell(npm test)",
+            "PowerShell(npm test *)",
+            "PowerShell(npm run lint)",
+            "PowerShell(npm run lint *)",
+            "PowerShell(npm run typecheck)",
+            "PowerShell(npm run format)",
+            "PowerShell(npm run format:check)",
+            "PowerShell(npm run build)",
+            "PowerShell(npx eslint *)",
+            "PowerShell(npx prettier *)",
+            "PowerShell(node --test *)",
+            "PowerShell(mvn test)",
+            "PowerShell(mvn -q test)",
+            "PowerShell(git status *)",
+            "PowerShell(git status)",
+            "PowerShell(git diff *)",
+            "PowerShell(git diff)",
+            "PowerShell(git add *)",
+            "PowerShell(git commit *)"
+        ],
+        "deny": [
+            "Read(./.env)",
+            "Read(./.env.*)",
+            "Read(./**/.env)",
+            "Read(./**/.env.*)",
+            "Read(./service-account*.json)",
+            "Read(./**/service-account*.json)",
+            "Read(./**/secrets/**)",
+            "Read(./**/*.pem)",
+            "Read(./**/*.key)",
+            "Edit(./.env)",
+            "Edit(./.env.*)",
+            "Edit(./service-account*.json)",
+            "Edit(./**/secrets/**)"
+        ]
+    },
+    "hooks": {
+        "PostToolUse": [
+            {
+                "matcher": "Edit|Write|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/format.js\"",
+                        "timeout": 30
+                    }
+                ]
+            }
+        ]
+    }
+}
