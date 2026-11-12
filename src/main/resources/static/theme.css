@@ -1,55 +1,118 @@
 :root {
-    --theme-ink: #1f2925;
-    --theme-muted: #65706a;
-    --theme-paper: #fffdf7;
-    --theme-surface: rgba(255, 253, 247, .9);
-    --theme-line: #dce3dc;
-    --theme-green: #176345;
-    --theme-green-dark: #0f4b35;
-    --theme-red: #b93228;
-    --theme-gold: #d18b3b;
-    --theme-shadow: 0 18px 45px rgba(34, 55, 45, .1);
-    --theme-radius: 14px;
-    --theme-control-radius: 9px;
+    --theme-ink: #1b2b25;
+    --theme-muted: #62716a;
+    --theme-paper: #fff;
+    --theme-surface: #fff;
+    --theme-line: #e4eae6;
+    --theme-green: #0f6e56;
+    --theme-green-dark: #085041;
+    --theme-green-light: #e1f5ee;
+    --theme-mint: #9fe1cb;
+    --theme-red: #b42318;
+    --theme-gold: #9fe1cb;
+    --theme-shadow: 0 4px 16px rgba(15, 110, 86, .06);
+    --theme-radius: 16px;
+    --theme-control-radius: 12px;
     --theme-space: 16px;
     --theme-surface-border: 1px solid var(--theme-line);
     --rosso: var(--theme-red);
     --verde: var(--theme-green);
     --crema: var(--theme-paper);
     --bordo: var(--theme-line);
-    --sfondo: #f1f5f0;
+    --sfondo: #f3f6f4;
     --inchiostro: var(--theme-ink);
     --theme-fast: 160ms ease;
     --theme-normal: 280ms cubic-bezier(.2, .8, .2, 1);
 }
 
+@font-face {
+    font-family: "Poppins";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 400;
+    src: url("/fonts/poppins-latin-ext-400-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: "Poppins";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 400;
+    src: url("/fonts/poppins-latin-400-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: "Poppins";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 500;
+    src: url("/fonts/poppins-latin-ext-500-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: "Poppins";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 500;
+    src: url("/fonts/poppins-latin-500-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: "Poppins";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 600;
+    src: url("/fonts/poppins-latin-ext-600-normal.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: "Poppins";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 600;
+    src: url("/fonts/poppins-latin-600-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 * { -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
+html { min-width: 320px; }
 body {
-    color: var(--theme-ink) !important;
-    background: radial-gradient(circle at 12% 0%, rgba(209, 139, 59, .12), transparent 30%), linear-gradient(135deg, #f5f7f1, #e9f0ea) !important;
-    font-family: "Trebuchet MS", "Segoe UI", sans-serif !important;
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    color: var(--theme-ink);
+    background: var(--sfondo);
+    font-family: "Poppins", sans-serif;
+    font-size: 16px;
     letter-spacing: 0;
 }
-body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .28; background-image: linear-gradient(rgba(23, 99, 69, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(23, 99, 69, .035) 1px, transparent 1px); background-size: 28px 28px; }
-main, .home, .dashboard, .modifica { position: relative; animation: theme-rise 560ms var(--theme-normal) both; }
-header, .dashboard-header { border-color: var(--theme-green) !important; }
-h1, h2 { font-family: "Trebuchet MS", "Segoe UI", sans-serif !important; letter-spacing: -.02em !important; }
-h1 { color: var(--theme-green) !important; font-size: clamp(1.75rem, 4vw, 2rem) !important; line-height: 1.2 !important; }
-a { transition: color var(--theme-fast), transform var(--theme-fast); }
-a:hover { color: var(--theme-red); transform: translateY(-1px); }
-button, input, select { font-family: inherit !important; }
-button { position: relative; overflow: hidden; transition: transform var(--theme-fast), box-shadow var(--theme-fast), background var(--theme-fast), border-color var(--theme-fast); }
-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(23, 99, 69, .14); }
-button:active:not(:disabled) { transform: translateY(0) scale(.98); }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(209, 139, 59, .55); outline-offset: 3px; }
-.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .home-links a, .riga-edit { background: var(--theme-surface) !important; border-color: var(--theme-line) !important; box-shadow: var(--theme-shadow); border-radius: var(--theme-radius) !important; backdrop-filter: blur(10px); }
-.tavolo-input, .extra-section, .riepilogo { animation: theme-rise 520ms var(--theme-normal) both; }
-.prodotto-btn { border-color: var(--theme-line) !important; border-radius: var(--theme-radius) !important; box-shadow: 0 8px 20px rgba(34, 55, 45, .08) !important; transition: transform var(--theme-normal), border-color var(--theme-fast), box-shadow var(--theme-normal), background var(--theme-fast) !important; animation: product-in 420ms var(--theme-normal) both; }
-.prodotto-btn:hover { border-color: var(--theme-gold) !important; background: #fffaf0 !important; box-shadow: 0 14px 28px rgba(34, 55, 45, .14) !important; }
-.tab.active, .btn-invia, nav button, .salva, #aggiungi { background: var(--theme-green) !important; }
-.btn-invia:hover:not(:disabled), nav button:hover, .salva:hover, #aggiungi:hover { background: var(--theme-green-dark) !important; }
-.prezzo, .ordine-totale, .metriche strong { color: var(--theme-red) !important; }
+img, video, canvas, svg { max-width: 100%; }
+main, .home, .dashboard, .modifica { position: relative; }
+header, .dashboard-header { border-color: var(--theme-green); }
+h1, h2 { font-family: "Poppins", sans-serif; letter-spacing: -.02em; }
+h1 { color: var(--theme-green); font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.2; }
+h2 { line-height: 1.25; }
+p { line-height: 1.5; }
+a { transition: color var(--theme-fast); }
+button, input, select, textarea { font-family: inherit; font-size: 16px; }
+button { position: relative; min-height: 48px; overflow: hidden; transition: background var(--theme-fast), border-color var(--theme-fast), color var(--theme-fast); }
+button:active:not(:disabled) { transform: scale(.98); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(15, 110, 86, .3); outline-offset: 3px; }
+:where(.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .order-card, .home-links a, .printer-panel, .riga-edit, .login-card, .order-card__field, .conferma-contenuto, .order-card__details) {
+    background: var(--theme-surface);
+    border: var(--theme-surface-border);
+    border-radius: var(--theme-radius);
+    box-shadow: var(--theme-shadow);
+}
+.prodotto-btn { border-color: var(--theme-line); border-radius: var(--theme-radius); }
+.tab.active, .btn-invia, .salva, #aggiungi { background: var(--theme-green); }
+.prezzo, .ordine-totale, .metriche strong { color: var(--theme-green-dark); }
 #messaggio, #stato { min-height: 28px; transition: opacity var(--theme-fast), transform var(--theme-fast); }
 .flash { animation: theme-flash 650ms ease both; }
 .toast { position: fixed; z-index: 10; right: 22px; bottom: 22px; max-width: min(360px, calc(100vw - 44px)); padding: 14px 17px; border-radius: 12px; color: #fff; background: var(--theme-green-dark); box-shadow: var(--theme-shadow); animation: toast-in 320ms var(--theme-normal) both; }
@@ -81,7 +144,7 @@ p { line-height: 1.5; }
 :where(input, select, textarea) {
     min-width: 0;
     max-width: 100%;
-    min-height: 46px;
+    min-height: 48px;
     border: 1px solid var(--theme-line);
     border-radius: var(--theme-control-radius);
     background-color: #fff;
@@ -96,7 +159,7 @@ p { line-height: 1.5; }
 }
 
 button {
-    min-height: 44px;
+    min-height: 48px;
     border-radius: var(--theme-control-radius);
     touch-action: manipulation;
 }
@@ -155,7 +218,7 @@ nav:not(.home-links):not(.tab-container) > button {
     justify-content: center;
     box-sizing: border-box;
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     padding: 8px 12px;
     font-size: 16px !important;
     line-height: 1.2;
