@@ -223,6 +223,15 @@ body.app-shell nav.app-bottom-nav {
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {
+    .app-sidebar .app-brand {
+        font-size: 0;
+    }
+
+    .app-sidebar .app-brand::after {
+        content: "C7";
+        font-size: 19px;
+    }
+
     .app-sidebar .app-nav-item span {
         display: none;
     }
@@ -252,6 +261,14 @@ body.app-shell nav.app-bottom-nav {
         margin: 0;
     }
 
+    body.app-shell .app-page-header {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
     .app-page-header {
         position: sticky;
         z-index: 900;
@@ -265,6 +282,11 @@ body.app-shell nav.app-bottom-nav {
     }
 
     .app-page-header h1 {
+        flex: 1 1 auto;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         color: #fff;
         font-size: 18px;
         font-weight: 600;
@@ -277,10 +299,13 @@ body.app-shell nav.app-bottom-nav {
     }
 
     .app-header-actions {
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
         gap: 4px;
     }
 
     .app-header-actions button {
+        flex: 0 0 auto;
         min-width: 44px;
         min-height: 44px;
         padding: 6px 9px;

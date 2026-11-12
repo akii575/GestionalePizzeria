@@ -50,7 +50,7 @@ test("reprint controls are available only on editable order cards", () => {
     assert.doesNotMatch(render({ tipo: "tavolo" }, { canEdit: false }), /data-ristampa=/);
 });
 
-test("delivery fields share one row while pickup and counter names are inline", () => {
+test("all order types share two-column fields and counter names span the row", () => {
     const delivery = render({
         tipo: "consegna",
         telefonoConsegna: "3331234567",
@@ -62,22 +62,48 @@ test("delivery fields share one row while pickup and counter names are inline", 
         telefonoRitiro: "3331234567"
     });
     const counter = render({ tipo: "banco", cognomeBanco: "Rossi" });
+    const table = render({ tipo: "tavolo", tavoloOCliente: "Tavolo 4", numeroPersone: 3 });
 
-    assert.match(delivery, /class="order-card__fields order-card__fields--delivery"/);
-    assert.equal((delivery.match(/class="order-card__field"/g) || []).length, 2);
-    assert.match(pickup, /order-card__field--inline/);
-    assert.match(counter, /order-card__field--inline/);
-    for (const html of [pickup, counter]) {
-        assert.match(html, /order-card__field-label">Nome<\/strong>/);
-        assert.match(html, /class="order-card__field-value">(?:Anna Rossi|Rossi)<\/div>/);
+    for (const html of [delivery, pickup, counter, table]) {
+        assert.match(html, /class="order-card__fields"/);
+        assert.doesNotMatch(html, /order-card__field--inline|order-card__fields--delivery/);
     }
+    assert.match(counter, /class="order-card__field order-card__field--full"/);
+    assert.match(pickup, /order-card__field-label">Nome<\/strong>\s*<div class="order-card__field-value">Anna Rossi<\/div>/);
 
     const styles = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
         "utf8"
     );
-    assert.match(styles, /\.order-card__fields--delivery\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
-    assert.match(styles, /\.order-card__field--inline\s*\{\s*display:\s*flex;/);
+    assert.match(styles, /\.order-card__fields\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*150px\),\s*1fr\)\)/);
+    assert.match(styles, /\.order-card__field--full\s*\{\s*grid-column:\s*1\s*\/\s*-1;/);
+    assert.doesNotMatch(styles, /order-card__field--inline|order-card__fields--delivery/);
+});
+
+test("print status is a full-width header row below title and totals", () => {
+    const messages = [
+        "Stampata",
+        "Comanda aggiornata; la copia gia' stampata non e' stata ristampata."
+    ];
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
+        "utf8"
+    );
+
+    for (const message of messages) {
+        const html = render({ tipo: "tavolo", messaggioStampa: message, stampaCompletata: true });
+        const headingEnd = html.indexOf("</div>", html.indexOf('class="order-card__heading"'));
+        const statusPosition = html.indexOf('class="order-card__print-status');
+        const datePosition = html.indexOf('class="order-card__date"');
+        assert.ok(headingEnd >= 0 && headingEnd < statusPosition);
+        assert.ok(statusPosition < datePosition);
+        assert.ok(html.includes(message.replace(/'/g, "&#39;")));
+    }
+
+    assert.match(styles, /\.order-card__print-status\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;[^}]*width:\s*100%;[^}]*padding:\s*8px 12px;[^}]*border-radius:\s*10px;[^}]*text-align:\s*left;[^}]*white-space:\s*normal;/);
+    assert.match(styles, /\.dashboard \.order-card\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/);
+    assert.match(styles, /\.dashboard \.order-card__actions\s*\{[^}]*margin-top:\s*auto;/);
+    assert.match(styles, /\.dashboard \.lista-ordini,[\s\S]*?align-items:\s*stretch;/);
 });
 
 test("delivery surcharge is included in order details only when present", () => {
@@ -207,6 +233,38 @@ test("all-orders title has a green separator before its navigation", () => {
 
     assert.match(page, /class="dashboard-header dashboard-header--orders"/);
     assert.match(styles, /\.dashboard-header\.dashboard-header--orders > div\s*\{[^}]*border-bottom:\s*4px solid var\(--verde\);/);
+});
+
+test("mobile list headers keep the title and actions on one line", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
+
+    assert.match(navigation, /body\.app-shell \.app-page-header\s*\{[^}]*flex-direction:\s*row;[^}]*flex-wrap:\s*nowrap;[^}]*align-items:\s*center;[^}]*justify-content:\s*space-between;/);
+    assert.match(navigation, /\.app-page-header h1\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
+    assert.match(navigation, /\.app-header-actions\s*\{[^}]*flex-wrap:\s*nowrap;/);
+});
+
+test("mobile filters keep the date input inside its row and show the search full-width", () => {
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
+        "utf8"
+    );
+
+    assert.match(styles, /\.dashboard \.filtri\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
+    assert.match(styles, /\.dashboard \.filtri > label:first-child\s*\{\s*grid-column:\s*1\s*\/\s*-1;/);
+    assert.match(styles, /\.dashboard \.filtri input\[type="date"\]\s*\{[^}]*-webkit-appearance:\s*none;[^}]*appearance:\s*none;/);
+    assert.match(styles, /\.dashboard \.filtri input\[type="search"\],[\s\S]*?\.dashboard \.filtri input\[type="date"\]\s*\{[^}]*box-sizing:\s*border-box;[^}]*width:\s*100%;[^}]*min-width:\s*0;/);
+    assert.match(styles, /\.dashboard \.filtri \.switch\s*\{\s*grid-column:\s*2;/);
+});
+
+test("Civico7 is the full brand outside the compact icon-only sidebar", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const navigation = fs.readFileSync(path.join(directory, "nav.js"), "utf8");
+    const styles = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
+
+    assert.match(navigation, /brand\.textContent\s*=\s*"Civico7"/);
+    assert.match(navigation, /if \(isHome && title\) title\.textContent = "Civico7"/);
+    assert.match(styles, /@media \(min-width: 768px\) and \(max-width: 1024px\)[\s\S]*?\.app-sidebar \.app-brand::after\s*\{[^}]*content:\s*"C7";/);
 });
 
 test("shared card escapes field, product, extra and note content", () => {

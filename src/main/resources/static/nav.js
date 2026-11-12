@@ -53,6 +53,7 @@
         logoutButton.classList.add("app-logout");
 
         const isHome = window.location.pathname === "/" || window.location.pathname === "/index.html";
+        if (isHome && title) title.textContent = "Civico7";
         const links = isDelivery
             ? [{ label: "Consegne", href: "/consegne.html", icon: "delivery" }]
             : [
@@ -77,7 +78,7 @@
         const brand = document.createElement("a");
         brand.className = "app-brand";
         brand.href = "/";
-        brand.textContent = "C7";
+        brand.textContent = "Civico7";
         brand.setAttribute("aria-label", "CIVICO7 - Home");
         sidebar.append(brand);
 

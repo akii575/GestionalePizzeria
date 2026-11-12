@@ -27,13 +27,9 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 .order-card__totals { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
 .order-card__totals .stato-pagamento { box-sizing: border-box; display: inline-flex; flex: 0 0 136px; align-items: center; justify-content: center; width: 136px; min-height: 44px; padding: 6px; font-size: 13px; line-height: 1.2; white-space: nowrap; }
 .order-card__total { color: var(--verde); font-size: clamp(18px, 4.8vw, 22px); font-weight: 700; line-height: 1.2; text-align: right; white-space: nowrap; }
-.order-card__fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 14px; }
-.order-card__fields--delivery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.order-card__fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 8px; padding: 10px 14px; }
 .order-card__field { display: grid; gap: 3px; min-width: 0; min-height: 64px; padding: 9px 10px; border: 1px solid var(--bordo); background: #fffdf7; }
-.order-card__field--inline { display: flex; align-items: baseline; gap: 5px; min-height: 0; }
-.order-card__field--inline .order-card__field-label { flex: 0 0 auto; }
-.order-card__field--inline .order-card__field-label::after { content: ":"; }
-.order-card__field--inline .order-card__field-value { min-width: 0; }
+.order-card__field--full { grid-column: 1 / -1; }
 .order-card__field-label { font-size: 14px; font-weight: 700; line-height: 1.4; }
 .order-card__field-value { min-width: 0; font-size: 16px; font-weight: 400; line-height: 1.45; overflow-wrap: anywhere; }
 .order-card__field-value a { color: var(--verde); font-size: inherit; font-weight: 400; line-height: inherit; }
@@ -73,15 +69,20 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 @media (max-width: 420px) { .order-card__totals { gap: 4px; } .order-card__totals .stato-pagamento { flex-basis: 136px; width: 136px; font-size: 11px; } .order-card__actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .order-card__print-status {
-    display: inline-flex;
-    width: fit-content;
-    min-height: 28px;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 999px;
+    display: block;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
     font-size: 12px;
     font-weight: 600;
     line-height: 1.25;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
 }
 
 .order-card__print-status--printed { background: #eaf3de; color: #27500a; }
@@ -134,11 +135,15 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 .dashboard .lista-ordini,
 .dashboard .lista-consegne {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-    align-items: start;
+    align-items: stretch;
     gap: 16px;
 }
 
 .dashboard .order-card {
+    display: flex;
+    min-width: 0;
+    height: 100%;
+    flex-direction: column;
     border: 1px solid var(--theme-line);
     border-radius: 16px;
     background: #fff;
@@ -183,6 +188,7 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     padding: 4px 14px 14px;
+    margin-top: auto;
 }
 
 .dashboard .order-card__actions button {
@@ -215,7 +221,7 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 
 @media (max-width: 767px) {
     .dashboard .filtri {
-        grid-template-columns: minmax(0, 1fr) 120px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
         margin: 8px 0;
         padding: 10px;
@@ -225,12 +231,20 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
     }
 
     .dashboard .filtri label {
+        min-width: 0;
         font-size: 12px;
         line-height: 1.25;
     }
 
+    .dashboard .filtri > label:first-child {
+        grid-column: 1 / -1;
+    }
+
     .dashboard .filtri input[type="search"],
     .dashboard .filtri input[type="date"] {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
         min-height: 48px;
         margin-top: 4px;
         padding: 8px;
@@ -238,11 +252,22 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
         font-size: 16px;
     }
 
+    .dashboard .filtri input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+    }
+
     .dashboard .filtri .switch {
-        grid-column: 1 / -1;
+        grid-column: 2;
         min-height: 44px;
+        min-width: 0;
         margin: 0;
         font-size: 13px;
+        overflow-wrap: anywhere;
+    }
+
+    .dashboard .filtri .switch input {
+        flex: 0 0 18px;
     }
 
     .dashboard .metriche {
@@ -281,7 +306,7 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 
 @media (max-width: 420px) {
     .dashboard .filtri {
-        grid-template-columns: minmax(0, 1fr) 112px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         padding: 8px;
     }
 

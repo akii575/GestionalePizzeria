@@ -30,12 +30,12 @@ const orderCard = (() => {
         }
         if (type === "ritiro") {
             return [
-                { label: "Nome", value: order.tavoloOCliente || "—", inline: true },
+                { label: "Nome", value: order.tavoloOCliente || "—" },
                 { label: "Telefono", value: order.telefonoRitiro || "—", kind: "telephone" }
             ];
         }
         if (type === "banco") {
-            return [{ label: "Nome", value: order.cognomeBanco || "—", inline: true }];
+            return [{ label: "Nome", value: order.cognomeBanco || "—", full: true }];
         }
 
         const table = String(order.tavoloOCliente || "—").replace(/^tavolo\s*[:#-]?\s*/i, "") || "—";
@@ -57,15 +57,14 @@ const orderCard = (() => {
         return escapeHtml(value);
     }
 
-    function renderFields(fields, type) {
-        const layoutClass = type === "consegna" ? " order-card__fields--delivery" : "";
+    function renderFields(fields) {
         const fieldMarkup = fields.map(field => `
-            <div class="order-card__field${field.inline ? " order-card__field--inline" : ""}">
+            <div class="order-card__field${field.full ? " order-card__field--full" : ""}">
                 <strong class="order-card__field-label">${escapeHtml(field.label)}</strong>
                 <div class="order-card__field-value">${renderFieldValue(field)}</div>
             </div>
         `).join("");
-        return `<div class="order-card__fields${layoutClass}">${fieldMarkup}</div>`;
+        return `<div class="order-card__fields">${fieldMarkup}</div>`;
     }
 
     function renderProducts(rows, menu) {
@@ -187,6 +186,7 @@ const orderCard = (() => {
         const deliveryFee = type === "consegna" && Number(order.costoConsegna) > 0
             ? `<p class="order-card__delivery-fee">Costo consegna: ${euro.format(Number(order.costoConsegna))}</p>`
             : "";
+        const printStatus = renderPrintStatus(order);
 
         return `
             <article class="order-card" data-order-type="${escapeHtml(type)}">
@@ -194,15 +194,15 @@ const orderCard = (() => {
                     <div class="order-card__heading">
                         <span class="order-card__number">${serviceName} #${Number(order.numero)}</span>
                         <h2 class="order-card__title">Dettagli ${serviceName.toLowerCase()}</h2>
-                        ${renderPrintStatus(order)}
                     </div>
                     <div class="order-card__totals">
                         ${renderPayment(order, canEdit)}
                         <div class="order-card__total">${euro.format(Number(order.totale || 0))}</div>
                     </div>
+                    ${printStatus}
                     <p class="order-card__date">${dateText}${serviceTime}</p>
                 </header>
-                ${renderFields(fieldsForOrder(order, type), type)}
+                ${renderFields(fieldsForOrder(order, type))}
                 <details class="order-card__details">
                     <summary>Apri il dettaglio dell'ordine</summary>
                     <ul class="order-card__products">${renderProducts(order.righe, menu)}</ul>
