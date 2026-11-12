@@ -78,6 +78,7 @@
         const currentHref = currentPageHref(isHome);
         const primaryLinks = isDelivery ? links : links.slice(0, 4);
         const secondaryLinks = isDelivery ? [] : links.slice(4);
+        document.documentElement.classList.add("app-shell-root");
         document.body.classList.add("app-shell");
         if (isDelivery) document.body.classList.add("app-shell--delivery");
 
@@ -128,7 +129,7 @@
         } else {
             for (const link of primaryLinks) {
                 if (link.icon === "add") {
-                    const create = createLink(link, currentHref);
+                    const create = createLink({ ...link, label: "Nuova" }, currentHref);
                     create.classList.add("app-bottom-create");
                     create.setAttribute("aria-label", "Nuova comanda");
                     bottomNav.append(create);

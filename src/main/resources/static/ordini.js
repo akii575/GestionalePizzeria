@@ -296,6 +296,7 @@ function renderRiepilogo() {
     );
     document.getElementById("riepilogo-totale").textContent = `Totale: ${euro.format(totaleOrdine())}`;
     invia.disabled = !stato.righe.length;
+    invia.textContent = stato.righe.length ? "Rivedi e invia" : "Aggiungi prodotti";
     aggiornaSelettoreRighe();
 }
 function apriConferma() {

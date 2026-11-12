@@ -315,8 +315,33 @@ test("mobile list headers keep the title and actions on one line", () => {
     const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
 
     assert.match(navigation, /body\.app-shell \.app-page-header\s*\{[^}]*flex-direction:\s*row;[^}]*flex-wrap:\s*nowrap;[^}]*align-items:\s*center;[^}]*justify-content:\s*space-between;/);
-    assert.match(navigation, /\.app-page-header h1\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
-    assert.match(navigation, /\.app-header-actions\s*\{[^}]*flex-wrap:\s*nowrap;/);
+    assert.match(navigation, /body\.app-shell \.app-page-header h1\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
+    assert.match(navigation, /\.app-header-actions\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*margin-left:\s*auto;/);
+    assert.match(navigation, /body\.app-shell \.app-page-header\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;[^}]*width:\s*calc\(100% \+ var\(--app-mobile-gutter\) \+ var\(--app-mobile-gutter\)\);[^}]*margin:\s*0 var\(--app-mobile-gutter-negative\) 14px;/);
+});
+
+test("mobile navigation and checkout use one safe-area offset", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
+    const navigationScript = fs.readFileSync(path.join(directory, "nav.js"), "utf8");
+    const orderStyles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
+    const editStyles = fs.readFileSync(path.join(directory, "modifica.css"), "utf8");
+    const orderScript = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+
+    assert.match(navigation, /--app-mobile-nav-content-height:\s*60px;[\s\S]*?--app-mobile-nav-height:\s*calc\(var\(--app-mobile-nav-content-height\) \+ env\(safe-area-inset-bottom\)\)/);
+    assert.match(navigation, /html\.app-shell-root\s*\{\s*background:\s*var\(--theme-green\);/);
+    assert.match(navigation, /body\.app-shell\s*\{\s*padding-bottom:\s*0;/);
+    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav\s*\{[^}]*height:\s*var\(--app-mobile-nav-height\);/);
+    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-nav-item svg\s*\{\s*width:\s*22px;\s*height:\s*22px;/);
+    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-bottom-create svg\s*\{[^}]*top:\s*-33px;[^}]*width:\s*56px;[^}]*height:\s*56px;/);
+    assert.match(navigationScript, /create = createLink\(\{ \.\.\.link, label: "Nuova" \}/);
+    assert.match(orderStyles, /\.composer-summary > \.riepilogo\s*\{[^}]*bottom:\s*var\(--app-mobile-nav-height\);[^}]*height:\s*var\(--app-mobile-checkout-height\);/);
+    assert.match(orderStyles, /\.composer-summary > \.btn-invia:disabled\s*\{[^}]*cursor:\s*not-allowed;[^}]*opacity:\s*\.45;/);
+    assert.match(orderScript, /invia\.textContent = stato\.righe\.length \? "Rivedi e invia" : "Aggiungi prodotti";/);
+    assert.match(editStyles, /\.modifica-footer\s*\{[^}]*bottom:\s*var\(--app-mobile-nav-height\);/);
+    assert.match(orderStyles, /\.composer-summary > \.riepilogo::after\s*\{[^}]*content:\s*counter\(order-items\) " prodotti";/);
+    assert.match(editStyles, /counter-increment:\s*edit-products;/);
+    assert.match(editStyles, /counter\(edit-products\) " prodotti"/);
 });
 
 test("mobile filters keep the date input inside its row and show the search full-width", () => {

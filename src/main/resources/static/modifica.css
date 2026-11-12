@@ -165,17 +165,12 @@ textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; fo
 
 @media (max-width: 767px) {
     .app-shell .modifica {
-        padding: 0 12px calc(150px + env(safe-area-inset-bottom));
+        padding: 0 12px calc(var(--app-mobile-checkout-height) + var(--app-mobile-nav-height));
+        counter-reset: edit-products;
     }
 
-    .modifica > header {
-        margin: 0 -12px 12px;
-        padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
-    }
-
-    .modifica > header h1 {
-        color: #fff;
-        font-size: 17px;
+    .app-shell .modifica .riga-edit {
+        counter-increment: edit-products;
     }
 
     .modifica > header a {
@@ -186,15 +181,18 @@ textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; fo
         position: fixed;
         z-index: 1090;
         right: 0;
-        bottom: calc(85px + env(safe-area-inset-bottom));
+        bottom: var(--app-mobile-nav-height);
         left: 0;
+        box-sizing: border-box;
+        min-height: var(--app-mobile-checkout-height);
         grid-template-columns: minmax(0, 1fr) minmax(130px, .9fr);
         align-items: center;
         gap: 10px;
-        padding: 10px 12px;
-        border: 0;
-        border-top: 1px solid var(--theme-line);
-        border-radius: 18px 18px 0 0;
+        padding: 8px 12px;
+        border: 1px solid var(--theme-line);
+        border-bottom: 0;
+        border-radius: 16px 16px 0 0;
+        background: #fff;
         box-shadow: 0 -4px 16px rgba(26, 94, 169, .08);
     }
 
@@ -202,8 +200,20 @@ textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; fo
         font-size: 18px;
     }
 
+    .modifica-footer #totale-modifica::after {
+        display: block;
+        color: var(--theme-muted);
+        content: counter(edit-products) " prodotti";
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.3;
+    }
+
     .modifica-footer .salva {
+        height: 48px;
         min-height: 48px;
         font-size: 14px;
+        background: var(--theme-green);
+        color: #fff;
     }
 }
