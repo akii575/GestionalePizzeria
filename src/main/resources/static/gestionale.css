@@ -70,4 +70,240 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 .app-mappe-dialog .app-mappe-nota { margin: 12px 0 0; color: #626a62; font-size: 12px; }
 @media (max-width: 700px) { .dashboard { padding: 14px; } .dashboard-header { align-items: flex-start; flex-direction: column; } .ordine-testa { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 12px; } .ordine-totali { gap: 5px; } .filtri, .metriche { grid-template-columns: 1fr; } nav { width: 100%; justify-content: space-between; } }
 @media (max-width: 700px) { .order-card__header { gap: 8px; padding: 10px 12px; } .order-card__fields { gap: 8px; padding: 10px 12px; } .order-card__details { margin-inline: 12px; } .order-card__actions { padding-inline: 12px; } }
-@media (max-width: 420px) { .order-card__totals { gap: 4px; } .order-card__totals .stato-pagamento { flex-basis: 136px; width: 136px; font-size: 11px; } .order-card__actions { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 420px) { .order-card__totals { gap: 4px; } .order-card__totals .stato-pagamento { flex-basis: 136px; width: 136px; font-size: 11px; } .order-card__actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.order-card__print-status {
+    display: inline-flex;
+    width: fit-content;
+    min-height: 28px;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.order-card__print-status--printed { background: #eaf3de; color: #27500a; }
+.order-card__print-status--queued { background: #faeeda; color: #633806; }
+.order-card__print-status--addition { background: #e6f1fb; color: #0c447c; }
+.order-card__print-status--error { background: #fcebeb; color: #791f1f; }
+
+.dashboard .filtri {
+    grid-template-columns: minmax(0, 2fr) minmax(130px, 1fr) minmax(180px, 1.5fr);
+    gap: 10px;
+    align-items: end;
+}
+
+.dashboard .metriche {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.dashboard .metriche > div {
+    min-height: 84px;
+    padding: 12px 14px;
+    border: 1px solid var(--theme-line);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: var(--theme-shadow);
+}
+
+.dashboard .metriche > div:last-child {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 54px;
+}
+
+.dashboard .metriche > div[data-hide-for-staff] {
+    border-color: var(--theme-green);
+    background: var(--theme-green);
+    color: #fff;
+}
+
+.dashboard .metriche > div[data-hide-for-staff] span,
+.dashboard .metriche > div[data-hide-for-staff] strong {
+    color: #fff;
+}
+
+.dashboard .metriche span { font-size: 13px; }
+.dashboard .metriche strong { font-size: 22px; font-weight: 600; }
+.dashboard .metriche > div:last-child strong { font-size: 14px; }
+.dashboard .lista-ordini,
+.dashboard .lista-consegne {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    align-items: start;
+    gap: 16px;
+}
+
+.dashboard .order-card {
+    border: 1px solid var(--theme-line);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: var(--theme-shadow);
+}
+
+.dashboard .order-card__header {
+    padding: 14px 16px;
+}
+
+.dashboard .order-card__title {
+    color: var(--theme-ink);
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.dashboard .order-card__number {
+    color: var(--theme-green);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dashboard .order-card__total {
+    color: var(--theme-green-dark);
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.dashboard .order-card__fields {
+    padding: 10px 14px;
+}
+
+.dashboard .order-card__field,
+.dashboard .order-card__details {
+    border-color: var(--theme-line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: none;
+}
+
+.dashboard .order-card__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 4px 14px 14px;
+}
+
+.dashboard .order-card__actions button {
+    min-height: 48px;
+    border: 1px solid var(--theme-line);
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.dashboard .order-card__actions button[data-modifica],
+.dashboard .order-card__actions button[data-ristampa] {
+    border-color: var(--theme-green);
+    background: var(--theme-green);
+    color: #fff;
+}
+
+.dashboard .order-card__actions button[data-elimina] {
+    grid-column: 1 / -1;
+    border-color: #f3c6c3;
+    background: #fcebeb;
+    color: #791f1f;
+}
+
+.app-ristampa-opzione:focus-visible,
+.app-mappe-scelta:focus-visible {
+    border-color: var(--theme-green);
+    background: var(--theme-green-light);
+    outline: 3px solid rgba(15, 110, 86, .22);
+}
+
+@media (max-width: 767px) {
+    .dashboard .filtri {
+        grid-template-columns: minmax(0, 1fr) 120px;
+        gap: 8px;
+        margin: 8px 0;
+        padding: 10px;
+        border: 1px solid var(--theme-line);
+        border-radius: 14px;
+        background: #fff;
+    }
+
+    .dashboard .filtri label {
+        font-size: 12px;
+        line-height: 1.25;
+    }
+
+    .dashboard .filtri input[type="search"],
+    .dashboard .filtri input[type="date"] {
+        min-height: 48px;
+        margin-top: 4px;
+        padding: 8px;
+        border-radius: 10px;
+        font-size: 16px;
+    }
+
+    .dashboard .filtri .switch {
+        grid-column: 1 / -1;
+        min-height: 44px;
+        margin: 0;
+        font-size: 13px;
+    }
+
+    .dashboard .metriche {
+        gap: 8px;
+        margin: 8px 0;
+    }
+
+    .dashboard .metriche > div {
+        min-height: 76px;
+        padding: 10px;
+    }
+
+    .dashboard .metriche strong { font-size: 22px; }
+    .dashboard .lista-ordini,
+    .dashboard .lista-consegne {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .dashboard .order-card__header {
+        padding: 12px;
+    }
+
+    .dashboard .order-card__totals {
+        flex-wrap: wrap;
+    }
+
+    .dashboard .order-card__total {
+        font-size: 22px;
+    }
+
+    .dashboard .order-card__actions {
+        padding-inline: 12px;
+    }
+}
+
+@media (max-width: 420px) {
+    .dashboard .filtri {
+        grid-template-columns: minmax(0, 1fr) 112px;
+        padding: 8px;
+    }
+
+    .dashboard .metriche span { font-size: 11px; }
+    .dashboard .metriche > div { padding: 8px; }
+    .dashboard .order-card__actions { gap: 6px; }
+}
+
+@media (min-width: 768px) {
+    .app-ristampa-dialog {
+        width: min(440px, calc(100% - 32px));
+    }
+}
+
+@media (max-width: 767px) {
+    .app-ristampa-dialog {
+        inset: auto 0 0;
+        width: 100%;
+        max-width: none;
+        max-height: min(80vh, 640px);
+        margin: 0;
+        padding: 28px 20px calc(20px + env(safe-area-inset-bottom));
+        border-radius: 24px 24px 0 0;
+    }
+}
