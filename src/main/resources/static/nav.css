@@ -278,6 +278,10 @@ body.app-shell nav.app-bottom-nav {
         padding-bottom: var(--app-mobile-nav-height);
     }
 
+    body.app-shell main.dashboard {
+        padding-top: 0;
+    }
+
     body.app-shell .container,
     body.app-shell .modifica {
         --app-mobile-gutter: 12px;
@@ -345,6 +349,12 @@ body.app-shell nav.app-bottom-nav {
         gap: 4px;
     }
 
+    body.app-shell .app-page-header .app-header-actions {
+        min-width: 0;
+        margin-left: auto;
+        justify-content: flex-end;
+    }
+
     .app-header-actions button {
         flex: 0 0 auto;
         min-width: 44px;
@@ -373,7 +383,7 @@ body.app-shell nav.app-bottom-nav {
         align-items: stretch;
         gap: 0;
         flex-wrap: nowrap;
-        padding: 4px 8px env(safe-area-inset-bottom);
+        padding: 0 8px env(safe-area-inset-bottom);
         border-top: 1px solid var(--theme-line);
         background: #fff;
         box-shadow: 0 -4px 16px rgba(26, 94, 169, .08);
@@ -386,9 +396,9 @@ body.app-shell nav.app-bottom-nav {
         min-height: 0;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 2px;
-        padding: 2px 1px;
+        justify-content: flex-end;
+        gap: 1px;
+        padding: 0 1px;
         border: 0;
         border-radius: 12px;
         background: transparent;
@@ -411,32 +421,20 @@ body.app-shell nav.app-bottom-nav {
     }
 
     body.app-shell nav.app-bottom-nav > .app-bottom-create {
-        position: relative;
-        z-index: 1;
-        height: 100%;
-        min-height: 0;
-        justify-content: flex-end;
-        margin-top: 0;
-        padding-bottom: 2px;
         color: var(--theme-green-dark);
-        font-size: 11px;
         font-weight: 600;
     }
 
     body.app-shell nav.app-bottom-nav > .app-bottom-create svg {
-        position: absolute;
-        top: -33px;
-        left: 50%;
+        position: static;
         box-sizing: border-box;
-        width: 56px;
-        height: 56px;
-        padding: 14px;
-        border: 4px solid #fff;
+        width: 44px;
+        height: 44px;
+        padding: 11px;
+        border: 0;
         border-radius: 50%;
         background: var(--theme-gold);
         color: var(--theme-green-dark);
-        box-shadow: 0 4px 12px rgba(26, 94, 169, .2);
-        transform: translateX(-50%);
     }
 
     .app-more-backdrop {

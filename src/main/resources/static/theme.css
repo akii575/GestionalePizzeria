@@ -235,8 +235,8 @@ nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom
 }
 
 :where(.dashboard, .container, .modifica, .home) { min-width: 0; }
-.dashboard-header { flex-wrap: wrap; }
-.dashboard-header > div { min-width: min(100%, 250px); }
+.dashboard-header:not(.app-page-header) { flex-wrap: wrap; }
+.dashboard-header:not(.app-page-header) > div { min-width: min(100%, 250px); }
 .home-links { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .home-links a { min-width: 0; }
 .home-links strong, .home-links span { overflow-wrap: anywhere; }

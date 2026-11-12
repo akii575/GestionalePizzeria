@@ -313,11 +313,16 @@ test("all order-list pages use the same source header and navigation shell", () 
 test("mobile list headers keep the title and actions on one line", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
+    const theme = fs.readFileSync(path.join(directory, "theme.css"), "utf8");
 
     assert.match(navigation, /body\.app-shell \.app-page-header\s*\{[^}]*flex-direction:\s*row;[^}]*flex-wrap:\s*nowrap;[^}]*align-items:\s*center;[^}]*justify-content:\s*space-between;/);
     assert.match(navigation, /body\.app-shell \.app-page-header h1\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
     assert.match(navigation, /\.app-header-actions\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*margin-left:\s*auto;/);
     assert.match(navigation, /body\.app-shell \.app-page-header\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;[^}]*width:\s*calc\(100% \+ var\(--app-mobile-gutter\) \+ var\(--app-mobile-gutter\)\);[^}]*margin:\s*0 var\(--app-mobile-gutter-negative\) 14px;/);
+    assert.match(navigation, /body\.app-shell main\.dashboard\s*\{[^}]*padding-top:\s*0;/);
+    assert.match(navigation, /body\.app-shell \.app-page-header \.app-header-actions\s*\{[^}]*min-width:\s*0;[^}]*margin-left:\s*auto;[^}]*justify-content:\s*flex-end;/);
+    assert.match(theme, /\.dashboard-header:not\(\.app-page-header\)\s*\{[^}]*flex-wrap:\s*wrap;/);
+    assert.match(theme, /\.dashboard-header:not\(\.app-page-header\) > div\s*\{[^}]*min-width:\s*min\(100%, 250px\);/);
 });
 
 test("mobile navigation and checkout use one safe-area offset", () => {
@@ -333,7 +338,9 @@ test("mobile navigation and checkout use one safe-area offset", () => {
     assert.match(navigation, /body\.app-shell\s*\{\s*padding-bottom:\s*0;/);
     assert.match(navigation, /body\.app-shell nav\.app-bottom-nav\s*\{[^}]*height:\s*var\(--app-mobile-nav-height\);/);
     assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-nav-item svg\s*\{\s*width:\s*22px;\s*height:\s*22px;/);
-    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-bottom-create svg\s*\{[^}]*top:\s*-33px;[^}]*width:\s*56px;[^}]*height:\s*56px;/);
+    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-nav-item\s*\{[^}]*align-items:\s*center;[^}]*justify-content:\s*flex-end;[^}]*gap:\s*1px;/);
+    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-bottom-create svg\s*\{[^}]*position:\s*static;[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+    assert.doesNotMatch(navigation, /app-bottom-create svg\s*\{[^}]*top:\s*-33px;/);
     assert.match(navigationScript, /create = createLink\(\{ \.\.\.link, label: "Nuova" \}/);
     assert.match(orderStyles, /\.composer-summary > \.riepilogo\s*\{[^}]*bottom:\s*var\(--app-mobile-nav-height\);[^}]*height:\s*var\(--app-mobile-checkout-height\);/);
     assert.match(orderStyles, /\.composer-summary > \.btn-invia:disabled\s*\{[^}]*cursor:\s*not-allowed;[^}]*opacity:\s*\.45;/);
