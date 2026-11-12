@@ -25,12 +25,14 @@ function ordiniFiltrati() {
 function render() {
     const ordini = ordiniFiltrati();
     document.getElementById("numero-ordini").textContent = ordini.length;
-    document.getElementById("totale-ordini").textContent = euro.format(ordini.reduce((somma, ordine) => somma + Number(ordine.totale), 0));
+    if (window.currentAccount?.staff !== true) {
+        document.getElementById("totale-ordini").textContent = euro.format(ordini.reduce((somma, ordine) => somma + Number(ordine.totale), 0));
+    }
     lista.innerHTML = "";
     if (!ordini.length) { lista.innerHTML = '<div class="vuoto">Nessun ordine corrisponde ai filtri.</div>'; return; }
     ordini.slice().reverse().forEach(ordine => {
         lista.insertAdjacentHTML("beforeend", window.orderCard.render(ordine, {
-            canEdit: window.currentAccount?.admin === true,
+            canEdit: window.currentAccount?.admin === true || window.currentAccount?.staff === true,
             menu: stato.menu
         }));
     });
@@ -84,7 +86,7 @@ document.getElementById("data").addEventListener("change", render);
 document.getElementById("autoAggiorna").addEventListener("change", configuraAggiornamento);
 if (window.paymentUI) {
     window.paymentUI.bind(lista, {
-        canEdit: () => window.currentAccount?.admin === true,
+        canEdit: () => window.currentAccount?.admin === true || window.currentAccount?.staff === true,
         onUpdated: ordine => {
             const esistente = stato.ordini.find(elemento => String(elemento.numero) === String(ordine.numero));
             if (esistente) esistente.statoPagamento = ordine.statoPagamento;

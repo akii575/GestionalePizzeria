@@ -3,8 +3,8 @@
 Gestionale web per ordini, aggiornato per il deploy su Vercel. Le pagine esistenti
 sono servite solo dopo la verifica server-side della sessione Firebase; le API
 Node.js salvano gli ordini in Firestore. Gli amministratori usano il custom claim
-`admin: true`; i consegnatori usano `delivery: true` e possono solo visualizzare
-la pagina delle consegne.
+`admin: true`, il personale `staff: true`; i consegnatori usano `delivery: true` e
+possono solo visualizzare la pagina delle consegne.
 
 ## Configurazione Firebase
 
@@ -47,6 +47,23 @@ Per revocare il ruolo usa `npm run set-delivery -- consegnatore@example.com --re
 L'utente deve accedere di nuovo dopo l'assegnazione o la revoca. I consegnatori
 possono vedere tutte le consegne, comprese quelle precedenti, ma non possono
 creare, modificare o eliminare ordini.
+
+### Account staff
+
+Crea prima l'utente in Firebase Authentication > Users, poi assegna il ruolo con:
+
+```powershell
+npm run set-staff -- staff@example.com
+```
+
+Lo staff puo' usare tutte le funzioni del gestionale, incluse gestione ordini,
+ristampe, stampanti e reset numeri. Nelle pagine Ritiri, Banco, Tavoli e Tutti gli
+ordini non vede il riepilogo "Totale visualizzato"; il conteggio degli ordini e'
+visibile. Il totale delle consegne, i totali delle singole comande e gli scontrini
+restano invariati. Se un account ha entrambi i claim `admin: true` e `staff: true`,
+prevale admin e il riepilogo resta visibile. Per revocare il ruolo usa
+`npm run set-staff -- staff@example.com --revoke`. L'utente deve accedere di nuovo
+dopo assegnazione o revoca.
 
 Per gestire gli account, usa **Firebase Console > Authentication > Users**.
 La registrazione pubblica non e' implementata.
@@ -129,13 +146,14 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   prima l'agente con `disattiva-stampa-automatica.bat` e poi rilancia
   `installa-stampa-automatica.bat`; i due script chiedono UAC quando necessario.
   Inserisci gli IP distinti di Cucina e Sala.
-- Ogni pagina applicativa verifica la sessione server-side; gli account admin
-  accedono a tutto, i consegnatori solo alla pagina dedicata e gli altri ricevono
-  "Accesso negato".
-- Le API verificano una sessione Firebase Admin: il claim `admin` consente tutte le
-  operazioni, mentre `delivery` consente solo la lettura degli ordini di tipo
-  consegna. Le sessioni sono cookie `HttpOnly`, `Secure` e `SameSite=Lax`; le
-  operazioni di modifica controllano anche l'origine.
+- Ogni pagina applicativa verifica la sessione server-side; gli account admin e
+  staff accedono a tutto, i consegnatori solo alla pagina dedicata e gli altri
+  ricevono "Accesso negato".
+- Le API verificano una sessione Firebase Admin: i claim `admin` e `staff`
+  consentono tutte le operazioni, mentre `delivery` consente solo la lettura degli
+  ordini di tipo consegna. Se sono presenti sia `admin` sia `staff`, prevale admin.
+  Le sessioni sono cookie `HttpOnly`, `Secure` e `SameSite=Lax`; le operazioni di
+  modifica controllano anche l'origine.
 - Le Firestore Security Rules consentono agli admin lettura e scrittura; i
   consegnatori possono leggere solo documenti con `tipo == "consegna"`. L'SDK Admin
   delle API ha privilegi server, quindi ogni endpoint applica autonomamente lo

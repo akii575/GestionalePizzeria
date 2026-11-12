@@ -1,6 +1,6 @@
 const { randomUUID } = require("node:crypto");
 const { api, methodNotAllowed } = require("../lib/api");
-const { httpError, requireAdmin, requireSameOrigin } = require("../lib/auth");
+const { httpError, requireStaffAccess, requireSameOrigin } = require("../lib/auth");
 const { getFirebaseServices } = require("../lib/firebase-admin");
 const {
     RESET_LOCK_MILLISECONDS,
@@ -33,7 +33,7 @@ module.exports = api(async (req, res) => {
     if (req.method !== "POST") {
         return methodNotAllowed(res, ["POST"]);
     }
-    await requireAdmin(req);
+    await requireStaffAccess(req);
     requireSameOrigin(req);
     const { db } = getFirebaseServices();
     const orders = db.collection("orders");

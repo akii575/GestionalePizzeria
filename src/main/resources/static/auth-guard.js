@@ -17,17 +17,21 @@
             const isHome = window.location.pathname === "/" || window.location.pathname === "/index.html";
             const isDeliveryPage = window.location.pathname === "/consegne.html";
             const isAdmin = account.admin === true;
-            const isDelivery = account.delivery === true;
-            if (!isAdmin && !(isDelivery && isDeliveryPage)) {
+            const isStaff = !isAdmin && account.staff === true;
+            const isDelivery = !isAdmin && !isStaff && account.delivery === true;
+            if (!isAdmin && !isStaff && !(isDelivery && isDeliveryPage)) {
                 showMessage("Accesso negato", "Questo account non è autorizzato.", true);
                 return false;
             }
-            window.currentAccount = { ...account, admin: isAdmin, delivery: isDelivery };
+            window.currentAccount = { ...account, admin: isAdmin, staff: isStaff, delivery: isDelivery };
             document.querySelectorAll("[data-admin-only]").forEach(element => {
-                element.hidden = !isAdmin;
+                element.hidden = !isAdmin && !isStaff;
             });
-            if (isAdmin && isHome) {
-                showToolbar(account.email);
+            document.querySelectorAll("[data-hide-for-staff]").forEach(element => {
+                element.hidden = isStaff;
+            });
+            if ((isAdmin || isStaff) && isHome) {
+                showToolbar(account.email || (isAdmin ? "Amministratore" : "Staff"));
             }
             if (isDeliveryPage) {
                 document.querySelector(".dashboard-header nav").append(makeLogoutButton());

@@ -8,6 +8,7 @@
     "printer-terminal": "node scripts/printer-terminal.js",
     "set-admin": "node scripts/set-admin.js",
     "set-delivery": "node scripts/set-delivery.js",
+    "set-staff": "node scripts/set-staff.js",
     "test": "node scripts/export-menu.js && node scripts/copy-static.js && node --test",
     "lint": "eslint .",
     "typecheck": "node scripts/check-syntax.js",

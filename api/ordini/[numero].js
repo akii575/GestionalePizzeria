@@ -1,5 +1,5 @@
 const { api, methodNotAllowed } = require("../../lib/api");
-const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
+const { httpError, requireStaffAccess, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { prepareOrder, preparePaymentUpdate, publicOrder } = require("../../lib/orders");
 const { diffRighe } = require("../../lib/order-diff");
@@ -22,7 +22,7 @@ function orderNumber(req) {
 }
 
 module.exports = api(async (req, res) => {
-    await requireAdmin(req);
+    await requireStaffAccess(req);
     const numero = orderNumber(req);
     const { db } = getFirebaseServices();
     const order = db.collection("orders").doc(String(numero));

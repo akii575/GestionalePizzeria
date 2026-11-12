@@ -35,7 +35,7 @@ function render() {
 
     ordini.forEach(ordine => {
         lista.insertAdjacentHTML("beforeend", window.orderCard.render(ordine, {
-            canEdit: window.currentAccount.admin === true
+            canEdit: window.currentAccount.admin === true || window.currentAccount.staff === true
         }));
     });
 
@@ -50,7 +50,7 @@ function render() {
 }
 
 async function eliminaConsegna(numero) {
-    if (!window.currentAccount.admin || !window.confirm(`Eliminare la consegna #${numero}?`)) return;
+    if ((!window.currentAccount.admin && !window.currentAccount.staff) || !window.confirm(`Eliminare la consegna #${numero}?`)) return;
     try {
         const risposta = await fetch(`/api/ordini/${encodeURIComponent(numero)}`, { method: "DELETE" });
         if (!risposta.ok) {
@@ -91,7 +91,7 @@ document.getElementById("filtro").addEventListener("input", render);
 document.getElementById("data").addEventListener("change", render);
 if (window.paymentUI) {
     window.paymentUI.bind(lista, {
-        canEdit: () => window.currentAccount?.admin === true,
+        canEdit: () => window.currentAccount?.admin === true || window.currentAccount?.staff === true,
         onUpdated: ordine => {
             const esistente = stato.ordini.find(elemento => String(elemento.numero) === String(ordine.numero));
             if (esistente) esistente.statoPagamento = ordine.statoPagamento;

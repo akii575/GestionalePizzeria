@@ -35,8 +35,8 @@ test("delivery accounts can read only delivery orders and cannot use admin order
         error.statusCode = 403;
         throw error;
     });
-    t.mock.method(auth, "requireAdmin", async req => {
-        if (req.headers["x-test-role"] === "admin") return {};
+    t.mock.method(auth, "requireStaffAccess", async req => {
+        if (["admin", "staff"].includes(req.headers["x-test-role"])) return {};
         const error = new Error("Accesso negato.");
         error.statusCode = 403;
         throw error;

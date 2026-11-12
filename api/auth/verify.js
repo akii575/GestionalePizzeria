@@ -8,9 +8,11 @@ module.exports = api(async (req, res) => {
     const user = await requireDeliveryAccess(req);
     res.setHeader("Cache-Control", "no-store");
     const admin = user.admin === true;
+    const staff = !admin && user.staff === true;
     return res.status(200).json({
         admin,
-        delivery: !admin && user.delivery === true,
+        staff,
+        delivery: !admin && !staff && user.delivery === true,
         email: user.email || ""
     });
 });

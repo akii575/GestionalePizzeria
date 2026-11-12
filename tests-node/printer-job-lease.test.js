@@ -18,7 +18,7 @@ require.cache[authPath] = {
             error.statusCode = statusCode;
             return error;
         },
-        requireAdmin: async () => {},
+        requireStaffAccess: async () => {},
         requireSameOrigin: () => {}
     }
 };

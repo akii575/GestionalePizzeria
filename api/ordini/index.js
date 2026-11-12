@@ -1,11 +1,11 @@
 const { api, methodNotAllowed } = require("../../lib/api");
-const { httpError, requireAdmin, requireSameOrigin } = require("../../lib/auth");
+const { httpError, requireStaffAccess, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { filterOrdersByType, prepareOrder, publicOrder } = require("../../lib/orders");
 const { hasExpiredPrinterQueuePause, isPrinterQueuePaused, jobId } = require("../../lib/printer-jobs");
 
 module.exports = api(async (req, res) => {
-    await requireAdmin(req);
+    await requireStaffAccess(req);
     const { db } = getFirebaseServices();
     const orders = db.collection("orders");
 

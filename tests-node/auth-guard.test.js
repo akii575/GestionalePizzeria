@@ -13,6 +13,7 @@ async function runGuard(pathname, account = { admin: true, delivery: false, emai
     const appendedElements = [];
     const navigationElements = [];
     const adminOnlyElements = Array.from({ length: 6 }, () => ({ hidden: false }));
+    const hideForStaffElements = Array.from({ length: 1 }, () => ({ hidden: false }));
     const navigation = { append(...elements) { navigationElements.push(...elements); } };
     const document = {
         documentElement: { classList: { add() {}, remove() {} } },
@@ -22,7 +23,9 @@ async function runGuard(pathname, account = { admin: true, delivery: false, emai
             replaceChildren() {}
         },
         querySelectorAll(selector) {
-            return selector === "[data-admin-only]" ? adminOnlyElements : [];
+            if (selector === "[data-admin-only]") return adminOnlyElements;
+            if (selector === "[data-hide-for-staff]") return hideForStaffElements;
+            return [];
         },
         querySelector(selector) {
             return selector === ".dashboard-header nav" ? navigation : null;
@@ -47,7 +50,7 @@ async function runGuard(pathname, account = { admin: true, delivery: false, emai
 
     vm.runInNewContext(guardSource, { document, window });
     const authorized = await window.authReady;
-    return { appendedElements, adminOnlyElements, authorized, navigationElements, window };
+    return { appendedElements, adminOnlyElements, authorized, hideForStaffElements, navigationElements, window };
 }
 
 test("account toolbar is shown on home only", async () => {
@@ -83,6 +86,27 @@ test("admin can see admin-only navigation on the delivery page", async () => {
     const page = await runGuard("/consegne.html");
     assert.equal(page.authorized, true);
     assert.deepEqual(page.adminOnlyElements.map(element => element.hidden), [false, false, false, false, false, false]);
+    assert.deepEqual(page.hideForStaffElements.map(element => element.hidden), [false]);
     assert.equal(page.appendedElements.length, 0);
     assert.equal(page.navigationElements.length, 1);
+});
+
+test("staff has admin access and sees the home toolbar but not staff-hidden summaries", async () => {
+    const staff = { admin: false, staff: true, delivery: false, email: "staff@example.com" };
+    for (const pathname of ["/", "/gestionale.html", "/ritiri.html", "/banco.html", "/tavoli.html", "/ordini.html", "/consegne.html"]) {
+        const page = await runGuard(pathname, staff);
+        assert.equal(page.authorized, true, `${pathname} should allow staff`);
+        assert.equal(page.window.currentAccount.staff, true);
+        assert.deepEqual(page.adminOnlyElements.map(element => element.hidden), [false, false, false, false, false, false]);
+        assert.deepEqual(page.hideForStaffElements.map(element => element.hidden), [true]);
+        assert.equal(page.appendedElements.length, pathname === "/" ? 1 : 0);
+    }
+});
+
+test("admin claim takes precedence over staff", async () => {
+    const page = await runGuard("/gestionale.html", { admin: true, staff: true, delivery: false });
+    assert.equal(page.authorized, true);
+    assert.equal(page.window.currentAccount.admin, true);
+    assert.equal(page.window.currentAccount.staff, false);
+    assert.deepEqual(page.hideForStaffElements.map(element => element.hidden), [false]);
 });

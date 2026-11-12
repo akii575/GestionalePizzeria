@@ -1,6 +1,6 @@
 const pages = require("../../lib/generated-pages");
 const { api, methodNotAllowed } = require("../../lib/api");
-const { requireAdmin, requireDeliveryAccess } = require("../../lib/auth");
+const { requireStaffAccess, requireDeliveryAccess } = require("../../lib/auth");
 
 const deniedPage = `<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Accesso negato</title><link rel="stylesheet" href="/theme.css"><body class="accesso-negato"><main><h1>Accesso negato</h1><p>Questo account non è autorizzato.</p><button id="logout" type="button">Esci</button></main><script src="/auth-logout.js"></script></body></html>`;
 
@@ -13,7 +13,7 @@ module.exports = api(async (req, res) => {
         const pageName = req.query.page || "index.html";
         user = pageName === "consegne.html"
             ? await requireDeliveryAccess(req)
-            : await requireAdmin(req);
+            : await requireStaffAccess(req);
     } catch (error) {
         if (error.statusCode === 401) {
             res.setHeader("Cache-Control", "no-store");
