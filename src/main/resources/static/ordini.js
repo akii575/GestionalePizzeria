@@ -143,7 +143,7 @@ function renderProdotti() {
             bottone.type = "button";
             const descrizioneIngredienti = prodotto.ingredienti?.length ? prodotto.ingredienti.join(", ") : "";
             const ingredienti = descrizioneIngredienti
-                ? `<span class="ingredienti">${testoSicuro(descrizioneIngredienti)}</span>`
+                ? `<span class="ingredienti-wrapper"><span class="ingredienti">${testoSicuro(descrizioneIngredienti)}</span></span>`
                 : "";
             bottone.innerHTML = `<strong>${testoSicuro(prodotto.nome)}</strong><span class="prezzo-prodotto">${euro.format(Number(prodotto.prezzo))}</span>${ingredienti}`;
             if (descrizioneIngredienti) bottone.querySelector(".ingredienti").title = descrizioneIngredienti;

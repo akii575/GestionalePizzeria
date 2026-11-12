@@ -791,7 +791,7 @@ button {
 
 .prodotto-btn {
     align-self: start;
-    gap: 2px;
+    gap: 0;
     padding: 12px;
     border: 1px solid var(--theme-line);
     border-radius: 14px;
@@ -806,8 +806,8 @@ button {
 .prodotto-btn strong {
     display: -webkit-box;
     width: 100%;
-    height: 2.4em;
-    flex: 0 0 2.4em;
+    max-height: 2.4em;
+    flex: 0 0 auto;
     overflow: hidden;
     font-size: 15px;
     font-weight: 600;
@@ -819,9 +819,9 @@ button {
 .prodotto-btn .prezzo-prodotto {
     display: block;
     width: 100%;
-    height: 1.2em;
-    flex: 0 0 1.2em;
+    flex: 0 0 auto;
     overflow: hidden;
+    margin-top: 2px;
     color: var(--theme-green-dark);
     font-size: 15px;
     font-weight: 600;
@@ -829,16 +829,19 @@ button {
     white-space: nowrap;
 }
 
+.prodotto-btn .ingredienti-wrapper {
+    min-height: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
 .prodotto-btn .ingredienti {
     display: -webkit-box;
     width: 100%;
-    height: 2.6em;
-    flex: 0 0 2.6em;
     overflow: hidden;
-    max-height: 2.6em;
-    margin-top: 0;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 4;
 }
 
 .riepilogo {
@@ -1020,7 +1023,7 @@ button {
         height: 128px;
         min-height: 128px;
         max-height: 128px;
-        gap: 2px;
+        gap: 0;
         padding: 8px;
     }
 
@@ -1031,6 +1034,7 @@ button {
 
     .prodotto-btn .ingredienti {
         font-size: 11px;
+        -webkit-line-clamp: 3;
     }
 
     .composer-summary {
