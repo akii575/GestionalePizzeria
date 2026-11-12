@@ -163,15 +163,42 @@ button {
     margin-bottom: 14px;
 }
 .griglia-prodotti {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    align-content: start;
-    gap: 10px;
-    padding: 0 4px 8px;
+    display: flex;
+    align-items: start;
+    width: 100%;
+    height: 396px;
     min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+}
+.griglia-prodotti::-webkit-scrollbar {
+    display: none;
+}
+.pagina-prodotti {
+    box-sizing: border-box;
+    display: grid;
+    flex: 0 0 100%;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, 132px);
+    align-content: start;
+    align-items: start;
+    gap: 10px;
+    padding: 0 4px;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
 }
 .prodotto-btn {
+    width: 100%;
+    height: 132px;
+    min-height: 132px;
+    max-height: 132px;
     padding: 12px;
+    overflow: hidden;
     background: #fff;
     border: 2px solid var(--bordo);
     border-radius: 6px;
@@ -755,9 +782,83 @@ button {
     padding: 10px;
 }
 
+.paginazione-prodotti {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 4px 0 8px;
+}
+
+.paginazione-prodotti[hidden],
+.indicatori-prodotti[hidden] {
+    display: none;
+}
+
+.paginazione-prodotti button {
+    display: grid;
+    width: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--theme-line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--theme-green-dark);
+    font-size: 26px;
+    line-height: 1;
+}
+
+.paginazione-prodotti button:disabled {
+    opacity: .4;
+    cursor: default;
+}
+
+#pagina-prodotti-stato {
+    min-width: 90px;
+    color: var(--theme-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.indicatori-prodotti {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 40px;
+    margin-top: 4px;
+}
+
+.indicatore-pagina-prodotto {
+    display: grid;
+    width: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.indicatore-pagina-prodotto::before {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--theme-muted);
+    content: "";
+}
+
+.indicatore-pagina-prodotto.attivo::before {
+    width: 12px;
+    height: 12px;
+    background: var(--theme-green);
+}
+
 .prodotto-btn {
     align-self: start;
-    gap: 4px;
+    gap: 2px;
     padding: 12px;
     border: 1px solid var(--theme-line);
     border-radius: 14px;
@@ -770,28 +871,41 @@ button {
 }
 
 .prodotto-btn strong {
+    display: -webkit-box;
+    width: 100%;
+    height: 2.4em;
+    flex: 0 0 2.4em;
+    overflow: hidden;
     font-size: 15px;
     font-weight: 600;
+    line-height: 1.2;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .prodotto-btn .prezzo-prodotto {
+    display: block;
+    width: 100%;
+    height: 1.2em;
+    flex: 0 0 1.2em;
+    overflow: hidden;
     color: var(--theme-green-dark);
     font-size: 15px;
     font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .prodotto-btn .ingredienti {
     display: -webkit-box;
+    width: 100%;
+    height: 2.6em;
+    flex: 0 0 2.6em;
     overflow: hidden;
-    max-height: calc(3 * 1.3em);
+    max-height: 2.6em;
+    margin-top: 0;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-}
-
-@media (max-width: 419px) {
-    .griglia-prodotti {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    -webkit-line-clamp: 2;
 }
 
 .riepilogo {
@@ -959,6 +1073,31 @@ button {
     .tab-container {
         top: calc(64px + env(safe-area-inset-top));
         margin-inline: -2px;
+    }
+
+    .griglia-prodotti {
+        height: 276px;
+    }
+
+    .pagina-prodotti {
+        grid-template-rows: repeat(3, 92px);
+    }
+
+    .prodotto-btn {
+        height: 92px;
+        min-height: 92px;
+        max-height: 92px;
+        gap: 2px;
+        padding: 8px;
+    }
+
+    .prodotto-btn strong,
+    .prodotto-btn .prezzo-prodotto {
+        font-size: 14px;
+    }
+
+    .prodotto-btn .ingredienti {
+        display: none;
     }
 
     .composer-summary {

@@ -345,7 +345,6 @@ button.stato-pagamento { cursor: pointer; }
     .ordine-totale, .order-card__total { text-align: right; }
     .dashboard > #stato { min-height: 0; margin: 0 0 6px; }
     .lista-ordini, .lista-consegne { gap: 10px; }
-    .prodotto-btn { min-height: 0; padding: 12px; }
     .extra-card { flex-basis: min(170px, 70vw); }
     .conferma-contenuto { padding: 16px; }
 }

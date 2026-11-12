@@ -1,5 +1,10 @@
 const stato = { categoria: "pizze", menu: [], extra: [], righe: [], extraSelezionati: [] };
 const prodotti = document.getElementById("prodotti");
+const paginazioneProdotti = document.getElementById("paginazione-prodotti");
+const paginaProdottiPrecedente = document.getElementById("pagina-prodotti-precedente");
+const paginaProdottiSuccessiva = document.getElementById("pagina-prodotti-successiva");
+const statoPaginazioneProdotti = document.getElementById("pagina-prodotti-stato");
+const indicatoriProdotti = document.getElementById("indicatori-prodotti");
 const riepilogo = document.getElementById("riepilogo-items");
 const messaggio = document.getElementById("messaggio");
 const invia = document.getElementById("btn-invia");
@@ -45,6 +50,8 @@ const etichetteCategorie = Object.fromEntries(
 );
 let costoConsegna = 0;
 let statoMoltiplicatore = creaStatoMoltiplicatore();
+let paginaProdottiCorrente = 0;
+let numeroPagineProdotti = 0;
 
 function categoriaConExtra() {
     return CATEGORIE_CON_EXTRA.includes(stato.categoria);
@@ -125,25 +132,82 @@ function renderExtra(container, selezionati, onChange) {
         container.appendChild(bottone);
     });
 }
+function aggiornaIndicatoriProdotti() {
+    const haPiuPagine = numeroPagineProdotti > 1;
+    paginazioneProdotti.hidden = !haPiuPagine;
+    indicatoriProdotti.hidden = !haPiuPagine;
+    statoPaginazioneProdotti.textContent = numeroPagineProdotti
+        ? `Pagina ${paginaProdottiCorrente + 1} di ${numeroPagineProdotti}`
+        : "";
+    paginaProdottiPrecedente.disabled = !haPiuPagine || paginaProdottiCorrente === 0;
+    paginaProdottiSuccessiva.disabled =
+        !haPiuPagine || paginaProdottiCorrente === numeroPagineProdotti - 1;
+    [...indicatoriProdotti.children].forEach((indicatore, indice) => {
+        indicatore.classList.toggle("attivo", indice === paginaProdottiCorrente);
+        if (indice === paginaProdottiCorrente) indicatore.setAttribute("aria-current", "page");
+        else indicatore.removeAttribute("aria-current");
+    });
+}
+function vaiAllaPaginaProdotti(indice) {
+    if (!numeroPagineProdotti) return;
+    paginaProdottiCorrente = Math.max(0, Math.min(indice, numeroPagineProdotti - 1));
+    aggiornaIndicatoriProdotti();
+    prodotti.scrollTo({
+        left: paginaProdottiCorrente * prodotti.clientWidth,
+        behavior: "smooth"
+    });
+}
+function aggiornaPaginaProdottiDaScroll() {
+    if (!prodotti.clientWidth || numeroPagineProdotti < 2) return;
+    const indice = Math.max(
+        0,
+        Math.min(numeroPagineProdotti - 1, Math.round(prodotti.scrollLeft / prodotti.clientWidth))
+    );
+    if (indice === paginaProdottiCorrente) return;
+    paginaProdottiCorrente = indice;
+    aggiornaIndicatoriProdotti();
+}
+function creaIndicatoriProdotti() {
+    indicatoriProdotti.innerHTML = "";
+    for (let indice = 0; indice < numeroPagineProdotti; indice++) {
+        const indicatore = document.createElement("button");
+        indicatore.type = "button";
+        indicatore.className = "indicatore-pagina-prodotto";
+        indicatore.setAttribute("aria-label", `Vai alla pagina ${indice + 1}`);
+        indicatore.title = `Vai alla pagina ${indice + 1}`;
+        indicatore.addEventListener("click", () => vaiAllaPaginaProdotti(indice));
+        indicatoriProdotti.appendChild(indicatore);
+    }
+}
 function renderProdotti() {
     sezioneExtra.hidden = !categoriaConExtra();
     prodotti.innerHTML = "";
+    prodotti.scrollLeft = 0;
+    paginaProdottiCorrente = 0;
     const disponibili = stato.menu
         .filter(prodotto => prodotto.categoria === stato.categoria)
         .sort((a, b) => a.nome.localeCompare(b.nome, "it"));
-    disponibili.forEach(prodotto => {
-        const bottone = document.createElement("button");
-        bottone.className = "prodotto-btn";
-        bottone.type = "button";
-        const descrizioneIngredienti = prodotto.ingredienti?.length ? prodotto.ingredienti.join(", ") : "";
-        const ingredienti = descrizioneIngredienti
-            ? `<span class="ingredienti">${testoSicuro(descrizioneIngredienti)}</span>`
-            : "";
-        bottone.innerHTML = `<strong>${testoSicuro(prodotto.nome)}</strong><span class="prezzo-prodotto">${euro.format(Number(prodotto.prezzo))}</span>${ingredienti}`;
-        if (descrizioneIngredienti) bottone.querySelector(".ingredienti").title = descrizioneIngredienti;
-        bottone.addEventListener("click", () => aggiungiProdotto(prodotto));
-        prodotti.appendChild(bottone);
-    });
+    for (let inizio = 0; inizio < disponibili.length; inizio += 9) {
+        const pagina = document.createElement("div");
+        pagina.className = "pagina-prodotti";
+        disponibili.slice(inizio, inizio + 9).forEach(prodotto => {
+            const bottone = document.createElement("button");
+            bottone.className = "prodotto-btn";
+            bottone.type = "button";
+            const descrizioneIngredienti = prodotto.ingredienti?.length ? prodotto.ingredienti.join(", ") : "";
+            const ingredienti = descrizioneIngredienti
+                ? `<span class="ingredienti">${testoSicuro(descrizioneIngredienti)}</span>`
+                : "";
+            bottone.innerHTML = `<strong>${testoSicuro(prodotto.nome)}</strong><span class="prezzo-prodotto">${euro.format(Number(prodotto.prezzo))}</span>${ingredienti}`;
+            if (descrizioneIngredienti) bottone.querySelector(".ingredienti").title = descrizioneIngredienti;
+            bottone.addEventListener("click", () => aggiungiProdotto(prodotto));
+            pagina.appendChild(bottone);
+        });
+        prodotti.appendChild(pagina);
+    }
+    numeroPagineProdotti = Math.ceil(disponibili.length / 9);
+    creaIndicatoriProdotti();
+    aggiornaIndicatoriProdotti();
 }
 // Unico punto di aggiunta al conto: usato dalle tab delle categorie e dalla ricerca.
 function aggiungiProdotto(prodotto) {
@@ -414,6 +478,21 @@ document.querySelectorAll(".tab[data-tab]").forEach(tab =>
             .forEach(elemento => elemento.classList.toggle("active", elemento === tab));
         renderProdotti();
     })
+);
+paginaProdottiPrecedente.addEventListener("click", () => vaiAllaPaginaProdotti(paginaProdottiCorrente - 1));
+paginaProdottiSuccessiva.addEventListener("click", () => vaiAllaPaginaProdotti(paginaProdottiCorrente + 1));
+prodotti.addEventListener("scroll", aggiornaPaginaProdottiDaScroll, { passive: true });
+prodotti.addEventListener(
+    "wheel",
+    evento => {
+        if (evento.deltaX || !evento.deltaY) return;
+        const scrollMassimo = prodotti.scrollWidth - prodotti.clientWidth;
+        const prossimaPosizione = prodotti.scrollLeft + evento.deltaY;
+        if (prossimaPosizione <= 0 || prossimaPosizione >= scrollMassimo) return;
+        prodotti.scrollLeft = prossimaPosizione;
+        evento.preventDefault();
+    },
+    { passive: false }
 );
 bottoneRicerca.addEventListener("click", apriRicerca);
 ricercaInput.addEventListener("input", renderRisultatiRicerca);
