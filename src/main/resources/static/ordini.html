@@ -234,7 +234,27 @@
                         &times;
                     </button>
                 </div>
-                <div id="ricerca-risultati" class="ricerca-risultati"></div>
+                <div class="ricerca-corpo">
+                    <div id="ricerca-risultati" class="ricerca-risultati"></div>
+                    <section class="ricerca-tastierino" aria-label="Moltiplicatore prodotti">
+                        <output id="ricerca-moltiplicatore" class="ricerca-moltiplicatore" aria-live="polite">—</output>
+                        <div id="ricerca-tasti" class="ricerca-tasti">
+                            <button type="button" data-moltiplicatore="1">1</button>
+                            <button type="button" data-moltiplicatore="2">2</button>
+                            <button type="button" data-moltiplicatore="3">3</button>
+                            <button type="button" data-moltiplicatore="4">4</button>
+                            <button type="button" data-moltiplicatore="5">5</button>
+                            <button type="button" data-moltiplicatore="6">6</button>
+                            <button type="button" data-moltiplicatore="7">7</button>
+                            <button type="button" data-moltiplicatore="8">8</button>
+                            <button type="button" data-moltiplicatore="9">9</button>
+                            <button type="button" data-moltiplicatore="C" aria-label="Azzera moltiplicatore">C</button>
+                            <button type="button" data-moltiplicatore="0">0</button>
+                            <button type="button" data-moltiplicatore="×" aria-label="Conferma moltiplicatore">×</button>
+                        </div>
+                    </section>
+                </div>
+                <p id="ricerca-messaggio" class="ricerca-messaggio" role="status" aria-live="polite"></p>
             </div>
         </div>
         <script src="/prodotti-ui.js"></script>

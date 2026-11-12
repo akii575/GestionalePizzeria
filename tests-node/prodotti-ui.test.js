@@ -7,7 +7,13 @@ const {
     normalizza,
     filtraProdotti,
     creaRiga,
-    CATEGORIE_CON_EXTRA
+    CATEGORIE_CON_EXTRA,
+    LIMITE_RIGHE_ORDINE,
+    creaStatoMoltiplicatore,
+    premiTastoMoltiplicatore,
+    quantitaDaApplicare,
+    testoMoltiplicatore,
+    controllaLimiteRighe
 } = require("../src/main/resources/static/prodotti-ui");
 
 const nomi = prodotti => prodotti.map(prodotto => prodotto.nome);
@@ -106,6 +112,55 @@ test("client extra categories match the server validation", () => {
     assert.deepEqual([...CATEGORIE_CON_EXTRA].sort(), categorieServer.sort());
 });
 
+test("multiplier keypad composes up to two digits and ignores a leading zero", () => {
+    let stato = creaStatoMoltiplicatore();
+    stato = premiTastoMoltiplicatore(stato, "0");
+    stato = premiTastoMoltiplicatore(stato, "1");
+    stato = premiTastoMoltiplicatore(stato, "8");
+    stato = premiTastoMoltiplicatore(stato, "7");
+
+    assert.equal(stato.numero, "18");
+    assert.equal(stato.armato, false);
+    assert.equal(testoMoltiplicatore(stato), "18");
+    assert.equal(quantitaDaApplicare(stato), 1);
+});
+
+test("multiplier keypad arms a quantity, ignores an empty confirmation and clears", () => {
+    const vuoto = creaStatoMoltiplicatore();
+    assert.equal(premiTastoMoltiplicatore(vuoto, "×").armato, false);
+    assert.equal(quantitaDaApplicare(vuoto), 1);
+
+    let stato = premiTastoMoltiplicatore(vuoto, "1");
+    stato = premiTastoMoltiplicatore(stato, "8");
+    stato = premiTastoMoltiplicatore(stato, "×");
+    assert.equal(testoMoltiplicatore(stato), "18 ×");
+    assert.equal(quantitaDaApplicare(stato), 18);
+
+    stato = premiTastoMoltiplicatore(stato, "C");
+    assert.deepEqual(stato, creaStatoMoltiplicatore());
+    assert.equal(testoMoltiplicatore(stato), "—");
+});
+
+test("digits after arming start a fresh quantity", () => {
+    let stato = creaStatoMoltiplicatore();
+    for (const tasto of ["1", "8", "×", "2"]) {
+        stato = premiTastoMoltiplicatore(stato, tasto);
+    }
+
+    assert.deepEqual(stato, { numero: "2", armato: false });
+    assert.equal(quantitaDaApplicare(stato), 1);
+});
+
+test("multiplier quantity is checked atomically against the 100-row limit", () => {
+    assert.equal(LIMITE_RIGHE_ORDINE, 100);
+    assert.deepEqual(controllaLimiteRighe(98, 2), { consentito: true, disponibili: 2 });
+    assert.deepEqual(controllaLimiteRighe(99, 2), { consentito: false, disponibili: 1 });
+    assert.deepEqual(controllaLimiteRighe(100, 1), { consentito: false, disponibili: 0 });
+    assert.deepEqual(controllaLimiteRighe(101, 1), { consentito: false, disponibili: 0 });
+    assert.deepEqual(controllaLimiteRighe(-1, 1), { consentito: false, disponibili: 0 });
+    assert.equal(controllaLimiteRighe(0, 0).consentito, false);
+});
+
 test("new order page has the search button before Pizze and loads the search module first", () => {
     const pagina = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.html"),
@@ -115,5 +170,13 @@ test("new order page has the search button before Pizze and loads the search mod
     const pizze = pagina.indexOf('data-tab="pizze"');
     assert.ok(ricerca > -1 && ricerca < pizze);
     assert.match(pagina, /id="ricerca-input"[\s\S]*type="search"/);
+    assert.match(pagina, /id="ricerca-tasti"[\s\S]*data-moltiplicatore="×"/);
+    assert.match(pagina, /id="ricerca-messaggio"[\s\S]*role="status"/);
     assert.ok(pagina.indexOf('src="/prodotti-ui.js"') < pagina.indexOf('src="/ordini.js"'));
+    const stile = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.css"),
+        "utf8"
+    );
+    assert.match(stile, /min-height:\s*56px/);
+    assert.match(stile, /@media \(max-width: 700px\)[\s\S]*\.ricerca-tastierino\s*\{[\s\S]*order:\s*-1/);
 });

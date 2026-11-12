@@ -25,13 +25,26 @@ const bottoneRicerca = document.getElementById("btn-ricerca");
 const ricercaModale = document.getElementById("ricerca-modale");
 const ricercaInput = document.getElementById("ricerca-input");
 const ricercaRisultati = document.getElementById("ricerca-risultati");
+const ricercaTasti = document.getElementById("ricerca-tasti");
+const ricercaMoltiplicatore = document.getElementById("ricerca-moltiplicatore");
+const ricercaMessaggio = document.getElementById("ricerca-messaggio");
 const paginaPrincipale = document.querySelector("main");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
-const { CATEGORIE_CON_EXTRA, filtraProdotti, creaRiga } = window.prodottiUI;
+const {
+    CATEGORIE_CON_EXTRA,
+    filtraProdotti,
+    creaRiga,
+    creaStatoMoltiplicatore,
+    premiTastoMoltiplicatore,
+    quantitaDaApplicare,
+    testoMoltiplicatore,
+    controllaLimiteRighe
+} = window.prodottiUI;
 const etichetteCategorie = Object.fromEntries(
     [...document.querySelectorAll(".tab[data-tab]")].map(tab => [tab.dataset.tab, tab.textContent.trim()])
 );
 let costoConsegna = 0;
+let statoMoltiplicatore = creaStatoMoltiplicatore();
 
 function categoriaConExtra() {
     return CATEGORIE_CON_EXTRA.includes(stato.categoria);
@@ -137,6 +150,11 @@ function renderProdotti() {
 }
 // Unico punto di aggiunta al conto: usato dalle tab delle categorie e dalla ricerca.
 function aggiungiProdotto(prodotto) {
+    const limite = controllaLimiteRighe(stato.righe.length, 1);
+    if (!limite.consentito) {
+        mostraMessaggio(`Massimo 100 prodotti per comanda: puoi aggiungerne ancora ${limite.disponibili}`, "errore");
+        return false;
+    }
     const { riga, extraRimanenti } = creaRiga(prodotto, stato.extraSelezionati);
     stato.righe.push(riga);
     stato.extraSelezionati = extraRimanenti;
@@ -146,11 +164,17 @@ function aggiungiProdotto(prodotto) {
         selezionati => (stato.extraSelezionati = selezionati)
     );
     renderRiepilogo();
+    return true;
+}
+function aggiornaDisplayMoltiplicatore() {
+    ricercaMoltiplicatore.textContent = testoMoltiplicatore(statoMoltiplicatore);
+    ricercaMoltiplicatore.classList.toggle("armato", statoMoltiplicatore.armato);
 }
 function renderRisultatiRicerca() {
     const testo = ricercaInput.value;
     const trovati = filtraProdotti(stato.menu, testo);
     ricercaRisultati.innerHTML = "";
+    ricercaMessaggio.textContent = "";
     if (!testo.trim()) return;
     if (!trovati.length) {
         ricercaRisultati.innerHTML = '<p class="ricerca-vuota">Nessun prodotto trovato</p>';
@@ -162,19 +186,46 @@ function renderRisultatiRicerca() {
         bottone.className = "ricerca-risultato";
         bottone.innerHTML = `<span class="ricerca-nome">${testoSicuro(prodotto.nome)}</span><span class="ricerca-categoria">${testoSicuro(etichetteCategorie[prodotto.categoria] || prodotto.categoria)}</span><span class="ricerca-prezzo">${euro.format(Number(prodotto.prezzo))}</span>`;
         bottone.addEventListener("click", () => {
-            aggiungiProdotto(prodotto);
+            const quantita = quantitaDaApplicare(statoMoltiplicatore);
+            const moltiplicatoreArmato = statoMoltiplicatore.armato;
+            const limite = controllaLimiteRighe(stato.righe.length, quantita);
+            if (!limite.consentito) {
+                ricercaMessaggio.textContent = `Massimo 100 prodotti per comanda: puoi aggiungerne ancora ${limite.disponibili}`;
+                return;
+            }
+            for (let indice = 0; indice < quantita; indice++) {
+                aggiungiProdotto(prodotto);
+            }
+            statoMoltiplicatore = creaStatoMoltiplicatore();
+            aggiornaDisplayMoltiplicatore();
             chiudiRicerca();
             // Gli extra non applicabili (es. a una bibita) restano in attesa: lo segnaliamo.
             const extraInAttesa = stato.extraSelezionati.length
                 ? ` (extra in attesa per il prossimo piatto: ${nomiExtra(stato.extraSelezionati).join(", ")})`
                 : "";
-            mostraMessaggio(`Aggiunto: ${prodotto.nome}${extraInAttesa}`, "successo");
+            const descrizioneAggiunta = moltiplicatoreArmato
+                ? `Aggiunti ${quantita} × ${prodotto.nome}`
+                : `Aggiunto: ${prodotto.nome}`;
+            mostraMessaggio(`${descrizioneAggiunta}${extraInAttesa}`, "successo");
         });
         ricercaRisultati.appendChild(bottone);
     });
 }
+function gestisciTastoMoltiplicatore(evento) {
+    const tasto = evento.target.closest("[data-moltiplicatore]");
+    if (!tasto) return;
+    statoMoltiplicatore = premiTastoMoltiplicatore(statoMoltiplicatore, tasto.dataset.moltiplicatore);
+    aggiornaDisplayMoltiplicatore();
+    ricercaMessaggio.textContent = "";
+}
+function azzeraMoltiplicatore() {
+    statoMoltiplicatore = creaStatoMoltiplicatore();
+    aggiornaDisplayMoltiplicatore();
+}
 function apriRicerca() {
     ricercaInput.value = "";
+    azzeraMoltiplicatore();
+    ricercaMessaggio.textContent = "";
     renderRisultatiRicerca();
     ricercaModale.hidden = false;
     bottoneRicerca.setAttribute("aria-expanded", "true");
@@ -369,6 +420,10 @@ document.querySelectorAll(".tab[data-tab]").forEach(tab =>
 );
 bottoneRicerca.addEventListener("click", apriRicerca);
 ricercaInput.addEventListener("input", renderRisultatiRicerca);
+ricercaTasti.addEventListener("pointerdown", evento => {
+    if (evento.target.closest("[data-moltiplicatore]")) evento.preventDefault();
+});
+ricercaTasti.addEventListener("click", gestisciTastoMoltiplicatore);
 document.getElementById("ricerca-chiudi").addEventListener("click", chiudiRicerca);
 // Tocco/click sullo sfondo (fuori dal pannello) chiude la ricerca.
 ricercaModale.addEventListener("click", evento => {

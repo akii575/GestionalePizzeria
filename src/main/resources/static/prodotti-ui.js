@@ -1,5 +1,6 @@
 const prodottiUI = (() => {
     const CATEGORIE_CON_EXTRA = ["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"];
+    const LIMITE_RIGHE_ORDINE = 100;
 
     // Minuscolo e senza accenti: "Caffè" -> "caffe", "Crocché" -> "crocche".
     function normalizza(testo) {
@@ -48,7 +49,56 @@ const prodottiUI = (() => {
         };
     }
 
-    return { CATEGORIE_CON_EXTRA, normalizza, filtraProdotti, ammetteExtra, creaRiga };
+    function creaStatoMoltiplicatore() {
+        return { numero: "", armato: false };
+    }
+
+    function premiTastoMoltiplicatore(stato, tasto) {
+        if (tasto === "C") return creaStatoMoltiplicatore();
+        if (tasto === "×") {
+            return stato.numero ? { ...stato, armato: true } : stato;
+        }
+        if (!/^\d$/.test(tasto)) return stato;
+
+        const numeroCorrente = stato.armato ? "" : stato.numero;
+        if (numeroCorrente.length >= 2 || (!numeroCorrente && tasto === "0")) {
+            return stato.armato ? creaStatoMoltiplicatore() : stato;
+        }
+        return { numero: `${numeroCorrente}${tasto}`, armato: false };
+    }
+
+    function quantitaDaApplicare(stato) {
+        return stato.armato ? Number(stato.numero) : 1;
+    }
+
+    function testoMoltiplicatore(stato) {
+        if (!stato.numero) return "—";
+        return stato.armato ? `${stato.numero} ×` : stato.numero;
+    }
+
+    function controllaLimiteRighe(righeAttuali, quantitaRichiesta) {
+        const righeValide = Number.isInteger(righeAttuali) && righeAttuali >= 0;
+        const disponibili = righeValide ? Math.max(0, LIMITE_RIGHE_ORDINE - righeAttuali) : 0;
+        return {
+            consentito: righeValide && righeAttuali <= LIMITE_RIGHE_ORDINE && Number.isInteger(quantitaRichiesta)
+                && quantitaRichiesta > 0 && quantitaRichiesta <= disponibili,
+            disponibili
+        };
+    }
+
+    return {
+        CATEGORIE_CON_EXTRA,
+        LIMITE_RIGHE_ORDINE,
+        normalizza,
+        filtraProdotti,
+        ammetteExtra,
+        creaRiga,
+        creaStatoMoltiplicatore,
+        premiTastoMoltiplicatore,
+        quantitaDaApplicare,
+        testoMoltiplicatore,
+        controllaLimiteRighe
+    };
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = prodottiUI;

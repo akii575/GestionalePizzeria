@@ -488,7 +488,7 @@ button {
     display: none;
 }
 .ricerca-contenuto {
-    width: min(640px, 100%);
+    width: min(850px, 100%);
     max-height: calc(100vh - 32px);
     max-height: calc(100dvh - 32px);
     display: flex;
@@ -497,6 +497,13 @@ button {
     border: 1px solid var(--bordo);
     border-radius: 8px;
     box-shadow: 0 18px 50px rgba(36, 33, 31, 0.28);
+    overflow: hidden;
+}
+.ricerca-corpo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 210px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: hidden;
 }
 .ricerca-barra {
@@ -527,9 +534,71 @@ button {
     line-height: 1;
 }
 .ricerca-risultati {
+    min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+}
+.ricerca-tastierino {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-left: 1px solid var(--bordo);
+    background: rgba(255, 255, 255, 0.35);
+}
+.ricerca-moltiplicatore {
+    display: grid;
+    min-height: 48px;
+    place-items: center;
+    border: 1px solid var(--bordo);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--inchiostro);
+    font-size: 22px;
+    font-weight: bold;
+}
+.ricerca-moltiplicatore.armato {
+    border: 2px solid var(--verde);
+    background: rgba(23, 99, 69, 0.1);
+    color: var(--verde);
+}
+.ricerca-tasti {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+.ricerca-tasti button {
+    min-width: 0;
+    min-height: 56px;
+    border: 1px solid var(--bordo);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--inchiostro);
+    font-size: 22px;
+    font-weight: bold;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.ricerca-tasti button:hover,
+.ricerca-tasti button:focus-visible {
+    border-color: var(--verde);
+    background: rgba(23, 99, 69, 0.08);
+}
+.ricerca-tasti button:active {
+    background: rgba(23, 99, 69, 0.16);
+}
+.ricerca-tasti button:last-child {
+    background: var(--verde);
+    color: #fff;
+}
+.ricerca-messaggio {
+    margin: 0;
+    padding: 0 12px;
+    color: var(--rosso);
+    font-weight: bold;
+    text-align: center;
 }
 .ricerca-risultato {
     display: grid;
@@ -576,4 +645,34 @@ button {
     padding: 16px;
     text-align: center;
     color: var(--theme-muted);
+}
+@media (max-width: 700px) {
+    .ricerca-modale {
+        padding: max(8px, env(safe-area-inset-top)) 8px 8px;
+    }
+    .ricerca-contenuto {
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+    }
+    .ricerca-corpo {
+        display: flex;
+        flex-direction: column;
+    }
+    .ricerca-tastierino {
+        order: -1;
+        gap: 8px;
+        padding: 8px;
+        border-right: 0;
+        border-bottom: 1px solid var(--bordo);
+        border-left: 0;
+    }
+    .ricerca-moltiplicatore {
+        min-height: 42px;
+    }
+    .ricerca-tasti {
+        gap: 6px;
+    }
+    .ricerca-tasti button {
+        min-height: 56px;
+    }
 }
