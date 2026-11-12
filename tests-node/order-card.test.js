@@ -45,6 +45,28 @@ test("all order services use the same card structure and field styling", () => {
     }
 });
 
+test("order heading shows only the service name and number without truncation", () => {
+    const orders = [
+        { tipo: "consegna", title: "Consegna #8" },
+        { tipo: "ritiro", title: "Ritiro #8" },
+        { tipo: "banco", title: "Banco #8" },
+        { tipo: "tavolo", title: "Tavolo #8" }
+    ];
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
+        "utf8"
+    );
+
+    for (const order of orders) {
+        const html = render(order);
+        assert.match(html, new RegExp(`<h2 class="order-card__number">${order.title}<\\/h2>`));
+        assert.doesNotMatch(html, /order-card__title|Dettagli (consegna|ritiro|banco|tavolo)/);
+    }
+
+    assert.match(styles, /\.order-card__number\s*\{[^}]*font-size:\s*18px;[^}]*font-weight:\s*600;[^}]*white-space:\s*nowrap;/);
+    assert.doesNotMatch(styles, /\.order-card__number\s*\{[^}]*text-overflow:\s*ellipsis/);
+});
+
 test("reprint controls are available only on editable order cards", () => {
     assert.match(render({ tipo: "tavolo" }), /data-ristampa="8"[^>]*>Ristampa/);
     assert.doesNotMatch(render({ tipo: "tavolo" }, { canEdit: false }), /data-ristampa=/);
@@ -103,14 +125,28 @@ test("print status occupies its own row after the header and retains its full ti
         assert.ok(html.includes(`title="${message.replace(/'/g, "&#39;")}"`));
     }
 
-    assert.match(styles, /\.order-card__print-status\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;[^}]*width:\s*100%;[^}]*padding:\s*8px 12px;[^}]*border-radius:\s*10px;[^}]*text-align:\s*left;[^}]*white-space:\s*normal;/);
+    assert.match(styles, /\.order-card__print-status\s*\{[^}]*margin:\s*0 14px;[^}]*padding:\s*8px 12px;[^}]*border-radius:\s*10px;[^}]*text-align:\s*left;[^}]*white-space:\s*normal;/);
     assert.match(styles, /\.dashboard \.order-card\s*\{[^}]*display:\s*grid;/);
     assert.match(styles, /\.dashboard \.order-card__actions\s*\{[^}]*margin-top:\s*auto;/);
     assert.match(styles, /\.dashboard \.lista-ordini,[\s\S]*?align-items:\s*stretch;/);
-    assert.match(styles, /\.dashboard \.order-card__print-status:not\(\.order-card__print-status--empty\)\s*\{[^}]*-webkit-line-clamp:\s*2;/);
-    assert.match(styles, /\.order-card__print-status--empty\s*\{\s*visibility:\s*hidden;/);
+    assert.match(styles, /\.dashboard \.order-card__print-status:not\(\.order-card__print-status--empty\)\s*\{[^}]*max-height:\s*calc\(2 \* 1\.25em \+ 16px\);[^}]*-webkit-line-clamp:\s*2;/);
+    assert.ok(
+        styles.indexOf(".dashboard .order-card__print-status:not(.order-card__print-status--empty)") <
+        styles.indexOf("@media (min-width: 768px)")
+    );
+    assert.match(styles, /\.order-card__print-status--empty\s*\{[^}]*height:\s*0;[^}]*visibility:\s*hidden;/);
     assert.match(styles, /grid-template-rows:\s*subgrid;/);
-    assert.match(styles, /grid-template-rows:\s*minmax\(74px,\s*auto\)[\s\S]*?minmax\(122px,\s*auto\);/);
+    const fallbackStart = styles.indexOf("@supports not (grid-template-rows: subgrid)");
+    assert.ok(fallbackStart >= 0);
+    const fallbackStyles = styles.slice(fallbackStart);
+    assert.match(fallbackStyles, /grid-template-rows:\s*minmax\(74px,\s*auto\)[\s\S]*?minmax\(122px,\s*auto\);/);
+    assert.match(fallbackStyles, /\.dashboard \.order-card__header \{ min-height:\s*74px; \}/);
+    assert.match(fallbackStyles, /\.dashboard \.order-card__print-status \{ min-height:\s*46px;/);
+    assert.match(fallbackStyles, /\.dashboard \.order-card__date \{ min-height:\s*36px; \}/);
+    assert.match(fallbackStyles, /\.dashboard \.order-card__field \{ min-height:\s*90px; \}/);
+    assert.doesNotMatch(styles.slice(0, fallbackStart), /min-height:\s*(?:74|46|36|110|90|66|122)px/);
+    assert.match(styles, /\.dashboard \.order-card\s*\{[^}]*row-gap:\s*8px;/);
+    assert.match(styles, /\.dashboard \.lista-ordini,[\s\S]*?gap:\s*16px;/);
 });
 
 test("orders without a print status reserve desktop alignment space but not mobile space", () => {
@@ -121,7 +157,7 @@ test("orders without a print status reserve desktop alignment space but not mobi
     );
 
     assert.match(html, /class="order-card__print-status order-card__print-status--empty" aria-hidden="true"/);
-    assert.match(styles, /\.order-card__print-status--empty\s*\{\s*visibility:\s*hidden;/);
+    assert.match(styles, /\.order-card__print-status--empty\s*\{[^}]*height:\s*0;[^}]*visibility:\s*hidden;/);
     assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?\.dashboard \.order-card__print-status--empty \{ display:\s*none;/);
 });
 
@@ -135,9 +171,10 @@ test("delivery map action stays beside the address within equal-height fields", 
         "utf8"
     );
 
-    assert.match(html, /<span>Via Roma 12, Napoli<\/span><span class="order-card__field-hint">Apri nelle mappe<\/span>/);
-    assert.match(styles, /\.dashboard \.order-card__field \{ min-height:\s*90px; \}/);
-    assert.match(styles, /\.order-card__field-action \{ display:\s*flex;[^}]*justify-content:\s*space-between;/);
+    assert.match(html, /<span title="Via Roma 12, Napoli">Via Roma 12, Napoli<\/span><span class="order-card__field-hint">Apri nelle mappe<\/span>/);
+    assert.match(styles, /\.dashboard \.order-card__field \{\s*padding:\s*8px 10px;/);
+    assert.match(styles, /\.order-card__field-action \{ display:\s*grid;[^}]*justify-items:\s*start;/);
+    assert.match(styles, /\.order-card__field-hint \{[^}]*font-size:\s*12px;/);
 });
 
 test("delivery surcharge is included in order details only when present", () => {
@@ -231,7 +268,7 @@ test("mobile stats stay in three columns and order totals stay on the header row
     assert.match(theme, /\.order-card__header\s*>\s*\.order-card__heading\s*\{[^}]*overflow-wrap:\s*normal;[^}]*word-break:\s*normal;/);
     assert.match(theme, /\.order-card__totals\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1;\s*flex-wrap:\s*nowrap;/);
     assert.match(theme, /\.order-card__totals \.stato-pagamento\s*\{\s*flex:\s*0 0 108px;\s*width:\s*108px;\s*min-width:\s*108px;/);
-    assert.match(styles, /\.order-card__totals \.stato-pagamento\s*\{[^}]*flex:\s*0 0 136px;/);
+    assert.match(styles, /\.order-card__totals \.stato-pagamento\s*\{[^}]*flex:\s*0 0 108px;/);
     assert.doesNotMatch(styles, /flex-basis:\s*124px/);
     assert.match(theme, /\.dashboard > #stato\s*\{\s*min-height:\s*0;\s*margin:\s*0 0 6px;/);
 });
@@ -253,7 +290,8 @@ test("order date and service time remain together in their shared aligned row", 
     assert.doesNotMatch(heading, /order-card__date/);
     assert.match(html, /class="order-card__date">[^<]*\| Orario: 22:47<\/p>/);
     assert.match(styles, /\.order-card__date\s*\{[^}]*white-space:\s*nowrap;/);
-    assert.match(styles, /\.dashboard \.order-card__date \{ display:\s*flex; min-height:\s*36px;/);
+    assert.match(styles, /\.dashboard \.order-card__date \{\s*padding:\s*0 14px;/);
+    assert.match(styles.slice(styles.indexOf("@supports not (grid-template-rows: subgrid)"), -1), /\.dashboard \.order-card__date \{ min-height:\s*36px; \}/);
 });
 
 test("all order-list pages use the same source header and navigation shell", () => {

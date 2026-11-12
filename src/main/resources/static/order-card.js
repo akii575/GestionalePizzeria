@@ -52,7 +52,7 @@ const orderCard = (() => {
             return `<a class="order-card__field-link" href="tel:${escapeHtml(phone)}">${escapeHtml(value)}</a>`;
         }
         if (field.kind === "address" && value !== "—") {
-            return `<button class="order-card__field-action" type="button" data-indirizzo="${escapeHtml(value)}" aria-haspopup="dialog"><span>${escapeHtml(value)}</span><span class="order-card__field-hint">Apri nelle mappe</span></button>`;
+            return `<button class="order-card__field-action" type="button" data-indirizzo="${escapeHtml(value)}" aria-haspopup="dialog"><span title="${escapeHtml(value)}">${escapeHtml(value)}</span><span class="order-card__field-hint">Apri nelle mappe</span></button>`;
         }
         return escapeHtml(value);
     }
@@ -194,8 +194,7 @@ const orderCard = (() => {
             <article class="order-card" data-order-type="${escapeHtml(type)}">
                 <header class="order-card__header">
                     <div class="order-card__heading">
-                        <span class="order-card__number">${serviceName} #${Number(order.numero)}</span>
-                        <h2 class="order-card__title">Dettagli ${serviceName.toLowerCase()}</h2>
+                        <h2 class="order-card__number">${serviceName} #${Number(order.numero)}</h2>
                     </div>
                     <div class="order-card__totals">
                         ${renderPayment(order, canEdit)}
