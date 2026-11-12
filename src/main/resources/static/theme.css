@@ -256,8 +256,8 @@ nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom
 .modifica { width: min(760px, 100%); }
 .extra-card { border-radius: var(--theme-control-radius) !important; }
 .rimuovi, .extra-rimuovi { min-height: 44px; }
-button.pericolo { border: 1px solid rgba(185, 50, 40, .3) !important; background: #fff2ef !important; color: var(--theme-red) !important; }
-.pericolo { color: var(--theme-red) !important; }
+button.pericolo:not(.app-reset) { border: 1px solid rgba(185, 50, 40, .3) !important; background: #fff2ef !important; color: var(--theme-red) !important; }
+.pericolo:not(.app-reset) { color: var(--theme-red) !important; }
 .stato-pagamento {
     display: inline-flex;
     align-items: center;
@@ -299,7 +299,7 @@ button.stato-pagamento { cursor: pointer; }
 .auth-feedback { position: fixed; inset: 0; z-index: 10000; display: grid; place-content: center; gap: 12px; padding: 16px; background: var(--sfondo); color: var(--inchiostro); text-align: center; }
 .auth-feedback h1 { margin: 0; }
 .auth-feedback p { max-width: 42rem; margin: 0; }
-.auth-logout { min-width: 120px; justify-self: center; padding: 10px 16px; border: 0; background: var(--theme-green); color: #fff; }
+.auth-feedback .auth-logout, .account-toolbar .auth-logout { min-width: 120px; justify-self: center; padding: 10px 16px; border: 0; background: var(--theme-green); color: #fff; }
 .account-toolbar { position: fixed; z-index: 9999; top: 12px; right: 12px; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); padding: 8px 10px; border: var(--theme-surface-border); border-radius: var(--theme-control-radius); background: var(--theme-surface); box-shadow: var(--theme-shadow); font-size: 14px; }
 .account-toolbar__identity { min-width: 0; overflow-wrap: anywhere; }
 .account-toolbar .auth-logout { min-width: 0; min-height: 44px; justify-self: auto; padding: 6px 10px; }

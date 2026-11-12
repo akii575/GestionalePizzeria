@@ -145,9 +145,12 @@ body.app-shell nav.app-bottom-nav {
 
     .app-sidebar-actions .auth-logout,
     .app-sidebar-actions .app-reset {
+        display: flex;
+        width: 100%;
         min-width: 0;
         min-height: 52px;
-        justify-content: center;
+        align-items: center;
+        justify-content: flex-start;
         padding: 8px;
         border: 0;
         border-radius: 14px;
@@ -156,11 +159,7 @@ body.app-shell nav.app-bottom-nav {
         font: inherit;
         font-size: 14px;
         font-weight: 500;
-    }
-
-    .app-sidebar-actions .app-reset {
-        display: inline-flex;
-        align-items: center;
+        text-align: left;
     }
 
     .app-sidebar-actions .app-reset::before {
@@ -174,9 +173,9 @@ body.app-shell nav.app-bottom-nav {
     }
 
     .app-sidebar-actions .auth-logout::before {
-        display: inline-block;
         width: 24px;
         height: 24px;
+        flex: 0 0 24px;
         margin-right: 12px;
         background: currentColor;
         content: "";
@@ -216,9 +215,7 @@ body.app-shell nav.app-bottom-nav {
 
     .app-sidebar-actions .auth-logout,
     .app-sidebar-actions .app-reset {
-        justify-content: flex-start;
         padding-inline: 12px;
-        text-align: left;
     }
 }
 
@@ -240,6 +237,7 @@ body.app-shell nav.app-bottom-nav {
     .app-sidebar-actions .app-reset {
         width: 100%;
         height: auto;
+        justify-content: center;
         font-size: 0;
         white-space: nowrap;
     }
