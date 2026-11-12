@@ -131,22 +131,19 @@ function renderProdotti() {
     const disponibili = stato.menu
         .filter(prodotto => prodotto.categoria === stato.categoria)
         .sort((a, b) => a.nome.localeCompare(b.nome, "it"));
-    for (let inizio = 0; inizio < disponibili.length; inizio += 9) {
-        const pagina = document.createElement("div");
-        pagina.className = "pagina-prodotti";
-        disponibili.slice(inizio, inizio + 9).forEach(prodotto => {
-            const bottone = document.createElement("button");
-            bottone.className = "prodotto-btn";
-            bottone.type = "button";
-            const ingredienti = prodotto.ingredienti?.length
-                ? `<span class="ingredienti">${testoSicuro(prodotto.ingredienti.join(", "))}</span>`
-                : "";
-            bottone.innerHTML = `<strong>${testoSicuro(prodotto.nome)}</strong><span class="prezzo-prodotto">${euro.format(Number(prodotto.prezzo))}</span>${ingredienti}`;
-            bottone.addEventListener("click", () => aggiungiProdotto(prodotto));
-            pagina.appendChild(bottone);
-        });
-        prodotti.appendChild(pagina);
-    }
+    disponibili.forEach(prodotto => {
+        const bottone = document.createElement("button");
+        bottone.className = "prodotto-btn";
+        bottone.type = "button";
+        const descrizioneIngredienti = prodotto.ingredienti?.length ? prodotto.ingredienti.join(", ") : "";
+        const ingredienti = descrizioneIngredienti
+            ? `<span class="ingredienti">${testoSicuro(descrizioneIngredienti)}</span>`
+            : "";
+        bottone.innerHTML = `<strong>${testoSicuro(prodotto.nome)}</strong><span class="prezzo-prodotto">${euro.format(Number(prodotto.prezzo))}</span>${ingredienti}`;
+        if (descrizioneIngredienti) bottone.querySelector(".ingredienti").title = descrizioneIngredienti;
+        bottone.addEventListener("click", () => aggiungiProdotto(prodotto));
+        prodotti.appendChild(bottone);
+    });
 }
 // Unico punto di aggiunta al conto: usato dalle tab delle categorie e dalla ricerca.
 function aggiungiProdotto(prodotto) {

@@ -163,30 +163,15 @@ button {
     margin-bottom: 14px;
 }
 .griglia-prodotti {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    align-content: start;
     gap: 10px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
     padding: 0 4px 8px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
     min-width: 0;
 }
-.griglia-prodotti::-webkit-scrollbar {
-    display: none;
-}
-.pagina-prodotti {
-    flex: 0 0 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    scroll-snap-align: start;
-}
 .prodotto-btn {
-    min-height: 110px;
-    padding: 10px;
+    padding: 12px;
     background: #fff;
     border: 2px solid var(--bordo);
     border-radius: 6px;
@@ -288,8 +273,18 @@ button {
     display: flex;
     justify-content: space-between;
     gap: 12px;
+    min-width: 0;
     border-bottom: 1px solid var(--bordo);
     padding: 9px 0;
+}
+.riepilogo-item > div {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.riepilogo-item .rimuovi {
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 .riepilogo-descrizione {
     display: block;
@@ -400,11 +395,6 @@ button {
 .conferma-azioni button {
     flex: 1;
     margin: 0;
-}
-@media (min-width: 650px) {
-    .prodotto-btn {
-        min-height: 120px;
-    }
 }
 @media (max-width: 649px) {
     .campi-consegna {
@@ -729,10 +719,10 @@ button {
 .tab-container {
     position: sticky;
     z-index: 20;
-    top: 72px;
+    top: 0;
     gap: 8px;
     margin: 0;
-    padding: 4px 2px 8px;
+    padding: 8px 4px;
     background: var(--sfondo);
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
@@ -765,14 +755,9 @@ button {
     padding: 10px;
 }
 
-.pagina-prodotti {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: none;
-    gap: 10px;
-}
-
 .prodotto-btn {
-    min-height: 96px;
+    align-self: start;
+    gap: 4px;
     padding: 12px;
     border: 1px solid var(--theme-line);
     border-radius: 14px;
@@ -784,9 +769,29 @@ button {
     border-color: var(--theme-green);
 }
 
-.prodotto-btn strong,
-.prodotto-btn .prezzo {
+.prodotto-btn strong {
     font-size: 15px;
+    font-weight: 600;
+}
+
+.prodotto-btn .prezzo-prodotto {
+    color: var(--theme-green-dark);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.prodotto-btn .ingredienti {
+    display: -webkit-box;
+    overflow: hidden;
+    max-height: calc(3 * 1.3em);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+@media (max-width: 419px) {
+    .griglia-prodotti {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .riepilogo {
@@ -887,15 +892,38 @@ button {
     .composer-summary {
         position: sticky;
         top: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: calc(100vh - 120px);
+        min-height: 0;
     }
 
-    .composer-summary .riepilogo {
-        max-height: calc(100vh - 220px);
+    .composer-summary > .riepilogo {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .composer-summary > .riepilogo #riepilogo-items {
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
+        overscroll-behavior: contain;
     }
 
-    .composer-summary .btn-annulla {
-        margin-top: 8px;
+    .composer-summary > #messaggio {
+        flex: 0 0 auto;
+        min-height: 0;
+        margin: 0;
+    }
+
+    .composer-summary > .btn-invia,
+    .composer-summary > .btn-annulla {
+        flex: 0 0 auto;
+        margin: 0;
     }
 
     .conferma-modale {
@@ -931,11 +959,6 @@ button {
     .tab-container {
         top: calc(64px + env(safe-area-inset-top));
         margin-inline: -2px;
-    }
-
-    .prodotto-btn {
-        min-height: 88px;
-        padding: 10px;
     }
 
     .composer-summary {
