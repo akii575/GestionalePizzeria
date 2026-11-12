@@ -78,3 +78,132 @@ textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; fo
         height: min(42vh, 250px);
     }
 }
+
+.modifica {
+    width: min(900px, 100%);
+}
+
+.modifica > header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 12px;
+    border: 0;
+}
+
+.modifica > header h1 {
+    font-size: clamp(20px, 5vw, 28px);
+}
+
+.modifica > section,
+.modifica > label,
+.modifica > div:not(.modifica-footer) {
+    min-width: 0;
+}
+
+.modifica > section {
+    padding: 16px;
+    border: 1px solid var(--theme-line);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: var(--theme-shadow);
+}
+
+.modifica .riga-edit {
+    border-color: var(--theme-line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: none;
+}
+
+.modifica .extra-card {
+    min-height: 52px;
+    border: 1px solid var(--theme-line);
+    border-radius: 12px;
+}
+
+.modifica .extra-card.selezionato {
+    border-color: var(--theme-green);
+    background: var(--theme-green-light);
+}
+
+.modifica input,
+.modifica select,
+.modifica textarea {
+    min-height: 48px;
+    border-color: var(--theme-line);
+    border-radius: 12px;
+    font-size: 16px;
+}
+
+.modifica textarea { font-size: 16px; }
+
+.modifica-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--theme-line);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: var(--theme-shadow);
+}
+
+.modifica-footer #totale-modifica {
+    margin: 0;
+    color: var(--theme-green-dark);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.modifica-footer .salva {
+    min-height: 52px;
+    margin: 0;
+    border-radius: 14px;
+    font-weight: 600;
+}
+
+@media (max-width: 767px) {
+    .app-shell .modifica {
+        padding: 0 12px calc(150px + env(safe-area-inset-bottom));
+    }
+
+    .modifica > header {
+        margin: 0 -12px 12px;
+        padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+    }
+
+    .modifica > header h1 {
+        color: #fff;
+        font-size: 17px;
+    }
+
+    .modifica > header a {
+        display: none;
+    }
+
+    .modifica-footer {
+        position: fixed;
+        z-index: 1090;
+        right: 0;
+        bottom: calc(68px + env(safe-area-inset-bottom));
+        left: 0;
+        grid-template-columns: minmax(0, 1fr) minmax(130px, .9fr);
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 0;
+        border-top: 1px solid var(--theme-line);
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -4px 16px rgba(15, 110, 86, .08);
+    }
+
+    .modifica-footer #totale-modifica {
+        font-size: 18px;
+    }
+
+    .modifica-footer .salva {
+        min-height: 48px;
+        font-size: 14px;
+    }
+}

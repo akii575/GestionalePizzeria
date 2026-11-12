@@ -24,7 +24,9 @@
                     ><a href="/banco.html">Banco</a><a href="/tavoli.html">Tavoli</a>
                 </nav>
             </header>
-            <section class="tavolo-input">
+            <div class="composer-layout">
+                <div class="composer-main">
+                    <section class="tavolo-input">
                 <label for="tipo-ordine">Tipo ordine</label>
                 <select id="tipo-ordine">
                     <option value="tavolo">Tavolo</option>
@@ -123,12 +125,12 @@
                         Aggiungi costo consegna (+2,00 €)
                     </button>
                 </div>
-            </section>
-            <section class="note-input">
-                <label for="note">Note</label>
-                <textarea id="note" placeholder="Aggiungi una nota..."></textarea>
-            </section>
-            <nav class="tab-container" aria-label="Categorie">
+                    </section>
+                    <section class="note-input">
+                        <label for="note">Note</label>
+                        <textarea id="note" placeholder="Aggiungi una nota..."></textarea>
+                    </section>
+                    <nav class="tab-container" aria-label="Categorie">
                 <button
                     id="btn-ricerca"
                     class="tab tab-ricerca"
@@ -164,17 +166,19 @@
                 <button class="tab" data-tab="bibite">Bibite</button>
                 <button class="tab" data-tab="vini">Vini</button>
                 <button class="tab" data-tab="dolci">Dolci</button>
-            </nav>
-            <div class="prodotti-wrapper">
-                <section id="prodotti" class="griglia-prodotti" aria-live="polite"></section>
-            </div>
-            <section class="extra-section" id="extra-section">
-                <h2>Extra per il prossimo piatto</h2>
-                <div id="extra-lista" class="extra-carousel" aria-label="Extra disponibili"></div>
-            </section>
-            <section class="riepilogo">
-                <h2>Riepilogo ordine</h2>
-                <div class="gestione-extra-riepilogo">
+                    </nav>
+                    <div class="prodotti-wrapper">
+                        <section id="prodotti" class="griglia-prodotti" aria-live="polite"></section>
+                    </div>
+                    <section class="extra-section" id="extra-section">
+                        <h2>Extra per il prossimo piatto</h2>
+                        <div id="extra-lista" class="extra-carousel" aria-label="Extra disponibili"></div>
+                    </section>
+                </div>
+                <aside class="composer-summary">
+                    <section class="riepilogo">
+                        <h2>Riepilogo ordine</h2>
+                        <div class="gestione-extra-riepilogo">
                     <label for="riga-extra">Prodotto da modificare</label>
                     <select id="riga-extra" disabled>
                         <option value="">Seleziona un prodotto</option>
@@ -183,13 +187,15 @@
                         <div id="extra-riepilogo-lista" class="extra-carousel" aria-label="Extra selezionabili"></div>
                         <button id="applica-extra" type="button">Applica extra</button>
                     </div>
-                </div>
-                <div id="riepilogo-items"><p>Nessun prodotto selezionato</p></div>
-                <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
-            </section>
-            <p id="messaggio" role="status"></p>
-            <button class="btn-invia" id="btn-invia" type="button" disabled>Invia ordine in cucina</button>
-            <button class="btn-annulla" id="btn-annulla" type="button">Annulla ordine</button>
+                        </div>
+                        <div id="riepilogo-items"><p>Nessun prodotto selezionato</p></div>
+                        <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
+                    </section>
+                    <p id="messaggio" role="status"></p>
+                    <button class="btn-invia" id="btn-invia" type="button" disabled>Rivedi e invia</button>
+                    <button class="btn-annulla" id="btn-annulla" type="button">Annulla ordine</button>
+                </aside>
+            </div>
         </main>
         <div
             id="conferma-modale"
