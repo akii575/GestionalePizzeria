@@ -76,6 +76,10 @@ const prodottiUI = (() => {
         return stato.armato ? `${stato.numero} ×` : stato.numero;
     }
 
+    function aggiornaConteggioProdotti(elemento, numero) {
+        elemento.textContent = `${numero} ${numero === 1 ? "prodotto" : "prodotti"}`;
+    }
+
     function controllaLimiteRighe(righeAttuali, quantitaRichiesta) {
         const righeValide = Number.isInteger(righeAttuali) && righeAttuali >= 0;
         const disponibili = righeValide ? Math.max(0, LIMITE_RIGHE_ORDINE - righeAttuali) : 0;
@@ -97,6 +101,7 @@ const prodottiUI = (() => {
         premiTastoMoltiplicatore,
         quantitaDaApplicare,
         testoMoltiplicatore,
+        aggiornaConteggioProdotti,
         controllaLimiteRighe
     };
 })();

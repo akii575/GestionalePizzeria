@@ -334,23 +334,31 @@ test("mobile navigation and checkout use one safe-area offset", () => {
     const orderStyles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
     const editStyles = fs.readFileSync(path.join(directory, "modifica.css"), "utf8");
     const orderScript = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+    const editScript = fs.readFileSync(path.join(directory, "modifica.js"), "utf8");
+    const orderPage = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
+    const editPage = fs.readFileSync(path.join(directory, "modifica.html"), "utf8");
 
     assert.match(navigation, /--app-mobile-nav-content-height:\s*60px;[\s\S]*?--app-mobile-nav-height:\s*calc\(var\(--app-mobile-nav-content-height\) \+ env\(safe-area-inset-bottom\)\)/);
     assert.match(navigation, /html\.app-shell-root\s*\{\s*background:\s*var\(--theme-green\);/);
     assert.match(navigation, /body\.app-shell\s*\{\s*padding-bottom:\s*0;/);
     assert.match(navigation, /body\.app-shell nav\.app-bottom-nav\s*\{[^}]*height:\s*var\(--app-mobile-nav-height\);/);
-    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-nav-item svg\s*\{\s*width:\s*22px;\s*height:\s*22px;/);
+    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-nav-item svg\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;[^}]*padding:\s*5px;/);
     assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-nav-item\s*\{[^}]*align-items:\s*center;[^}]*justify-content:\s*flex-end;[^}]*gap:\s*1px;/);
-    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-bottom-create svg\s*\{[^}]*position:\s*static;[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-bottom-create svg\s*\{[^}]*position:\s*static;[^}]*width:\s*56px;[^}]*height:\s*32px;[^}]*flex:\s*0 0 32px;[^}]*padding:\s*5px 17px;[^}]*border-radius:\s*16px;[^}]*background:\s*var\(--theme-gold\);[^}]*color:\s*var\(--theme-green-dark\);/);
+    assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-nav-item\.is-active\s*\{[^}]*color:\s*var\(--theme-green\);/);
     assert.doesNotMatch(navigation, /app-bottom-create svg\s*\{[^}]*top:\s*-33px;/);
     assert.match(navigationScript, /create = createLink\(\{ \.\.\.link, label: "Nuova" \}/);
     assert.match(orderStyles, /\.composer-summary > \.riepilogo\s*\{[^}]*bottom:\s*var\(--app-mobile-nav-height\);[^}]*height:\s*var\(--app-mobile-checkout-height\);/);
     assert.match(orderStyles, /\.composer-summary > \.btn-invia:disabled\s*\{[^}]*cursor:\s*not-allowed;[^}]*opacity:\s*\.45;/);
     assert.match(orderScript, /invia\.textContent = stato\.righe\.length \? "Rivedi e invia" : "Aggiungi prodotti";/);
     assert.match(editStyles, /\.modifica-footer\s*\{[^}]*bottom:\s*var\(--app-mobile-nav-height\);/);
-    assert.match(orderStyles, /\.composer-summary > \.riepilogo::after\s*\{[^}]*content:\s*counter\(order-items\) " prodotti";/);
-    assert.match(editStyles, /counter-increment:\s*edit-products;/);
-    assert.match(editStyles, /counter\(edit-products\) " prodotti"/);
+    assert.match(orderPage, /<p id="riepilogo-totale" class="riepilogo-totale">[^<]*<\/p>\s*<p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti<\/p>/);
+    assert.match(orderScript, /aggiornaConteggioProdotti\(riepilogoConteggio, stato\.righe\.length\);/);
+    assert.match(editPage, /<p id="totale-modifica">[^<]*<\/p>\s*<p id="conteggio-modifica" class="riepilogo-conteggio" aria-live="polite">0 prodotti<\/p>/);
+    assert.match(editPage, /src="\/prodotti-ui\.js"[\s\S]*?src="\/modifica\.js"/);
+    assert.match(editScript, /aggiornaConteggioProdotti\(conteggioModifica, righeOrdine\.length\);/);
+    assert.doesNotMatch(orderStyles, /counter-reset:\s*order-items|counter-increment:\s*order-items|counter\(order-items\)/);
+    assert.doesNotMatch(editStyles, /counter-reset:\s*edit-products|counter-increment:\s*edit-products|counter\(edit-products\)/);
 });
 
 test("mobile filters keep the date input inside its row and show the search full-width", () => {

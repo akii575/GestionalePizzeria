@@ -13,6 +13,7 @@ const {
     premiTastoMoltiplicatore,
     quantitaDaApplicare,
     testoMoltiplicatore,
+    aggiornaConteggioProdotti,
     controllaLimiteRighe
 } = require("../src/main/resources/static/prodotti-ui");
 
@@ -49,6 +50,16 @@ test("empty or blank queries return no results", () => {
     assert.deepEqual(filtraProdotti(menu, "   "), []);
     assert.deepEqual(filtraProdotti(menu, "zzzz-nessuno"), []);
     assert.deepEqual(filtraProdotti(undefined, "pizza"), []);
+});
+
+test("count label updates to plural after adding three products", () => {
+    const conteggio = { textContent: "0 prodotti" };
+    const righe = [];
+    righe.push({}, {}, {});
+
+    aggiornaConteggioProdotti(conteggio, righe.length);
+
+    assert.equal(conteggio.textContent, "3 prodotti");
 });
 
 test("names starting with the query come first, then alphabetical order", () => {

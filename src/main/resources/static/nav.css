@@ -415,27 +415,30 @@ body.app-shell nav.app-bottom-nav {
     }
 
     body.app-shell nav.app-bottom-nav > .app-nav-item svg {
-        width: 22px;
-        height: 22px;
+        box-sizing: border-box;
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        padding: 5px;
     }
 
     body.app-shell nav.app-bottom-nav > .app-nav-item.is-active {
-        color: var(--theme-green-dark);
+        color: var(--theme-green);
     }
 
     body.app-shell nav.app-bottom-nav > .app-bottom-create {
-        color: var(--theme-green-dark);
         font-weight: 600;
     }
 
     body.app-shell nav.app-bottom-nav > .app-bottom-create svg {
         position: static;
         box-sizing: border-box;
-        width: 44px;
-        height: 44px;
-        padding: 11px;
+        width: 56px;
+        height: 32px;
+        flex: 0 0 32px;
+        padding: 5px 17px;
         border: 0;
-        border-radius: 50%;
+        border-radius: 16px;
         background: var(--theme-gold);
         color: var(--theme-green-dark);
     }

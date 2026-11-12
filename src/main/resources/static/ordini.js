@@ -1,6 +1,7 @@
 const stato = { categoria: "pizze", menu: [], extra: [], righe: [], extraSelezionati: [] };
 const prodotti = document.getElementById("prodotti");
 const riepilogo = document.getElementById("riepilogo-items");
+const riepilogoConteggio = document.getElementById("riepilogo-conteggio");
 const messaggio = document.getElementById("messaggio");
 const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
@@ -38,6 +39,7 @@ const {
     premiTastoMoltiplicatore,
     quantitaDaApplicare,
     testoMoltiplicatore,
+    aggiornaConteggioProdotti,
     controllaLimiteRighe
 } = window.prodottiUI;
 const etichetteCategorie = Object.fromEntries(
@@ -295,6 +297,7 @@ function renderRiepilogo() {
         })
     );
     document.getElementById("riepilogo-totale").textContent = `Totale: ${euro.format(totaleOrdine())}`;
+    aggiornaConteggioProdotti(riepilogoConteggio, stato.righe.length);
     invia.disabled = !stato.righe.length;
     invia.textContent = stato.righe.length ? "Rivedi e invia" : "Aggiungi prodotti";
     aggiornaSelettoreRighe();

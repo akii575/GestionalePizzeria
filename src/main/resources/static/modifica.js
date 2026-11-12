@@ -1,5 +1,7 @@
 const numero = new URLSearchParams(window.location.search).get("numero");
 const righe = document.getElementById("righe");
+const conteggioModifica = document.getElementById("conteggio-modifica");
+const { aggiornaConteggioProdotti } = window.prodottiUI;
 let menu = [];
 let extra = [];
 let costoConsegna = 0;
@@ -21,7 +23,8 @@ function riferimentoExtra(elemento) {
     return typeof elemento === "string" ? extra.find(item => item.nome === elemento) : elemento;
 }
 function aggiornaTotale() {
-    const totaleRighe = Array.from(document.querySelectorAll(".riga-edit")).reduce((somma, riga) => {
+    const righeOrdine = Array.from(document.querySelectorAll(".riga-edit"));
+    const totaleRighe = righeOrdine.reduce((somma, riga) => {
         const prodotto = menu.find(item => item.nome === riga.querySelector(".prodotto")?.value);
         const selezionati = JSON.parse(riga.querySelector(".extra-selezionati")?.dataset.extra || "[]");
         return (
@@ -32,6 +35,7 @@ function aggiornaTotale() {
     }, 0);
     const totale = totaleRighe + (document.getElementById("tipo-ordine").value === "consegna" ? costoConsegna : 0);
     document.getElementById("totale-modifica").textContent = `Totale: ${euro.format(totale)}`;
+    aggiornaConteggioProdotti(conteggioModifica, righeOrdine.length);
 }
 function aggiornaCampiConsegna() {
     const tipo = document.getElementById("tipo-ordine").value;
