@@ -125,7 +125,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes ripple { from { opacity: .8; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -50%) scale(18); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
-@media (max-width: 680px) { nav:not(.home-links):not(.tab-container) { gap: 8px !important; } }
+@media (max-width: 680px) { nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) { gap: 8px !important; } }
 
 html { min-width: 320px; }
 body { min-width: 320px; min-height: 100vh; }
@@ -204,15 +204,15 @@ button {
     white-space: normal;
 }
 
-nav:not(.home-links):not(.tab-container) {
+nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
 }
 
-nav:not(.home-links):not(.tab-container) > a,
-nav:not(.home-links):not(.tab-container) > button {
+nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > a,
+nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -224,13 +224,11 @@ nav:not(.home-links):not(.tab-container) > button {
     line-height: 1.2;
 }
 
-nav:not(.home-links):not(.tab-container) > a {
+nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > a {
     border-radius: var(--theme-control-radius);
     color: var(--theme-green-dark);
     text-decoration: none;
 }
-
-nav:not(.home-links):not(.tab-container) > a:hover { background: rgba(23, 99, 69, .08); }
 
 :where(.dashboard, .container, .modifica, .home) { min-width: 0; }
 .dashboard-header { flex-wrap: wrap; }
@@ -329,8 +327,8 @@ button.stato-pagamento { cursor: pointer; }
         gap: 12px;
     }
     .dashboard-header nav, .navigazione { width: 100%; justify-content: flex-start; }
-    nav:not(.home-links):not(.tab-container) > a,
-    nav:not(.home-links):not(.tab-container) > button { flex: 1 1 auto; }
+    nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > a,
+    nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > button { flex: 1 1 auto; }
     .home-links { grid-template-columns: 1fr; gap: 12px; }
     .home-links a { min-height: 0; padding: 16px; }
     .filtri, .metriche { margin: 10px 0; }
@@ -372,8 +370,8 @@ button.stato-pagamento { cursor: pointer; }
     .stato-pagamento::before { width: 8px; height: 8px; flex-basis: 8px; }
     .ordine-totale { font-size: clamp(16px, 4.8vw, 20px); }
     .dashboard-header nav, .navigazione { gap: 6px; }
-    nav:not(.home-links):not(.tab-container) > a,
-    nav:not(.home-links):not(.tab-container) > button {
+    nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > a,
+    nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > button {
         flex: 1 1 calc(50% - 6px);
     }
     .filtri, .metriche { gap: 7px; margin-block: 8px; }

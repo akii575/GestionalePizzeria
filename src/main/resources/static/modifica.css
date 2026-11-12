@@ -186,7 +186,7 @@ textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; fo
         position: fixed;
         z-index: 1090;
         right: 0;
-        bottom: calc(68px + env(safe-area-inset-bottom));
+        bottom: calc(85px + env(safe-area-inset-bottom));
         left: 0;
         grid-template-columns: minmax(0, 1fr) minmax(130px, .9fr);
         align-items: center;
