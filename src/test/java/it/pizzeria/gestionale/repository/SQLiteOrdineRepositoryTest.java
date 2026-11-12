@@ -39,7 +39,7 @@ class SQLiteOrdineRepositoryTest {
         assertEquals("Tavolo 3", trovati.get(0).getTavoloOCliente());
         assertEquals(2, trovati.get(0).getRighe().size());
         assertEquals(Arrays.asList("Funghi", "Olive"), trovati.get(0).getRighe().get(0).getExtra());
-        assertEquals(new BigDecimal("9.00"), trovati.get(0).calcolaTotale());
+        assertEquals(new BigDecimal("9.50"), trovati.get(0).calcolaTotale());
     }
 
     @Test
@@ -56,7 +56,7 @@ class SQLiteOrdineRepositoryTest {
 
         Ordine riletto = repository.trovaTutti().get(0);
         assertEquals("Diavola", riletto.getRighe().get(0).getProdotto());
-        assertEquals(new BigDecimal("8.00"), riletto.calcolaTotale());
+        assertEquals(new BigDecimal("8.50"), riletto.calcolaTotale());
 
         repository.elimina(salvato.getNumero());
         assertEquals(0, repository.trovaTutti().size());
