@@ -16,6 +16,15 @@
             header.prepend(title);
             if (previousParent !== main && previousParent !== header && !previousParent.children.length) previousParent.remove();
         }
+        if (title) {
+            const mobileBrand = document.createElement("img");
+            mobileBrand.className = "app-mobile-brand";
+            mobileBrand.src = "/icons/logo-tondo.png";
+            mobileBrand.alt = "";
+            mobileBrand.width = 32;
+            mobileBrand.height = 32;
+            header.insertBefore(mobileBrand, title);
+        }
 
         const sourceNavigation = header.querySelector("nav");
         const refreshButton = document.getElementById("aggiorna");
@@ -78,8 +87,12 @@
         const brand = document.createElement("a");
         brand.className = "app-brand";
         brand.href = "/";
-        brand.textContent = "Civico7";
-        brand.setAttribute("aria-label", "CIVICO7 - Home");
+        const brandImage = document.createElement("img");
+        brandImage.src = "/icons/logo-tondo.png";
+        brandImage.alt = "Civico7 - Home";
+        brandImage.width = 96;
+        brandImage.height = 96;
+        brand.append(brandImage);
         sidebar.append(brand);
 
         const sideNav = document.createElement("nav");

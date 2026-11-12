@@ -44,17 +44,11 @@ body {
 }
 
 .brand-mark {
-    display: grid;
-    width: 64px;
-    height: 64px;
-    place-items: center;
+    display: block;
+    width: 88px;
+    height: 88px;
     margin-bottom: 20px;
-    border-radius: 20px;
-    background: var(--theme-green);
-    color: var(--theme-mint);
-    font-size: 23px;
-    font-weight: 600;
-    letter-spacing: -.06em;
+    object-fit: contain;
 }
 
 .login-card h1 {

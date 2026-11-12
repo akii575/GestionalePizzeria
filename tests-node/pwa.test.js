@@ -9,10 +9,12 @@ const iconDirectory = path.join(staticDirectory, "icons");
 const publicDirectory = path.join(root, "public");
 const iconSizes = {
     "apple-touch-icon.png": 180,
+    "favicon-32.png": 32,
     "icon-192.png": 192,
     "icon-192-maskable.png": 192,
     "icon-512.png": 512,
-    "icon-512-maskable.png": 512
+    "icon-512-maskable.png": 512,
+    "logo-tondo.png": 512
 };
 
 function pngDimensions(filePath) {
@@ -34,6 +36,8 @@ test("every page declares the installable app metadata", () => {
         assert.match(head, /<meta name="viewport"[^>]*viewport-fit=cover/i, page);
         assert.match(head, /<link rel="manifest" href="\/manifest\.webmanifest"/i, page);
         assert.match(head, /<link rel="apple-touch-icon"[^>]*href="\/icons\/apple-touch-icon\.png"/i, page);
+        assert.match(head, /<link rel="icon" href="\/favicon\.ico" sizes="any"/i, page);
+        assert.match(head, /<link rel="icon" type="image\/png" sizes="32x32" href="\/icons\/favicon-32\.png"/i, page);
         assert.match(head, /<meta name="theme-color" content="#1A5EA9"/i, page);
         assert.match(head, /<meta name="apple-mobile-web-app-capable" content="yes"/i, page);
         assert.match(head, /<meta name="mobile-web-app-capable" content="yes"/i, page);
@@ -71,6 +75,10 @@ test("manifest icons have the declared dimensions and are copied as public asset
         assert.deepEqual(pngDimensions(source), { width: size, height: size }, file);
         assert.deepEqual(fs.readFileSync(path.join(publicDirectory, "icons", file)), fs.readFileSync(source), file);
     }
+    assert.deepEqual(
+        fs.readFileSync(path.join(publicDirectory, "favicon.ico")),
+        fs.readFileSync(path.join(staticDirectory, "favicon.ico"))
+    );
     assert.deepEqual(fs.readFileSync(path.join(publicDirectory, "manifest.webmanifest")), fs.readFileSync(path.join(staticDirectory, "manifest.webmanifest")));
     assert.deepEqual(
         manifest.icons.filter(icon => icon.purpose === "maskable").map(icon => icon.sizes).sort(),
@@ -82,7 +90,7 @@ test("manifest and icons use public static routes and the manifest MIME type", (
     const config = JSON.parse(fs.readFileSync(path.join(root, "vercel.json"), "utf8"));
     assert.equal(config.headers.find(header => header.source === "/manifest.webmanifest")
         ?.headers.find(header => header.key === "Content-Type")?.value, "application/manifest+json");
-    assert.equal(config.rewrites.some(rewrite => /manifest\.webmanifest|\/icons\//.test(rewrite.source)), false);
+    assert.equal(config.rewrites.some(rewrite => /manifest\.webmanifest|favicon\.ico|favicon-32\.png|logo-tondo\.png|\/icons\//.test(rewrite.source)), false);
 });
 
 test("safe-area padding protects the mobile header, sidebar and bottom navigation", () => {

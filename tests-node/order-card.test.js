@@ -332,14 +332,20 @@ test("mobile filters keep the date input inside its row and show the search full
     assert.match(styles, /\.dashboard \.filtri \.switch\s*\{\s*grid-column:\s*2;/);
 });
 
-test("Civico7 is the full brand outside the compact icon-only sidebar", () => {
+test("Civico7 logo is used in the sidebar and mobile header", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const navigation = fs.readFileSync(path.join(directory, "nav.js"), "utf8");
     const styles = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
 
-    assert.match(navigation, /brand\.textContent\s*=\s*"Civico7"/);
+    assert.match(navigation, /brandImage\.src = "\/icons\/logo-tondo\.png";/);
+    assert.match(navigation, /brandImage\.alt = "Civico7 - Home";/);
+    assert.match(navigation, /brandImage\.width = 96;[\s\S]*?brandImage\.height = 96;/);
+    assert.match(navigation, /mobileBrand\.src = "\/icons\/logo-tondo\.png";/);
+    assert.match(navigation, /mobileBrand\.width = 32;[\s\S]*?mobileBrand\.height = 32;/);
     assert.match(navigation, /if \(isHome && title\) title\.textContent = "Civico7"/);
-    assert.match(styles, /@media \(min-width: 768px\) and \(max-width: 1024px\)[\s\S]*?\.app-sidebar \.app-brand::after\s*\{[^}]*content:\s*"C7";/);
+    assert.match(styles, /@media \(min-width: 1025px\)[\s\S]*?\.app-brand\s*\{[^}]*width:\s*96px;[^}]*height:\s*96px;/);
+    assert.match(styles, /@media \(min-width: 768px\) and \(max-width: 1024px\)[\s\S]*?\.app-sidebar \.app-brand\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+    assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?\.app-mobile-brand\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;/);
 });
 
 test("shared card escapes field, product, extra and note content", () => {
