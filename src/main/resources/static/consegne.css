@@ -1,2 +1,2 @@
 .lista-consegne { display: grid; gap: 14px; }
-.order-card__field-action:focus-visible, .order-card__field-value a:focus-visible { outline: 3px solid rgba(31, 108, 69, .25); outline-offset: 3px; border-radius: 3px; }
+.order-card__field-action:focus-visible, .order-card__field-value a:focus-visible { outline: 3px solid rgba(228, 176, 52, .25); outline-offset: 3px; border-radius: 3px; }

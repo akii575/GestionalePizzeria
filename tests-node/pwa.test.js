@@ -34,7 +34,7 @@ test("every page declares the installable app metadata", () => {
         assert.match(head, /<meta name="viewport"[^>]*viewport-fit=cover/i, page);
         assert.match(head, /<link rel="manifest" href="\/manifest\.webmanifest"/i, page);
         assert.match(head, /<link rel="apple-touch-icon"[^>]*href="\/icons\/apple-touch-icon\.png"/i, page);
-        assert.match(head, /<meta name="theme-color" content="#0F6E56"/i, page);
+        assert.match(head, /<meta name="theme-color" content="#1A5EA9"/i, page);
         assert.match(head, /<meta name="apple-mobile-web-app-capable" content="yes"/i, page);
         assert.match(head, /<meta name="mobile-web-app-capable" content="yes"/i, page);
         assert.match(head, /<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/i, page);
@@ -61,8 +61,8 @@ test("manifest icons have the declared dimensions and are copied as public asset
         scope: "/",
         display: "standalone",
         orientation: "portrait",
-        background_color: "#F3F6F4",
-        theme_color: "#0F6E56",
+        background_color: "#F3F6FA",
+        theme_color: "#1A5EA9",
         lang: "it"
     });
 

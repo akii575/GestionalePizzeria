@@ -106,7 +106,7 @@ select,
 }
 .campo-consegna input:focus,
 #campo-ritiro input:focus {
-    outline: 3px solid rgba(31, 108, 69, 0.18);
+    outline: 3px solid rgba(228, 176, 52, 0.18);
     border-color: var(--verde);
 }
 #campo-ritiro input {
@@ -584,7 +584,7 @@ button {
 }
 .ricerca-moltiplicatore.armato {
     border: 2px solid var(--verde);
-    background: rgba(23, 99, 69, 0.1);
+    background: rgba(26, 94, 169, 0.1);
     color: var(--verde);
 }
 .ricerca-tasti {
@@ -608,10 +608,10 @@ button {
 .ricerca-tasti button:hover,
 .ricerca-tasti button:focus-visible {
     border-color: var(--verde);
-    background: rgba(23, 99, 69, 0.08);
+    background: rgba(26, 94, 169, 0.08);
 }
 .ricerca-tasti button:active {
-    background: rgba(23, 99, 69, 0.16);
+    background: rgba(26, 94, 169, 0.16);
 }
 .ricerca-tasti button:last-child {
     background: var(--verde);
@@ -643,10 +643,10 @@ button {
 }
 .ricerca-risultato:hover,
 .ricerca-risultato:focus-visible {
-    background: rgba(23, 99, 69, 0.08);
+    background: rgba(26, 94, 169, 0.08);
 }
 .ricerca-risultato:active {
-    background: rgba(23, 99, 69, 0.16);
+    background: rgba(26, 94, 169, 0.16);
 }
 .ricerca-nome {
     grid-area: nome;
@@ -903,7 +903,7 @@ button {
 .ricerca-risultato:focus-visible {
     border-color: var(--theme-green);
     background: var(--theme-green-light);
-    outline: 2px solid rgba(15, 110, 86, .3);
+    outline: 2px solid rgba(228, 176, 52, .3);
     outline-offset: -2px;
 }
 
@@ -1055,7 +1055,7 @@ button {
         border-bottom: 0;
         border-radius: 18px 18px 0 0;
         background: #fff;
-        box-shadow: 0 -4px 16px rgba(15, 110, 86, .08);
+        box-shadow: 0 -4px 16px rgba(26, 94, 169, .08);
     }
 
     .composer-summary > .riepilogo h2,
