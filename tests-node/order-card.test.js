@@ -319,8 +319,10 @@ test("mobile list headers keep the title and actions on one line", () => {
     assert.match(navigation, /body\.app-shell \.app-page-header h1\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
     assert.match(navigation, /\.app-header-actions\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*margin-left:\s*auto;/);
     assert.match(navigation, /body\.app-shell \.app-page-header\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;[^}]*width:\s*calc\(100% \+ var\(--app-mobile-gutter\) \+ var\(--app-mobile-gutter\)\);[^}]*margin:\s*0 var\(--app-mobile-gutter-negative\) 14px;/);
-    assert.match(navigation, /body\.app-shell main\.dashboard\s*\{[^}]*padding-top:\s*0;/);
+    assert.match(navigation, /body\.app-shell main\.home,\s*body\.app-shell main\.dashboard,\s*body\.app-shell main\.container,\s*body\.app-shell main\.modifica\s*\{[^}]*padding-top:\s*0;/);
     assert.match(navigation, /body\.app-shell \.app-page-header \.app-header-actions\s*\{[^}]*min-width:\s*0;[^}]*margin-left:\s*auto;[^}]*justify-content:\s*flex-end;/);
+    assert.match(theme, /@media \(max-width: 720px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 16px 24px;/);
+    assert.match(theme, /@media \(max-width: 420px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 12px 24px;/);
     assert.match(theme, /\.dashboard-header:not\(\.app-page-header\)\s*\{[^}]*flex-wrap:\s*wrap;/);
     assert.match(theme, /\.dashboard-header:not\(\.app-page-header\) > div\s*\{[^}]*min-width:\s*min\(100%, 250px\);/);
 });

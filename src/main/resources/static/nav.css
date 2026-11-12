@@ -278,7 +278,10 @@ body.app-shell nav.app-bottom-nav {
         padding-bottom: var(--app-mobile-nav-height);
     }
 
-    body.app-shell main.dashboard {
+    body.app-shell main.home,
+    body.app-shell main.dashboard,
+    body.app-shell main.container,
+    body.app-shell main.modifica {
         padding-top: 0;
     }
 

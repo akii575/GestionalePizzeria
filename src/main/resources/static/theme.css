@@ -324,7 +324,7 @@ button.stato-pagamento { cursor: pointer; }
         margin: 8px 16px 12px auto;
     }
     .dashboard, .container, .modifica { padding: 16px; }
-    .home { padding: 40px 16px; }
+    .home { padding: 0 16px 24px; }
     nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > a,
     nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > button { flex: 1 1 auto; }
     .home-links { grid-template-columns: 1fr; gap: 12px; }
@@ -359,7 +359,7 @@ button.stato-pagamento { cursor: pointer; }
         margin-right: 12px;
     }
     .dashboard, .container, .modifica { padding: 12px; }
-    .home { padding: 28px 12px; }
+    .home { padding: 0 12px 24px; }
     .ordine-testa { padding: 10px; gap: 6px; }
     .ordine-totali, .order-card__totals { gap: 4px; }
     .stato-pagamento { gap: 4px; min-height: 44px; padding: 6px 7px; font-size: 11px; white-space: nowrap; }
