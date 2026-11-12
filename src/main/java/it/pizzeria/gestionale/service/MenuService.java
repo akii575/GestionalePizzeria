@@ -31,6 +31,7 @@ public class MenuService {
                 new ProdottoMenu("Mamma Giulia", "pizze", new BigDecimal("7.00"), Arrays.asList("Pomodoro San Marzano", "pomodorino datterino cotto", "fior di latte; all'uscita ricotta", "olio evo", "basilico")),
                 new ProdottoMenu("Sapori di Montagna", "pizze", new BigDecimal("9.00"), Arrays.asList("Vellutata di patate", "porcini a fette", "provola affumicata", "guanciale croccante", "olio evo", "basilico")),
                 new ProdottoMenu("The Pumpkin", "pizze", new BigDecimal("9.00"), Arrays.asList("Fior di latte", "zucca", "provola affumicata", "pancetta arrotolata", "porcini a fette", "fonduta di gorgonzola", "olio evo", "basilico")),
+                new ProdottoMenu("The Pumpkin 2.0", "pizze", new BigDecimal("9.00"), Arrays.asList("Vellutata di zucca", "mozzarella", "salsiccia", "noci; all'uscita gorgonzola")),
                 new ProdottoMenu("La Mortazza", "pizze", new BigDecimal("9.00"), Arrays.asList("Fior di latte; all'uscita mortadella", "ricotta a ciuffi", "crema di pistacchio", "granella di pistacchi", "olio evo", "basilico")),
                 new ProdottoMenu("Nocina", "pizze", new BigDecimal("8.00"), Arrays.asList("Crema di noci", "fior di latte", "capocollo", "gherigli di noci", "olio evo", "basilico")),
                 new ProdottoMenu("Carciofina", "pizze", new BigDecimal("8.50"), Arrays.asList("Fior di latte", "carciofi; all'uscita pancetta arrotolata")),

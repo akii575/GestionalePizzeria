@@ -9,7 +9,7 @@ const services = path.join(__dirname, "..", "src", "main", "java", "it", "pizzer
 test("exports all products and ingredients from the existing Java menu", () => {
     const source = fs.readFileSync(path.join(services, "MenuService.java"), "utf8");
     const products = extractProducts(source);
-    assert.equal(products.length, 106);
+    assert.equal(products.length, 107);
     assert.deepEqual(products[0], {
         nome: "Margherita",
         categoria: "pizze",
@@ -18,13 +18,18 @@ test("exports all products and ingredients from the existing Java menu", () => {
     });
     const pizzas = products.filter(product => product.categoria === "pizze");
     const pizzaNames = pizzas.map(product => product.nome.toLocaleLowerCase("it-IT"));
-    assert.equal(pizzas.length, 46);
+    assert.equal(pizzas.length, 47);
     assert.equal(new Set(pizzaNames).size, pizzas.length);
     assert.ok(pizzas.some(product => product.nome === "L'Allardata"));
     assert.equal(pizzas.some(product => product.nome === "Callardata"), false);
     assert.ok(pizzas.some(product => product.nome === "Focaccia pom. cotto e lardo"));
     assert.ok(pizzas.find(product => product.nome === "Nocina").ingredienti.includes("gherigli di noci"));
+    assert.deepEqual(
+        pizzas.find(product => product.nome === "The Pumpkin 2.0").ingredienti,
+        ["Vellutata di zucca", "mozzarella", "salsiccia", "noci; all'uscita gorgonzola"]
+    );
     const requestedProducts = new Map([
+        ["The Pumpkin 2.0", ["pizze", 9]],
         ["Acqua 1L", ["bibite", 2.5]],
         ["Birra alla spina 0,20L", ["bibite", 2.5]],
         ["Birra alla spina 0,40L", ["bibite", 5]],
