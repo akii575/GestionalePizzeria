@@ -80,7 +80,7 @@ test("all order types share two-column fields and counter names span the row", (
     assert.doesNotMatch(styles, /order-card__field--inline|order-card__fields--delivery/);
 });
 
-test("print status is a full-width header row below title and totals", () => {
+test("print status occupies its own row after the header and retains its full title", () => {
     const messages = [
         "Stampata",
         "Comanda aggiornata; la copia gia' stampata non e' stata ristampata."
@@ -94,16 +94,50 @@ test("print status is a full-width header row below title and totals", () => {
         const html = render({ tipo: "tavolo", messaggioStampa: message, stampaCompletata: true });
         const headingEnd = html.indexOf("</div>", html.indexOf('class="order-card__heading"'));
         const statusPosition = html.indexOf('class="order-card__print-status');
+        const headerEnd = html.indexOf("</header>");
         const datePosition = html.indexOf('class="order-card__date"');
         assert.ok(headingEnd >= 0 && headingEnd < statusPosition);
+        assert.ok(headerEnd < statusPosition);
         assert.ok(statusPosition < datePosition);
         assert.ok(html.includes(message.replace(/'/g, "&#39;")));
+        assert.ok(html.includes(`title="${message.replace(/'/g, "&#39;")}"`));
     }
 
     assert.match(styles, /\.order-card__print-status\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;[^}]*width:\s*100%;[^}]*padding:\s*8px 12px;[^}]*border-radius:\s*10px;[^}]*text-align:\s*left;[^}]*white-space:\s*normal;/);
-    assert.match(styles, /\.dashboard \.order-card\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/);
+    assert.match(styles, /\.dashboard \.order-card\s*\{[^}]*display:\s*grid;/);
     assert.match(styles, /\.dashboard \.order-card__actions\s*\{[^}]*margin-top:\s*auto;/);
     assert.match(styles, /\.dashboard \.lista-ordini,[\s\S]*?align-items:\s*stretch;/);
+    assert.match(styles, /\.dashboard \.order-card__print-status:not\(\.order-card__print-status--empty\)\s*\{[^}]*-webkit-line-clamp:\s*2;/);
+    assert.match(styles, /\.order-card__print-status--empty\s*\{\s*visibility:\s*hidden;/);
+    assert.match(styles, /grid-template-rows:\s*subgrid;/);
+    assert.match(styles, /grid-template-rows:\s*minmax\(74px,\s*auto\)[\s\S]*?minmax\(122px,\s*auto\);/);
+});
+
+test("orders without a print status reserve desktop alignment space but not mobile space", () => {
+    const html = render({ tipo: "tavolo", tavoloOCliente: "Tavolo 4", numeroPersone: 3 });
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
+        "utf8"
+    );
+
+    assert.match(html, /class="order-card__print-status order-card__print-status--empty" aria-hidden="true"/);
+    assert.match(styles, /\.order-card__print-status--empty\s*\{\s*visibility:\s*hidden;/);
+    assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?\.dashboard \.order-card__print-status--empty \{ display:\s*none;/);
+});
+
+test("delivery map action stays beside the address within equal-height fields", () => {
+    const html = render({
+        tipo: "consegna",
+        indirizzoConsegna: "Via Roma 12, Napoli"
+    });
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
+        "utf8"
+    );
+
+    assert.match(html, /<span>Via Roma 12, Napoli<\/span><span class="order-card__field-hint">Apri nelle mappe<\/span>/);
+    assert.match(styles, /\.dashboard \.order-card__field \{ min-height:\s*90px; \}/);
+    assert.match(styles, /\.order-card__field-action \{ display:\s*flex;[^}]*justify-content:\s*space-between;/);
 });
 
 test("delivery surcharge is included in order details only when present", () => {
@@ -202,7 +236,7 @@ test("mobile stats stay in three columns and order totals stay on the header row
     assert.match(theme, /\.dashboard > #stato\s*\{\s*min-height:\s*0;\s*margin:\s*0 0 6px;/);
 });
 
-test("order date and service time remain together on one full-width header line", () => {
+test("order date and service time remain together in their shared aligned row", () => {
     const html = render({
         tipo: "consegna",
         dataOra: "2026-10-26T11:54:10.000Z",
@@ -218,21 +252,24 @@ test("order date and service time remain together on one full-width header line"
     assert.ok(heading);
     assert.doesNotMatch(heading, /order-card__date/);
     assert.match(html, /class="order-card__date">[^<]*\| Orario: 22:47<\/p>/);
-    assert.match(styles, /\.order-card__date\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;[^}]*white-space:\s*nowrap;/);
+    assert.match(styles, /\.order-card__date\s*\{[^}]*white-space:\s*nowrap;/);
+    assert.match(styles, /\.dashboard \.order-card__date \{ display:\s*flex; min-height:\s*36px;/);
 });
 
-test("all-orders title has a green separator before its navigation", () => {
-    const page = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.html"),
-        "utf8"
-    );
-    const styles = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
-        "utf8"
-    );
+test("all order-list pages use the same source header and navigation shell", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const pages = ["tavoli.html", "ritiri.html", "banco.html", "consegne.html", "gestionale.html"];
+    const navigation = fs.readFileSync(path.join(directory, "nav.js"), "utf8");
 
-    assert.match(page, /class="dashboard-header dashboard-header--orders"/);
-    assert.match(styles, /\.dashboard-header\.dashboard-header--orders > div\s*\{[^}]*border-bottom:\s*4px solid var\(--verde\);/);
+    for (const pageName of pages) {
+        const page = fs.readFileSync(path.join(directory, pageName), "utf8");
+        assert.match(page, /<header class="dashboard-header">\s*<div><h1>[^<]+<\/h1><\/div>\s*<nav[\s\S]*?id="aggiorna"/);
+        assert.doesNotMatch(page, /dashboard-header--orders/);
+    }
+    assert.match(navigation, /header\.classList\.add\("app-page-header"\)/);
+    assert.match(navigation, /actions\.append\(refreshButton\)/);
+    assert.match(navigation, /header\.append\(actions\)/);
+    assert.match(navigation, /sidebarActions\.append\(resetButton\)/);
 });
 
 test("mobile list headers keep the title and actions on one line", () => {

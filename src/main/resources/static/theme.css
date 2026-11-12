@@ -321,12 +321,6 @@ button.stato-pagamento { cursor: pointer; }
     }
     .dashboard, .container, .modifica { padding: 16px; }
     .home { padding: 40px 16px; }
-    .dashboard-header, .container > header, .modifica > header {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .dashboard-header nav, .navigazione { width: 100%; justify-content: flex-start; }
     nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > a,
     nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > button { flex: 1 1 auto; }
     .home-links { grid-template-columns: 1fr; gap: 12px; }
@@ -344,7 +338,7 @@ button.stato-pagamento { cursor: pointer; }
     .order-card__header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; }
     .order-card__header > .order-card__heading { min-width: 0; overflow-wrap: normal; word-break: normal; }
     .order-card__heading .order-card__title { overflow-wrap: normal; word-break: normal; hyphens: none; }
-    .order-card__date { grid-column: 1 / -1; overflow-wrap: normal; word-break: normal; }
+    .order-card__date { overflow-wrap: normal; word-break: normal; }
     .ordine-totali, .order-card__totals { display: flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
     .order-card__totals { grid-column: 2; grid-row: 1; flex-wrap: nowrap; }
     .order-card__totals .stato-pagamento { flex: 0 0 136px; width: 136px; min-width: 136px; }

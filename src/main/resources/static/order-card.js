@@ -92,7 +92,9 @@ const orderCard = (() => {
 
     function renderPrintStatus(order) {
         const message = String(order.messaggioStampa || "").trim();
-        if (!message && !order.stampaCompletata && !order.stampaInCoda) return "";
+        if (!message && !order.stampaCompletata && !order.stampaInCoda) {
+            return '<span class="order-card__print-status order-card__print-status--empty" aria-hidden="true"></span>';
+        }
         const normalizedMessage = message.toLocaleLowerCase("it");
         const state = /errore|non riusc|fallit/.test(normalizedMessage)
             ? "error"
@@ -102,7 +104,7 @@ const orderCard = (() => {
                     ? "printed"
                     : "queued";
         const label = message || (order.stampaCompletata ? "Stampata" : "In coda");
-        return `<span class="order-card__print-status order-card__print-status--${state}" role="status">${escapeHtml(label)}</span>`;
+        return `<span class="order-card__print-status order-card__print-status--${state}" role="status" title="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
     }
 
     function renderActions(order, canEdit) {
@@ -199,9 +201,9 @@ const orderCard = (() => {
                         ${renderPayment(order, canEdit)}
                         <div class="order-card__total">${euro.format(Number(order.totale || 0))}</div>
                     </div>
-                    ${printStatus}
-                    <p class="order-card__date">${dateText}${serviceTime}</p>
                 </header>
+                ${printStatus}
+                <p class="order-card__date">${dateText}${serviceTime}</p>
                 ${renderFields(fieldsForOrder(order, type))}
                 <details class="order-card__details">
                     <summary>Apri il dettaglio dell'ordine</summary>
