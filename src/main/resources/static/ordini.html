@@ -199,13 +199,16 @@
                     </div>
                         </div>
                             <div id="riepilogo-items"><p>Nessun prodotto selezionato</p></div>
-                            <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
-                            <p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
+                                <div class="riepilogo-totale-riga">
+                                    <p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
+                                    <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
+                                </div>
                         </section>
                         <button class="btn-annulla" id="btn-annulla" type="button">Annulla ordine</button>
                     </div>
                     <p id="messaggio" role="status"></p>
                     <div class="barra-conto">
+                        <span class="barra-conto-maniglia" aria-hidden="true"></span>
                         <div
                             class="barra-conto-dettagli"
                             role="button"
@@ -213,7 +216,6 @@
                             aria-expanded="false"
                             aria-controls="riepilogo-sheet"
                         >
-                            <span class="barra-conto-maniglia" aria-hidden="true"></span>
                             <p id="barra-totale" class="riepilogo-totale">Totale: 0,00 €</p>
                             <p id="barra-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
                         </div>
@@ -239,9 +241,9 @@
                     <p>Nessun prodotto selezionato</p>
                 </div>
                 <footer class="riepilogo-sheet-footer">
-                    <div>
-                        <p id="riepilogo-sheet-totale" class="riepilogo-totale">Totale: 0,00 €</p>
+                    <div class="riepilogo-totale-riga">
                         <p id="riepilogo-sheet-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
+                        <p id="riepilogo-sheet-totale" class="riepilogo-totale">Totale: 0,00 €</p>
                     </div>
                     <button class="btn-invia" id="riepilogo-sheet-invia" type="button" disabled>Aggiungi prodotti</button>
                 </footer>

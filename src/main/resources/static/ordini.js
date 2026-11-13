@@ -16,6 +16,8 @@ let riepilogoSheetAperto = false;
 let riepilogoSheetHistory = false;
 let trascinamentoRiepilogo = null;
 let trascinamentoChiusuraSheet = null;
+let frameTrascinamentoRiepilogo = 0;
+let frameTrascinamentoChiusuraSheet = 0;
 let ignoraTapRiepilogoFino = 0;
 let origineTapRiepilogo = false;
 let posizioneScrollSheet = 0;
@@ -342,11 +344,17 @@ function rimuoviRigaRiepilogo(evento) {
 function riepilogoSheetDisponibile() {
     return mediaRiepilogoSheet.matches;
 }
-function apriRiepilogoSheet() {
+function apriRiepilogoSheet(trascinamentoInCorso = false) {
     if (riepilogoSheetAperto || !riepilogoSheetDisponibile()) return;
     riepilogoSheetAperto = true;
     riepilogoSheetBackdrop.hidden = false;
-    requestAnimationFrame(() => riepilogoSheetBackdrop.classList.add("is-open"));
+    if (!trascinamentoInCorso) {
+        riepilogoSheetBackdrop.classList.remove("is-dragging");
+        riepilogoSheet.classList.remove("is-dragging");
+        riepilogoSheetBackdrop.style.opacity = "";
+        riepilogoSheet.style.transform = "";
+        requestAnimationFrame(() => riepilogoSheetBackdrop.classList.add("is-open"));
+    }
     posizioneScrollSheet = window.scrollY;
     posizioneStileCorpo = {
         position: document.body.style.position,
@@ -386,11 +394,26 @@ function aggiornaAccessibilitaBarraSheet() {
     riepilogoSheetApri.removeAttribute("aria-controls");
     riepilogoSheetApri.removeAttribute("aria-expanded");
 }
-function chiudiRiepilogoSheet(daCronologia = false) {
+function chiudiRiepilogoSheet(daCronologia = false, daTrascinamento = false) {
     if (!riepilogoSheetAperto) return;
     riepilogoSheetAperto = false;
     riepilogoSheetApri.setAttribute("aria-expanded", "false");
-    riepilogoSheetBackdrop.classList.remove("is-open");
+    if (daTrascinamento) {
+        requestAnimationFrame(() => {
+            riepilogoSheetBackdrop.classList.remove("is-dragging");
+            riepilogoSheet.classList.remove("is-dragging");
+            requestAnimationFrame(() => {
+                riepilogoSheetBackdrop.classList.remove("is-open");
+                riepilogoSheetBackdrop.style.opacity = "";
+                riepilogoSheet.style.transform = "";
+            });
+        });
+    } else {
+        riepilogoSheetBackdrop.classList.remove("is-open", "is-dragging");
+        riepilogoSheet.classList.remove("is-dragging");
+        riepilogoSheetBackdrop.style.opacity = "";
+        riepilogoSheet.style.transform = "";
+    }
     document.body.classList.remove("riepilogo-sheet-aperto");
     document.body.style.position = posizioneStileCorpo.position;
     document.body.style.top = posizioneStileCorpo.top;
@@ -401,23 +424,30 @@ function chiudiRiepilogoSheet(daCronologia = false) {
     riepilogoSheetApri.focus({ preventScroll: true });
     if (riepilogoSheetHistory && !daCronologia) history.back();
     riepilogoSheetHistory = false;
-    const durata = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 260;
+    const durata = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 300;
     window.setTimeout(() => {
         if (!riepilogoSheetAperto) riepilogoSheetBackdrop.hidden = true;
     }, durata);
 }
 function avviaTrascinamentoRiepilogo(evento) {
     if (!riepilogoSheetDisponibile() || evento.button !== 0 || evento.target.closest("#btn-invia")) return;
-    origineTapRiepilogo = riepilogoSheetApri.contains(evento.target);
-    barraConto.classList.add("is-dragging");
+    origineTapRiepilogo = !evento.target.closest("#btn-invia");
+    riepilogoSheetBackdrop.hidden = false;
+    const altezza = riepilogoSheet.getBoundingClientRect().height;
+    riepilogoSheetBackdrop.classList.add("is-open", "is-dragging");
+    riepilogoSheet.classList.add("is-dragging");
     trascinamentoRiepilogo = {
         pointerId: evento.pointerId,
         startY: evento.clientY,
         lastY: evento.clientY,
         lastTime: performance.now(),
         velocity: 0,
-        moved: false
+        moved: false,
+        altezza,
+        pendingY: evento.clientY
     };
+    riepilogoSheet.style.transform = `translateY(${altezza}px)`;
+    riepilogoSheetBackdrop.style.opacity = "0";
     barraConto.setPointerCapture(evento.pointerId);
 }
 function aggiornaTrascinamentoRiepilogo(evento) {
@@ -427,21 +457,74 @@ function aggiornaTrascinamentoRiepilogo(evento) {
     trascinamentoRiepilogo.velocity = (evento.clientY - trascinamentoRiepilogo.lastY) / elapsed;
     trascinamentoRiepilogo.lastY = evento.clientY;
     trascinamentoRiepilogo.lastTime = now;
-    const distance = evento.clientY - trascinamentoRiepilogo.startY;
-    trascinamentoRiepilogo.moved ||= Math.abs(distance) > 8;
-    barraConto.style.transform = `translateY(${Math.min(0, distance)}px)`;
+    trascinamentoRiepilogo.pendingY = evento.clientY;
+    trascinamentoRiepilogo.moved ||= Math.abs(evento.clientY - trascinamentoRiepilogo.startY) > 8;
+    if (frameTrascinamentoRiepilogo) return;
+    frameTrascinamentoRiepilogo = requestAnimationFrame(() => {
+        frameTrascinamentoRiepilogo = 0;
+        const progresso = Math.max(
+            0,
+            Math.min(
+                1,
+                (trascinamentoRiepilogo.startY - trascinamentoRiepilogo.pendingY) /
+                    trascinamentoRiepilogo.altezza
+            )
+        );
+        riepilogoSheet.style.transform = `translateY(${trascinamentoRiepilogo.altezza * (1 - progresso)}px)`;
+        riepilogoSheetBackdrop.style.opacity = String(progresso);
+    });
 }
 function terminaTrascinamentoRiepilogo(evento) {
     if (!trascinamentoRiepilogo || evento.pointerId !== trascinamentoRiepilogo.pointerId) return;
-    const distance = evento.clientY - trascinamentoRiepilogo.startY;
-    const apri = evento.type !== "pointercancel" &&
-        (distance < -60 || (distance < -20 && trascinamentoRiepilogo.velocity < -0.5));
-    if (trascinamentoRiepilogo.moved) ignoraTapRiepilogoFino = Date.now() + 300;
+    if (frameTrascinamentoRiepilogo) cancelAnimationFrame(frameTrascinamentoRiepilogo);
+    frameTrascinamentoRiepilogo = 0;
+    const trascinamento = trascinamentoRiepilogo;
+    const distanza = trascinamento.startY - evento.clientY;
+    trascinamento.pendingY = evento.clientY;
+    const progresso = Math.max(0, Math.min(1, distanza / trascinamento.altezza));
+    riepilogoSheet.style.transform = `translateY(${trascinamento.altezza * (1 - progresso)}px)`;
+    riepilogoSheetBackdrop.style.opacity = String(progresso);
+    const apri =
+        evento.type !== "pointercancel" &&
+        (distanza > trascinamento.altezza * 0.25 || trascinamento.velocity < -0.3);
+    if (trascinamento.moved) {
+        ignoraTapRiepilogoFino = Date.now() + 300;
+        origineTapRiepilogo = false;
+    }
     if (evento.type === "pointercancel") origineTapRiepilogo = false;
     trascinamentoRiepilogo = null;
-    barraConto.classList.remove("is-dragging");
-    barraConto.style.transform = "";
-    if (apri) apriRiepilogoSheet();
+    if (!trascinamento.moved) {
+        riepilogoSheetBackdrop.classList.remove("is-open", "is-dragging");
+        riepilogoSheet.classList.remove("is-dragging");
+        riepilogoSheetBackdrop.style.opacity = "";
+        riepilogoSheet.style.transform = "";
+        riepilogoSheetBackdrop.hidden = true;
+        return;
+    }
+    if (apri) {
+        apriRiepilogoSheet(true);
+        requestAnimationFrame(() => {
+            riepilogoSheetBackdrop.classList.remove("is-dragging");
+            riepilogoSheet.classList.remove("is-dragging");
+            requestAnimationFrame(() => {
+                riepilogoSheetBackdrop.style.opacity = "";
+                riepilogoSheet.style.transform = "";
+            });
+        });
+        return;
+    }
+    requestAnimationFrame(() => {
+        riepilogoSheetBackdrop.classList.remove("is-dragging");
+        riepilogoSheet.classList.remove("is-dragging");
+        requestAnimationFrame(() => {
+            riepilogoSheetBackdrop.classList.remove("is-open");
+            riepilogoSheetBackdrop.style.opacity = "";
+            riepilogoSheet.style.transform = "";
+            window.setTimeout(() => {
+                if (!riepilogoSheetAperto) riepilogoSheetBackdrop.hidden = true;
+            }, 300);
+        });
+    });
 }
 function attivaRiepilogoSheetDaTastiera(evento) {
     if (!riepilogoSheetDisponibile()) return;
@@ -451,12 +534,15 @@ function attivaRiepilogoSheetDaTastiera(evento) {
 }
 function avviaTrascinamentoChiusuraSheet(evento) {
     if (evento.button !== 0 || evento.target.closest("button")) return;
+    const altezza = riepilogoSheet.getBoundingClientRect().height;
     trascinamentoChiusuraSheet = {
         pointerId: evento.pointerId,
         startY: evento.clientY,
         lastY: evento.clientY,
         lastTime: performance.now(),
-        velocity: 0
+        velocity: 0,
+        altezza,
+        pendingY: evento.clientY
     };
     riepilogoSheetHeader.setPointerCapture(evento.pointerId);
 }
@@ -467,18 +553,49 @@ function aggiornaTrascinamentoChiusuraSheet(evento) {
     trascinamentoChiusuraSheet.velocity = (evento.clientY - trascinamentoChiusuraSheet.lastY) / elapsed;
     trascinamentoChiusuraSheet.lastY = evento.clientY;
     trascinamentoChiusuraSheet.lastTime = now;
+    trascinamentoChiusuraSheet.pendingY = evento.clientY;
+    if (frameTrascinamentoChiusuraSheet) return;
+    frameTrascinamentoChiusuraSheet = requestAnimationFrame(() => {
+        frameTrascinamentoChiusuraSheet = 0;
+        const trascinamento = trascinamentoChiusuraSheet;
+        const progresso = Math.max(
+            0,
+            Math.min(
+                1,
+                (trascinamento.pendingY - trascinamento.startY) / trascinamento.altezza
+            )
+        );
+        riepilogoSheet.style.transform = `translateY(${trascinamento.altezza * progresso}px)`;
+        riepilogoSheetBackdrop.style.opacity = String(1 - progresso);
+    });
     riepilogoSheet.classList.add("is-dragging");
-    riepilogoSheet.style.transform = `translateY(${Math.max(0, evento.clientY - trascinamentoChiusuraSheet.startY)}px)`;
+    riepilogoSheetBackdrop.classList.add("is-dragging");
 }
 function terminaTrascinamentoChiusuraSheet(evento) {
     if (!trascinamentoChiusuraSheet || evento.pointerId !== trascinamentoChiusuraSheet.pointerId) return;
-    const distance = evento.clientY - trascinamentoChiusuraSheet.startY;
-    const chiudi = evento.type !== "pointercancel" &&
-        (distance > 60 || (distance > 20 && trascinamentoChiusuraSheet.velocity > 0.5));
+    if (frameTrascinamentoChiusuraSheet) cancelAnimationFrame(frameTrascinamentoChiusuraSheet);
+    frameTrascinamentoChiusuraSheet = 0;
+    const trascinamento = trascinamentoChiusuraSheet;
+    const distanza = evento.clientY - trascinamento.startY;
+    const progresso = Math.max(0, Math.min(1, distanza / trascinamento.altezza));
+    riepilogoSheet.style.transform = `translateY(${trascinamento.altezza * progresso}px)`;
+    riepilogoSheetBackdrop.style.opacity = String(1 - progresso);
+    const chiudi =
+        evento.type !== "pointercancel" &&
+        (distanza > trascinamento.altezza * 0.25 || trascinamento.velocity > 0.3);
     trascinamentoChiusuraSheet = null;
-    riepilogoSheet.classList.remove("is-dragging");
-    riepilogoSheet.style.transform = "";
-    if (chiudi) chiudiRiepilogoSheet();
+    if (chiudi) {
+        chiudiRiepilogoSheet(false, true);
+        return;
+    }
+    requestAnimationFrame(() => {
+        riepilogoSheet.classList.remove("is-dragging");
+        riepilogoSheetBackdrop.classList.remove("is-dragging");
+        requestAnimationFrame(() => {
+            riepilogoSheet.style.transform = "";
+            riepilogoSheetBackdrop.style.opacity = "";
+        });
+    });
 }
 function intrappolaFocusNelRiepilogoSheet(evento) {
     if (!riepilogoSheetAperto || evento.key !== "Tab") return;
