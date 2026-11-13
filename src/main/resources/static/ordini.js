@@ -4,6 +4,23 @@ const riepilogo = document.getElementById("riepilogo-items");
 const riepilogoConteggio = document.getElementById("riepilogo-conteggio");
 const barraTotale = document.getElementById("barra-totale");
 const barraConteggio = document.getElementById("barra-conteggio");
+const riepilogoSheetBackdrop = document.getElementById("riepilogo-sheet-backdrop");
+const riepilogoSheet = document.getElementById("riepilogo-sheet");
+const riepilogoSheetTitolo = document.getElementById("riepilogo-sheet-titolo");
+const riepilogoSheetHeader = document.querySelector(".riepilogo-sheet-header");
+const riepilogoSheetLista = document.getElementById("riepilogo-sheet-items");
+const mediaRiepilogoSheet = window.matchMedia("(max-width: 767px) and (orientation: portrait)");
+const barraConto = document.querySelector(".barra-conto");
+const riepilogoSheetApri = document.querySelector(".barra-conto-dettagli");
+let riepilogoSheetAperto = false;
+let riepilogoSheetHistory = false;
+let trascinamentoRiepilogo = null;
+let trascinamentoChiusuraSheet = null;
+let ignoraTapRiepilogoFino = 0;
+let origineTapRiepilogo = false;
+let posizioneScrollSheet = 0;
+let posizioneStileCorpo = null;
+let inertRipristino = [];
 const messaggio = document.getElementById("messaggio");
 const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
@@ -281,7 +298,27 @@ function aggiornaSelettoreRighe() {
     aggiornaGestioneExtra();
 }
 function renderRiepilogo() {
-    riepilogo.innerHTML = "";
+    renderRigheRiepilogo(riepilogo);
+    renderRigheRiepilogo(riepilogoSheetLista);
+    const testoTotale = `Totale: ${euro.format(totaleOrdine())}`;
+    document.getElementById("riepilogo-totale").textContent = testoTotale;
+    barraTotale.textContent = testoTotale;
+    document.getElementById("riepilogo-sheet-totale").textContent = testoTotale;
+    aggiornaConteggioProdotti(riepilogoConteggio, stato.righe.length);
+    aggiornaConteggioProdotti(barraConteggio, stato.righe.length);
+    aggiornaConteggioProdotti(
+        document.getElementById("riepilogo-sheet-conteggio"),
+        stato.righe.length
+    );
+    invia.disabled = !stato.righe.length;
+    invia.textContent = stato.righe.length ? "Rivedi e invia" : "Aggiungi prodotti";
+    const inviaSheet = document.getElementById("riepilogo-sheet-invia");
+    inviaSheet.disabled = !stato.righe.length;
+    inviaSheet.textContent = invia.textContent;
+    aggiornaSelettoreRighe();
+}
+function renderRigheRiepilogo(contenitore) {
+    contenitore.replaceChildren();
     stato.righe.forEach((riga, indice) => {
         const voce = document.createElement("div");
         voce.className = "riepilogo-item";
@@ -292,23 +329,177 @@ function renderRiepilogo() {
             ? `<span>Extra: ${testoSicuro(nomiExtra(riga.extra).join(", "))}</span>`
             : "";
         voce.innerHTML = `<div><strong>${testoSicuro(riga.prodotto)}</strong>${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${indice}">Rimuovi</button>`;
-        riepilogo.appendChild(voce);
+        contenitore.appendChild(voce);
     });
-    if (!stato.righe.length) riepilogo.innerHTML = "<p>Nessun prodotto selezionato</p>";
-    riepilogo.querySelectorAll(".rimuovi").forEach(button =>
-        button.addEventListener("click", () => {
-            stato.righe.splice(Number(button.dataset.indice), 1);
-            renderRiepilogo();
-        })
-    );
-    const testoTotale = `Totale: ${euro.format(totaleOrdine())}`;
-    document.getElementById("riepilogo-totale").textContent = testoTotale;
-    barraTotale.textContent = testoTotale;
-    aggiornaConteggioProdotti(riepilogoConteggio, stato.righe.length);
-    aggiornaConteggioProdotti(barraConteggio, stato.righe.length);
-    invia.disabled = !stato.righe.length;
-    invia.textContent = stato.righe.length ? "Rivedi e invia" : "Aggiungi prodotti";
-    aggiornaSelettoreRighe();
+    if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
+}
+function rimuoviRigaRiepilogo(evento) {
+    const pulsante = evento.target.closest(".rimuovi");
+    if (!pulsante || !evento.currentTarget.contains(pulsante)) return;
+    stato.righe.splice(Number(pulsante.dataset.indice), 1);
+    renderRiepilogo();
+}
+function riepilogoSheetDisponibile() {
+    return mediaRiepilogoSheet.matches;
+}
+function apriRiepilogoSheet() {
+    if (riepilogoSheetAperto || !riepilogoSheetDisponibile()) return;
+    riepilogoSheetAperto = true;
+    riepilogoSheetBackdrop.hidden = false;
+    requestAnimationFrame(() => riepilogoSheetBackdrop.classList.add("is-open"));
+    posizioneScrollSheet = window.scrollY;
+    posizioneStileCorpo = {
+        position: document.body.style.position,
+        top: document.body.style.top,
+        width: document.body.style.width
+    };
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${posizioneScrollSheet}px`;
+    document.body.style.width = "100%";
+    document.body.classList.add("riepilogo-sheet-aperto");
+    inertRipristino = [
+        paginaPrincipale,
+        document.querySelector("nav.app-bottom-nav"),
+        document.querySelector(".app-sidebar")
+    ]
+        .filter(Boolean)
+        .map(elemento => {
+            const inert = elemento.inert;
+            elemento.inert = true;
+            return { elemento, inert };
+        });
+    riepilogoSheetApri.setAttribute("aria-expanded", "true");
+    history.pushState({ ...(history.state || {}), riepilogoSheet: true }, "", location.href);
+    riepilogoSheetHistory = true;
+    riepilogoSheetTitolo.focus({ preventScroll: true });
+}
+function aggiornaAccessibilitaBarraSheet() {
+    if (riepilogoSheetDisponibile()) {
+        riepilogoSheetApri.setAttribute("role", "button");
+        riepilogoSheetApri.setAttribute("tabindex", "0");
+        riepilogoSheetApri.setAttribute("aria-controls", "riepilogo-sheet");
+        riepilogoSheetApri.setAttribute("aria-expanded", String(riepilogoSheetAperto));
+        return;
+    }
+    riepilogoSheetApri.removeAttribute("role");
+    riepilogoSheetApri.removeAttribute("tabindex");
+    riepilogoSheetApri.removeAttribute("aria-controls");
+    riepilogoSheetApri.removeAttribute("aria-expanded");
+}
+function chiudiRiepilogoSheet(daCronologia = false) {
+    if (!riepilogoSheetAperto) return;
+    riepilogoSheetAperto = false;
+    riepilogoSheetApri.setAttribute("aria-expanded", "false");
+    riepilogoSheetBackdrop.classList.remove("is-open");
+    document.body.classList.remove("riepilogo-sheet-aperto");
+    document.body.style.position = posizioneStileCorpo.position;
+    document.body.style.top = posizioneStileCorpo.top;
+    document.body.style.width = posizioneStileCorpo.width;
+    inertRipristino.forEach(({ elemento, inert }) => (elemento.inert = inert));
+    inertRipristino = [];
+    window.scrollTo(0, posizioneScrollSheet);
+    riepilogoSheetApri.focus({ preventScroll: true });
+    if (riepilogoSheetHistory && !daCronologia) history.back();
+    riepilogoSheetHistory = false;
+    const durata = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 260;
+    window.setTimeout(() => {
+        if (!riepilogoSheetAperto) riepilogoSheetBackdrop.hidden = true;
+    }, durata);
+}
+function avviaTrascinamentoRiepilogo(evento) {
+    if (!riepilogoSheetDisponibile() || evento.button !== 0 || evento.target.closest("#btn-invia")) return;
+    origineTapRiepilogo = riepilogoSheetApri.contains(evento.target);
+    barraConto.classList.add("is-dragging");
+    trascinamentoRiepilogo = {
+        pointerId: evento.pointerId,
+        startY: evento.clientY,
+        lastY: evento.clientY,
+        lastTime: performance.now(),
+        velocity: 0,
+        moved: false
+    };
+    barraConto.setPointerCapture(evento.pointerId);
+}
+function aggiornaTrascinamentoRiepilogo(evento) {
+    if (!trascinamentoRiepilogo || evento.pointerId !== trascinamentoRiepilogo.pointerId) return;
+    const now = performance.now();
+    const elapsed = Math.max(1, now - trascinamentoRiepilogo.lastTime);
+    trascinamentoRiepilogo.velocity = (evento.clientY - trascinamentoRiepilogo.lastY) / elapsed;
+    trascinamentoRiepilogo.lastY = evento.clientY;
+    trascinamentoRiepilogo.lastTime = now;
+    const distance = evento.clientY - trascinamentoRiepilogo.startY;
+    trascinamentoRiepilogo.moved ||= Math.abs(distance) > 8;
+    barraConto.style.transform = `translateY(${Math.min(0, distance)}px)`;
+}
+function terminaTrascinamentoRiepilogo(evento) {
+    if (!trascinamentoRiepilogo || evento.pointerId !== trascinamentoRiepilogo.pointerId) return;
+    const distance = evento.clientY - trascinamentoRiepilogo.startY;
+    const apri = evento.type !== "pointercancel" &&
+        (distance < -60 || (distance < -20 && trascinamentoRiepilogo.velocity < -0.5));
+    if (trascinamentoRiepilogo.moved) ignoraTapRiepilogoFino = Date.now() + 300;
+    if (evento.type === "pointercancel") origineTapRiepilogo = false;
+    trascinamentoRiepilogo = null;
+    barraConto.classList.remove("is-dragging");
+    barraConto.style.transform = "";
+    if (apri) apriRiepilogoSheet();
+}
+function attivaRiepilogoSheetDaTastiera(evento) {
+    if (!riepilogoSheetDisponibile()) return;
+    if (evento.key !== "Enter" && evento.key !== " ") return;
+    evento.preventDefault();
+    apriRiepilogoSheet();
+}
+function avviaTrascinamentoChiusuraSheet(evento) {
+    if (evento.button !== 0 || evento.target.closest("button")) return;
+    trascinamentoChiusuraSheet = {
+        pointerId: evento.pointerId,
+        startY: evento.clientY,
+        lastY: evento.clientY,
+        lastTime: performance.now(),
+        velocity: 0
+    };
+    riepilogoSheetHeader.setPointerCapture(evento.pointerId);
+}
+function aggiornaTrascinamentoChiusuraSheet(evento) {
+    if (!trascinamentoChiusuraSheet || evento.pointerId !== trascinamentoChiusuraSheet.pointerId) return;
+    const now = performance.now();
+    const elapsed = Math.max(1, now - trascinamentoChiusuraSheet.lastTime);
+    trascinamentoChiusuraSheet.velocity = (evento.clientY - trascinamentoChiusuraSheet.lastY) / elapsed;
+    trascinamentoChiusuraSheet.lastY = evento.clientY;
+    trascinamentoChiusuraSheet.lastTime = now;
+    riepilogoSheet.classList.add("is-dragging");
+    riepilogoSheet.style.transform = `translateY(${Math.max(0, evento.clientY - trascinamentoChiusuraSheet.startY)}px)`;
+}
+function terminaTrascinamentoChiusuraSheet(evento) {
+    if (!trascinamentoChiusuraSheet || evento.pointerId !== trascinamentoChiusuraSheet.pointerId) return;
+    const distance = evento.clientY - trascinamentoChiusuraSheet.startY;
+    const chiudi = evento.type !== "pointercancel" &&
+        (distance > 60 || (distance > 20 && trascinamentoChiusuraSheet.velocity > 0.5));
+    trascinamentoChiusuraSheet = null;
+    riepilogoSheet.classList.remove("is-dragging");
+    riepilogoSheet.style.transform = "";
+    if (chiudi) chiudiRiepilogoSheet();
+}
+function intrappolaFocusNelRiepilogoSheet(evento) {
+    if (!riepilogoSheetAperto || evento.key !== "Tab") return;
+    const elementi = [...riepilogoSheet.querySelectorAll("button:not(:disabled), [tabindex='0']")];
+    if (!elementi.length) {
+        evento.preventDefault();
+        riepilogoSheetTitolo.focus();
+        return;
+    }
+    const primo = elementi[0];
+    const ultimo = elementi[elementi.length - 1];
+    if (
+        evento.shiftKey &&
+        (document.activeElement === primo || document.activeElement === riepilogoSheetTitolo)
+    ) {
+        evento.preventDefault();
+        ultimo.focus();
+    } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primo.focus();
+    }
 }
 function apriConferma() {
     if (!stato.righe.length) return;
@@ -503,6 +694,43 @@ document.getElementById("applica-extra").addEventListener("click", () => {
 invia.addEventListener("click", apriConferma);
 document.getElementById("conferma-invio").addEventListener("click", inviaOrdine);
 document.getElementById("annulla-invio").addEventListener("click", chiudiConferma);
+riepilogo.addEventListener("click", rimuoviRigaRiepilogo);
+riepilogoSheetLista.addEventListener("click", rimuoviRigaRiepilogo);
+barraConto.addEventListener("pointerdown", avviaTrascinamentoRiepilogo);
+barraConto.addEventListener("pointermove", aggiornaTrascinamentoRiepilogo);
+barraConto.addEventListener("pointerup", terminaTrascinamentoRiepilogo);
+barraConto.addEventListener("pointercancel", terminaTrascinamentoRiepilogo);
+barraConto.addEventListener("click", evento => {
+    const attivatoDalRiepilogo = riepilogoSheetApri.contains(evento.target) || origineTapRiepilogo;
+    origineTapRiepilogo = false;
+    if (!attivatoDalRiepilogo || evento.target.closest("#btn-invia") || Date.now() < ignoraTapRiepilogoFino) return;
+    apriRiepilogoSheet();
+});
+riepilogoSheetApri.addEventListener("keydown", attivaRiepilogoSheetDaTastiera);
+riepilogoSheetHeader.addEventListener("pointerdown", avviaTrascinamentoChiusuraSheet);
+riepilogoSheetHeader.addEventListener("pointermove", aggiornaTrascinamentoChiusuraSheet);
+riepilogoSheetHeader.addEventListener("pointerup", terminaTrascinamentoChiusuraSheet);
+riepilogoSheetHeader.addEventListener("pointercancel", terminaTrascinamentoChiusuraSheet);
+document.getElementById("riepilogo-sheet-chiudi").addEventListener("click", () =>
+    chiudiRiepilogoSheet()
+);
+document.getElementById("riepilogo-sheet-invia").addEventListener("click", () => {
+    chiudiRiepilogoSheet();
+    apriConferma();
+});
+riepilogoSheetBackdrop.addEventListener("click", evento => {
+    if (evento.target === riepilogoSheetBackdrop) chiudiRiepilogoSheet();
+});
+window.addEventListener("popstate", () => {
+    if (riepilogoSheetAperto) chiudiRiepilogoSheet(true);
+});
+function aggiornaSheetAlCambioViewport() {
+    if (riepilogoSheetAperto && !riepilogoSheetDisponibile()) chiudiRiepilogoSheet();
+    aggiornaAccessibilitaBarraSheet();
+}
+window.addEventListener("resize", aggiornaSheetAlCambioViewport);
+mediaRiepilogoSheet.addEventListener("change", aggiornaSheetAlCambioViewport);
+aggiornaAccessibilitaBarraSheet();
 document.getElementById("btn-annulla").addEventListener("click", () => {
     stato.righe = [];
     costoConsegna = 0;
@@ -511,8 +739,10 @@ document.getElementById("btn-annulla").addEventListener("click", () => {
     mostraMessaggio("Ordine annullato.", "");
 });
 document.addEventListener("keydown", evento => {
+    intrappolaFocusNelRiepilogoSheet(evento);
     if (evento.key !== "Escape") return;
-    if (!ricercaModale.hidden) chiudiRicerca();
+    if (riepilogoSheetAperto) chiudiRiepilogoSheet();
+    else if (!ricercaModale.hidden) chiudiRicerca();
     else if (!confermaModale.hidden) chiudiConferma();
 });
 Promise.all([fetch("/api/menu"), fetch("/api/extra")])

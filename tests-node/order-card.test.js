@@ -355,7 +355,8 @@ test("mobile navigation and checkout use one safe-area offset", () => {
     assert.match(orderScript, /invia\.textContent = stato\.righe\.length \? "Rivedi e invia" : "Aggiungi prodotti";/);
     assert.match(editStyles, /\.modifica-footer\s*\{[^}]*bottom:\s*var\(--app-mobile-nav-height\);/);
     assert.match(orderPage, /<p id="riepilogo-totale" class="riepilogo-totale">[^<]*<\/p>\s*<p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti<\/p>/);
-    assert.match(orderPage, /<div class="barra-conto">\s*<div class="barra-conto-dettagli">\s*<p id="barra-totale" class="riepilogo-totale">[^<]*<\/p>\s*<p id="barra-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti<\/p>\s*<\/div>\s*<button class="btn-invia" id="btn-invia" type="button" disabled>Aggiungi prodotti<\/button>\s*<\/div>/);
+    assert.match(orderPage, /class="barra-conto-dettagli"[\s\S]*?<p id="barra-totale" class="riepilogo-totale">[^<]*<\/p>\s*<p id="barra-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti<\/p>/);
+    assert.match(orderPage, /<button class="btn-invia" id="btn-invia" type="button" disabled>Aggiungi prodotti<\/button>/);
     assert.match(orderScript, /aggiornaConteggioProdotti\(riepilogoConteggio, stato\.righe\.length\);/);
     assert.match(orderScript, /barraTotale\.textContent = testoTotale;/);
     assert.match(orderScript, /aggiornaConteggioProdotti\(barraConteggio, stato\.righe\.length\);/);
@@ -376,6 +377,34 @@ test("order summary rows keep a two-column remove action and omit empty extras",
     assert.doesNotMatch(styles, /#riepilogo-items \.riepilogo-item\s*\{|#riepilogo-items \.rimuovi\s*\{/);
     assert.match(script, /const extra = riga\.extra\.length\s*\?\s*`<span>Extra: \$\{testoSicuro\(nomiExtra\(riga\.extra\)\.join\(", "\)\)\}<\/span>`\s*:\s*"";/);
     assert.doesNotMatch(script, /Nessun extra/);
+});
+
+test("portrait order summary sheet opens accessibly and removes rows through shared rendering", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const page = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
+    const styles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
+    const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+    const ids = [...page.matchAll(/\sid="([^"]+)"/g)].map(match => match[1]);
+
+    assert.equal(new Set(ids).size, ids.length);
+    assert.match(page, /class="barra-conto-dettagli"[\s\S]*?role="button"[\s\S]*?aria-expanded="false"[\s\S]*?aria-controls="riepilogo-sheet"/);
+    assert.match(page, /id="riepilogo-sheet"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-labelledby="riepilogo-sheet-titolo"/);
+    assert.match(styles, /@media \(max-width: 767px\) and \(orientation: portrait\)[\s\S]*?\.riepilogo-sheet\s*\{[^}]*height:\s*85dvh;[^}]*max-height:\s*calc\(100dvh - env\(safe-area-inset-top\) - 12px\);[^}]*border-radius:\s*20px 20px 0 0;/);
+    assert.match(styles, /\.riepilogo-sheet-items\s*\{[^}]*overflow-y:\s*auto;[^}]*overscroll-behavior:\s*contain;/);
+    assert.match(styles, /prefers-reduced-motion:\s*reduce/);
+    assert.match(script, /renderRigheRiepilogo\(riepilogo\);\s*renderRigheRiepilogo\(riepilogoSheetLista\);/);
+    assert.match(script, /riepilogoSheetLista\.addEventListener\("click", rimuoviRigaRiepilogo\)/);
+    assert.match(script, /function rimuoviRigaRiepilogo\(evento\)[\s\S]*?stato\.righe\.splice\(Number\(pulsante\.dataset\.indice\), 1\);[\s\S]*?renderRiepilogo\(\);/);
+    assert.match(script, /if \(!stato\.righe\.length\) contenitore\.innerHTML = "<p>Nessun prodotto selezionato<\/p>";/);
+    assert.match(script, /barraConto\.addEventListener\("pointerdown", avviaTrascinamentoRiepilogo\)/);
+    assert.match(script, /riepilogoSheetHeader\.addEventListener\("pointerdown", avviaTrascinamentoChiusuraSheet\)/);
+    assert.match(script, /elemento\.inert = true/);
+    assert.match(script, /riepilogoSheetApri\.focus\(\{ preventScroll: true \}\)/);
+    assert.match(script, /document\.getElementById\("riepilogo-sheet-chiudi"\)\.addEventListener\("click", \(\) =>\s*chiudiRiepilogoSheet\(\)/);
+    assert.match(script, /window\.addEventListener\("popstate",/);
+    assert.match(script, /mediaRiepilogoSheet\.addEventListener\("change", aggiornaSheetAlCambioViewport\)/);
+    assert.match(script, /riepilogoSheetAperto\) chiudiRiepilogoSheet\(\);/);
+    assert.match(script, /document\.getElementById\("riepilogo-sheet-invia"\)\.addEventListener\("click", \(\) => \{\s*chiudiRiepilogoSheet\(\);\s*apriConferma\(\);/);
 });
 
 test("mobile filters keep the date input inside its row and show the search full-width", () => {

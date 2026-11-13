@@ -206,7 +206,14 @@
                     </div>
                     <p id="messaggio" role="status"></p>
                     <div class="barra-conto">
-                        <div class="barra-conto-dettagli">
+                        <div
+                            class="barra-conto-dettagli"
+                            role="button"
+                            tabindex="0"
+                            aria-expanded="false"
+                            aria-controls="riepilogo-sheet"
+                        >
+                            <span class="barra-conto-maniglia" aria-hidden="true"></span>
                             <p id="barra-totale" class="riepilogo-totale">Totale: 0,00 €</p>
                             <p id="barra-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
                         </div>
@@ -215,6 +222,31 @@
                 </aside>
             </div>
         </main>
+        <div class="riepilogo-sheet-backdrop" id="riepilogo-sheet-backdrop" hidden>
+            <section
+                class="riepilogo-sheet"
+                id="riepilogo-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="riepilogo-sheet-titolo"
+            >
+                <header class="riepilogo-sheet-header">
+                    <span class="riepilogo-sheet-maniglia" aria-hidden="true"></span>
+                    <h2 id="riepilogo-sheet-titolo" tabindex="-1">Riepilogo ordine</h2>
+                    <button id="riepilogo-sheet-chiudi" type="button" aria-label="Chiudi riepilogo">Chiudi</button>
+                </header>
+                <div id="riepilogo-sheet-items" class="riepilogo-sheet-items">
+                    <p>Nessun prodotto selezionato</p>
+                </div>
+                <footer class="riepilogo-sheet-footer">
+                    <div>
+                        <p id="riepilogo-sheet-totale" class="riepilogo-totale">Totale: 0,00 €</p>
+                        <p id="riepilogo-sheet-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
+                    </div>
+                    <button class="btn-invia" id="riepilogo-sheet-invia" type="button" disabled>Aggiungi prodotti</button>
+                </footer>
+            </section>
+        </div>
         <div
             id="conferma-modale"
             class="conferma-modale"
