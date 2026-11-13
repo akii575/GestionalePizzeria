@@ -32,7 +32,7 @@ body {
 .login-card button:disabled { opacity: .65; cursor: wait; }
 #login-status { min-height: 1.5em; }
 #login-status.error { color: #a22626; }
-.login-card .eyebrow { color: var(--theme-red) !important; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+.login-card .eyebrow { color: var(--theme-red); font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
 
 .login-card {
     width: min(calc(100% - 32px), 440px);

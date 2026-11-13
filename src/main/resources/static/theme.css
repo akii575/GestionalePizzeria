@@ -125,17 +125,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .reveal.is-visible { opacity: 1; transform: translateY(0); transition: opacity 500ms ease, transform 500ms var(--theme-normal); }
 @keyframes theme-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes product-in { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-@keyframes theme-flash { 0%, 100% { background: inherit; } 35% { border-color: var(--theme-gold) !important; box-shadow: 0 0 0 5px rgba(228, 176, 52, .16); } }
+@keyframes theme-flash { 0%, 100% { background: inherit; } 35% { border-color: var(--theme-gold); box-shadow: 0 0 0 5px rgba(228, 176, 52, .16); } }
 @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes ripple { from { opacity: .8; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -50%) scale(18); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
-@media (max-width: 680px) { nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) { gap: 8px !important; } }
-
-html { min-width: 320px; }
-body { min-width: 320px; min-height: 100vh; }
-img, video, canvas, svg { max-width: 100%; }
-h2 { line-height: 1.25; }
-p { line-height: 1.5; }
+@media (max-width: 680px) { nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) { gap: 8px; } }
 
 :where(.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .order-card,
     .home-links a, .printer-panel, .riga-edit, .login-card, .order-card__field,
@@ -224,7 +218,7 @@ nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom
     min-width: 0;
     min-height: 48px;
     padding: 8px 12px;
-    font-size: 16px !important;
+    font-size: 16px;
     line-height: 1.2;
 }
 
@@ -365,7 +359,6 @@ button.stato-pagamento { cursor: pointer; }
     .stato-pagamento { gap: 4px; min-height: 44px; padding: 6px 7px; font-size: 11px; white-space: nowrap; }
     .stato-pagamento::before { width: 8px; height: 8px; flex-basis: 8px; }
     .ordine-totale { font-size: clamp(16px, 4.8vw, 20px); }
-    .dashboard-header nav, .navigazione { gap: 6px; }
     nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > a,
     nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom-nav):not(.app-more-links) > button {
         flex: 1 1 calc(50% - 6px);
