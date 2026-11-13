@@ -6,23 +6,17 @@ const barraTotale = document.getElementById("barra-totale");
 const barraConteggio = document.getElementById("barra-conteggio");
 const riepilogoSheetBackdrop = document.getElementById("riepilogo-sheet-backdrop");
 const riepilogoSheet = document.getElementById("riepilogo-sheet");
-const riepilogoSheetTitolo = document.getElementById("riepilogo-sheet-titolo");
 const riepilogoSheetHeader = document.querySelector(".riepilogo-sheet-header");
+const riepilogoSheetChiudi = document.getElementById("riepilogo-sheet-chiudi");
 const riepilogoSheetLista = document.getElementById("riepilogo-sheet-items");
 const mediaRiepilogoSheet = window.matchMedia("(max-width: 767px) and (orientation: portrait)");
 const barraConto = document.querySelector(".barra-conto");
 const riepilogoSheetApri = document.querySelector(".barra-conto-dettagli");
 let riepilogoSheetAperto = false;
-let riepilogoSheetHistory = false;
 let trascinamentoRiepilogo = null;
 let trascinamentoChiusuraSheet = null;
-let frameTrascinamentoRiepilogo = 0;
-let frameTrascinamentoChiusuraSheet = 0;
-let ignoraTapRiepilogoFino = 0;
-let origineTapRiepilogo = false;
-let posizioneScrollSheet = 0;
-let posizioneStileCorpo = null;
-let inertRipristino = [];
+let timerNascondiRiepilogoSheet = 0;
+let overflowRadicePrecedente = null;
 const messaggio = document.getElementById("messaggio");
 const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
@@ -344,42 +338,41 @@ function rimuoviRigaRiepilogo(evento) {
 function riepilogoSheetDisponibile() {
     return mediaRiepilogoSheet.matches;
 }
-function apriRiepilogoSheet(trascinamentoInCorso = false) {
-    if (riepilogoSheetAperto || !riepilogoSheetDisponibile()) return;
-    riepilogoSheetAperto = true;
-    riepilogoSheetBackdrop.hidden = false;
-    if (!trascinamentoInCorso) {
-        riepilogoSheetBackdrop.classList.remove("is-dragging");
-        riepilogoSheet.classList.remove("is-dragging");
-        riepilogoSheetBackdrop.style.opacity = "";
-        riepilogoSheet.style.transform = "";
-        requestAnimationFrame(() => riepilogoSheetBackdrop.classList.add("is-open"));
-    }
-    posizioneScrollSheet = window.scrollY;
-    posizioneStileCorpo = {
-        position: document.body.style.position,
-        top: document.body.style.top,
-        width: document.body.style.width
-    };
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${posizioneScrollSheet}px`;
-    document.body.style.width = "100%";
-    document.body.classList.add("riepilogo-sheet-aperto");
-    inertRipristino = [
-        paginaPrincipale,
-        document.querySelector("nav.app-bottom-nav"),
-        document.querySelector(".app-sidebar")
-    ]
-        .filter(Boolean)
-        .map(elemento => {
-            const inert = elemento.inert;
-            elemento.inert = true;
-            return { elemento, inert };
+function impostaStatoSheet(aperto) {
+    const prossimoStato = Boolean(aperto) && riepilogoSheetDisponibile();
+    window.clearTimeout(timerNascondiRiepilogoSheet);
+    timerNascondiRiepilogoSheet = 0;
+    if (prossimoStato) {
+        if (!riepilogoSheetAperto) {
+            overflowRadicePrecedente = document.documentElement.style.overflow;
+        }
+        riepilogoSheetAperto = true;
+        riepilogoSheetBackdrop.hidden = false;
+        document.documentElement.style.overflow = "hidden";
+        riepilogoSheetApri.setAttribute("aria-expanded", "true");
+        requestAnimationFrame(() => {
+            if (riepilogoSheetAperto) riepilogoSheetBackdrop.classList.add("is-open");
         });
-    riepilogoSheetApri.setAttribute("aria-expanded", "true");
-    history.pushState({ ...(history.state || {}), riepilogoSheet: true }, "", location.href);
-    riepilogoSheetHistory = true;
-    riepilogoSheetTitolo.focus({ preventScroll: true });
+        return;
+    }
+    riepilogoSheetAperto = false;
+    riepilogoSheetBackdrop.classList.remove("is-open");
+    riepilogoSheetApri.setAttribute("aria-expanded", "false");
+    if (overflowRadicePrecedente !== null) {
+        document.documentElement.style.overflow = overflowRadicePrecedente;
+        overflowRadicePrecedente = null;
+    }
+    if (riepilogoSheetBackdrop.hidden) return;
+    const durata = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 280;
+    timerNascondiRiepilogoSheet = window.setTimeout(() => {
+        timerNascondiRiepilogoSheet = 0;
+        if (!riepilogoSheetAperto) riepilogoSheetBackdrop.hidden = true;
+    }, durata);
+}
+function apriRiepilogoSheet() {
+    if (!riepilogoSheetDisponibile()) return;
+    impostaStatoSheet(true);
+    riepilogoSheetChiudi.focus({ preventScroll: true });
 }
 function aggiornaAccessibilitaBarraSheet() {
     if (riepilogoSheetDisponibile()) {
@@ -394,60 +387,20 @@ function aggiornaAccessibilitaBarraSheet() {
     riepilogoSheetApri.removeAttribute("aria-controls");
     riepilogoSheetApri.removeAttribute("aria-expanded");
 }
-function chiudiRiepilogoSheet(daCronologia = false, daTrascinamento = false) {
+function chiudiRiepilogoSheet(ripristinaFocus = true) {
     if (!riepilogoSheetAperto) return;
-    riepilogoSheetAperto = false;
-    riepilogoSheetApri.setAttribute("aria-expanded", "false");
-    if (daTrascinamento) {
-        requestAnimationFrame(() => {
-            riepilogoSheetBackdrop.classList.remove("is-dragging");
-            riepilogoSheet.classList.remove("is-dragging");
-            requestAnimationFrame(() => {
-                riepilogoSheetBackdrop.classList.remove("is-open");
-                riepilogoSheetBackdrop.style.opacity = "";
-                riepilogoSheet.style.transform = "";
-            });
-        });
-    } else {
-        riepilogoSheetBackdrop.classList.remove("is-open", "is-dragging");
-        riepilogoSheet.classList.remove("is-dragging");
-        riepilogoSheetBackdrop.style.opacity = "";
-        riepilogoSheet.style.transform = "";
-    }
-    document.body.classList.remove("riepilogo-sheet-aperto");
-    document.body.style.position = posizioneStileCorpo.position;
-    document.body.style.top = posizioneStileCorpo.top;
-    document.body.style.width = posizioneStileCorpo.width;
-    inertRipristino.forEach(({ elemento, inert }) => (elemento.inert = inert));
-    inertRipristino = [];
-    window.scrollTo(0, posizioneScrollSheet);
-    riepilogoSheetApri.focus({ preventScroll: true });
-    if (riepilogoSheetHistory && !daCronologia) history.back();
-    riepilogoSheetHistory = false;
-    const durata = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 300;
-    window.setTimeout(() => {
-        if (!riepilogoSheetAperto) riepilogoSheetBackdrop.hidden = true;
-    }, durata);
+    impostaStatoSheet(false);
+    if (ripristinaFocus && riepilogoSheetDisponibile()) riepilogoSheetApri.focus({ preventScroll: true });
 }
 function avviaTrascinamentoRiepilogo(evento) {
     if (!riepilogoSheetDisponibile() || evento.button !== 0 || evento.target.closest("#btn-invia")) return;
-    origineTapRiepilogo = !evento.target.closest("#btn-invia");
-    riepilogoSheetBackdrop.hidden = false;
-    const altezza = riepilogoSheet.getBoundingClientRect().height;
-    riepilogoSheetBackdrop.classList.add("is-open", "is-dragging");
-    riepilogoSheet.classList.add("is-dragging");
     trascinamentoRiepilogo = {
         pointerId: evento.pointerId,
         startY: evento.clientY,
         lastY: evento.clientY,
         lastTime: performance.now(),
-        velocity: 0,
-        moved: false,
-        altezza,
-        pendingY: evento.clientY
+        velocity: 0
     };
-    riepilogoSheet.style.transform = `translateY(${altezza}px)`;
-    riepilogoSheetBackdrop.style.opacity = "0";
     barraConto.setPointerCapture(evento.pointerId);
 }
 function aggiornaTrascinamentoRiepilogo(evento) {
@@ -457,74 +410,22 @@ function aggiornaTrascinamentoRiepilogo(evento) {
     trascinamentoRiepilogo.velocity = (evento.clientY - trascinamentoRiepilogo.lastY) / elapsed;
     trascinamentoRiepilogo.lastY = evento.clientY;
     trascinamentoRiepilogo.lastTime = now;
-    trascinamentoRiepilogo.pendingY = evento.clientY;
-    trascinamentoRiepilogo.moved ||= Math.abs(evento.clientY - trascinamentoRiepilogo.startY) > 8;
-    if (frameTrascinamentoRiepilogo) return;
-    frameTrascinamentoRiepilogo = requestAnimationFrame(() => {
-        frameTrascinamentoRiepilogo = 0;
-        const progresso = Math.max(
-            0,
-            Math.min(
-                1,
-                (trascinamentoRiepilogo.startY - trascinamentoRiepilogo.pendingY) /
-                    trascinamentoRiepilogo.altezza
-            )
-        );
-        riepilogoSheet.style.transform = `translateY(${trascinamentoRiepilogo.altezza * (1 - progresso)}px)`;
-        riepilogoSheetBackdrop.style.opacity = String(progresso);
-    });
+}
+function annullaTrascinamentoRiepilogo(evento) {
+    if (trascinamentoRiepilogo?.pointerId === evento.pointerId) trascinamentoRiepilogo = null;
 }
 function terminaTrascinamentoRiepilogo(evento) {
     if (!trascinamentoRiepilogo || evento.pointerId !== trascinamentoRiepilogo.pointerId) return;
-    if (frameTrascinamentoRiepilogo) cancelAnimationFrame(frameTrascinamentoRiepilogo);
-    frameTrascinamentoRiepilogo = 0;
     const trascinamento = trascinamentoRiepilogo;
-    const distanza = trascinamento.startY - evento.clientY;
-    trascinamento.pendingY = evento.clientY;
-    const progresso = Math.max(0, Math.min(1, distanza / trascinamento.altezza));
-    riepilogoSheet.style.transform = `translateY(${trascinamento.altezza * (1 - progresso)}px)`;
-    riepilogoSheetBackdrop.style.opacity = String(progresso);
-    const apri =
-        evento.type !== "pointercancel" &&
-        (distanza > trascinamento.altezza * 0.25 || trascinamento.velocity < -0.3);
-    if (trascinamento.moved) {
-        ignoraTapRiepilogoFino = Date.now() + 300;
-        origineTapRiepilogo = false;
-    }
-    if (evento.type === "pointercancel") origineTapRiepilogo = false;
     trascinamentoRiepilogo = null;
-    if (!trascinamento.moved) {
-        riepilogoSheetBackdrop.classList.remove("is-open", "is-dragging");
-        riepilogoSheet.classList.remove("is-dragging");
-        riepilogoSheetBackdrop.style.opacity = "";
-        riepilogoSheet.style.transform = "";
-        riepilogoSheetBackdrop.hidden = true;
-        return;
-    }
-    if (apri) {
-        apriRiepilogoSheet(true);
-        requestAnimationFrame(() => {
-            riepilogoSheetBackdrop.classList.remove("is-dragging");
-            riepilogoSheet.classList.remove("is-dragging");
-            requestAnimationFrame(() => {
-                riepilogoSheetBackdrop.style.opacity = "";
-                riepilogoSheet.style.transform = "";
-            });
-        });
-        return;
-    }
-    requestAnimationFrame(() => {
-        riepilogoSheetBackdrop.classList.remove("is-dragging");
-        riepilogoSheet.classList.remove("is-dragging");
-        requestAnimationFrame(() => {
-            riepilogoSheetBackdrop.classList.remove("is-open");
-            riepilogoSheetBackdrop.style.opacity = "";
-            riepilogoSheet.style.transform = "";
-            window.setTimeout(() => {
-                if (!riepilogoSheetAperto) riepilogoSheetBackdrop.hidden = true;
-            }, 300);
-        });
-    });
+    if (evento.type !== "pointerup") return;
+    const distanza = evento.clientY - trascinamento.startY;
+    const elapsed = Math.max(1, performance.now() - trascinamento.lastTime);
+    const velocitaFinale =
+        evento.clientY === trascinamento.lastY
+            ? trascinamento.velocity
+            : (evento.clientY - trascinamento.lastY) / elapsed;
+    if (distanza < -30 || velocitaFinale < -0.3 || Math.abs(distanza) < 8) apriRiepilogoSheet();
 }
 function attivaRiepilogoSheetDaTastiera(evento) {
     if (!riepilogoSheetDisponibile()) return;
@@ -534,15 +435,12 @@ function attivaRiepilogoSheetDaTastiera(evento) {
 }
 function avviaTrascinamentoChiusuraSheet(evento) {
     if (evento.button !== 0 || evento.target.closest("button")) return;
-    const altezza = riepilogoSheet.getBoundingClientRect().height;
     trascinamentoChiusuraSheet = {
         pointerId: evento.pointerId,
         startY: evento.clientY,
         lastY: evento.clientY,
         lastTime: performance.now(),
-        velocity: 0,
-        altezza,
-        pendingY: evento.clientY
+        velocity: 0
     };
     riepilogoSheetHeader.setPointerCapture(evento.pointerId);
 }
@@ -553,63 +451,36 @@ function aggiornaTrascinamentoChiusuraSheet(evento) {
     trascinamentoChiusuraSheet.velocity = (evento.clientY - trascinamentoChiusuraSheet.lastY) / elapsed;
     trascinamentoChiusuraSheet.lastY = evento.clientY;
     trascinamentoChiusuraSheet.lastTime = now;
-    trascinamentoChiusuraSheet.pendingY = evento.clientY;
-    if (frameTrascinamentoChiusuraSheet) return;
-    frameTrascinamentoChiusuraSheet = requestAnimationFrame(() => {
-        frameTrascinamentoChiusuraSheet = 0;
-        const trascinamento = trascinamentoChiusuraSheet;
-        const progresso = Math.max(
-            0,
-            Math.min(
-                1,
-                (trascinamento.pendingY - trascinamento.startY) / trascinamento.altezza
-            )
-        );
-        riepilogoSheet.style.transform = `translateY(${trascinamento.altezza * progresso}px)`;
-        riepilogoSheetBackdrop.style.opacity = String(1 - progresso);
-    });
-    riepilogoSheet.classList.add("is-dragging");
-    riepilogoSheetBackdrop.classList.add("is-dragging");
+}
+function annullaTrascinamentoChiusuraSheet(evento) {
+    if (trascinamentoChiusuraSheet?.pointerId === evento.pointerId) trascinamentoChiusuraSheet = null;
 }
 function terminaTrascinamentoChiusuraSheet(evento) {
     if (!trascinamentoChiusuraSheet || evento.pointerId !== trascinamentoChiusuraSheet.pointerId) return;
-    if (frameTrascinamentoChiusuraSheet) cancelAnimationFrame(frameTrascinamentoChiusuraSheet);
-    frameTrascinamentoChiusuraSheet = 0;
     const trascinamento = trascinamentoChiusuraSheet;
-    const distanza = evento.clientY - trascinamento.startY;
-    const progresso = Math.max(0, Math.min(1, distanza / trascinamento.altezza));
-    riepilogoSheet.style.transform = `translateY(${trascinamento.altezza * progresso}px)`;
-    riepilogoSheetBackdrop.style.opacity = String(1 - progresso);
-    const chiudi =
-        evento.type !== "pointercancel" &&
-        (distanza > trascinamento.altezza * 0.25 || trascinamento.velocity > 0.3);
     trascinamentoChiusuraSheet = null;
-    if (chiudi) {
-        chiudiRiepilogoSheet(false, true);
-        return;
-    }
-    requestAnimationFrame(() => {
-        riepilogoSheet.classList.remove("is-dragging");
-        riepilogoSheetBackdrop.classList.remove("is-dragging");
-        requestAnimationFrame(() => {
-            riepilogoSheet.style.transform = "";
-            riepilogoSheetBackdrop.style.opacity = "";
-        });
-    });
+    if (evento.type !== "pointerup") return;
+    const distanza = evento.clientY - trascinamento.startY;
+    const elapsed = Math.max(1, performance.now() - trascinamento.lastTime);
+    const velocitaFinale =
+        evento.clientY === trascinamento.lastY
+            ? trascinamento.velocity
+            : (evento.clientY - trascinamento.lastY) / elapsed;
+    if (distanza > 30 || velocitaFinale > 0.3) chiudiRiepilogoSheet();
 }
 function intrappolaFocusNelRiepilogoSheet(evento) {
     if (!riepilogoSheetAperto || evento.key !== "Tab") return;
     const elementi = [...riepilogoSheet.querySelectorAll("button:not(:disabled), [tabindex='0']")];
     if (!elementi.length) {
         evento.preventDefault();
-        riepilogoSheetTitolo.focus();
+        riepilogoSheetChiudi.focus({ preventScroll: true });
         return;
     }
     const primo = elementi[0];
     const ultimo = elementi[elementi.length - 1];
     if (
         evento.shiftKey &&
-        (document.activeElement === primo || document.activeElement === riepilogoSheetTitolo)
+        document.activeElement === primo
     ) {
         evento.preventDefault();
         ultimo.focus();
@@ -817,20 +688,14 @@ barraConto.addEventListener("pointerdown", avviaTrascinamentoRiepilogo);
 barraConto.addEventListener("pointermove", aggiornaTrascinamentoRiepilogo);
 barraConto.addEventListener("pointerup", terminaTrascinamentoRiepilogo);
 barraConto.addEventListener("pointercancel", terminaTrascinamentoRiepilogo);
-barraConto.addEventListener("click", evento => {
-    const attivatoDalRiepilogo = riepilogoSheetApri.contains(evento.target) || origineTapRiepilogo;
-    origineTapRiepilogo = false;
-    if (!attivatoDalRiepilogo || evento.target.closest("#btn-invia") || Date.now() < ignoraTapRiepilogoFino) return;
-    apriRiepilogoSheet();
-});
+barraConto.addEventListener("lostpointercapture", annullaTrascinamentoRiepilogo);
 riepilogoSheetApri.addEventListener("keydown", attivaRiepilogoSheetDaTastiera);
 riepilogoSheetHeader.addEventListener("pointerdown", avviaTrascinamentoChiusuraSheet);
 riepilogoSheetHeader.addEventListener("pointermove", aggiornaTrascinamentoChiusuraSheet);
 riepilogoSheetHeader.addEventListener("pointerup", terminaTrascinamentoChiusuraSheet);
 riepilogoSheetHeader.addEventListener("pointercancel", terminaTrascinamentoChiusuraSheet);
-document.getElementById("riepilogo-sheet-chiudi").addEventListener("click", () =>
-    chiudiRiepilogoSheet()
-);
+riepilogoSheetHeader.addEventListener("lostpointercapture", annullaTrascinamentoChiusuraSheet);
+riepilogoSheetChiudi.addEventListener("click", () => chiudiRiepilogoSheet());
 document.getElementById("riepilogo-sheet-invia").addEventListener("click", () => {
     chiudiRiepilogoSheet();
     apriConferma();
@@ -838,14 +703,12 @@ document.getElementById("riepilogo-sheet-invia").addEventListener("click", () =>
 riepilogoSheetBackdrop.addEventListener("click", evento => {
     if (evento.target === riepilogoSheetBackdrop) chiudiRiepilogoSheet();
 });
-window.addEventListener("popstate", () => {
-    if (riepilogoSheetAperto) chiudiRiepilogoSheet(true);
-});
 function aggiornaSheetAlCambioViewport() {
-    if (riepilogoSheetAperto && !riepilogoSheetDisponibile()) chiudiRiepilogoSheet();
+    if (riepilogoSheetAperto && !riepilogoSheetDisponibile()) chiudiRiepilogoSheet(false);
     aggiornaAccessibilitaBarraSheet();
 }
 window.addEventListener("resize", aggiornaSheetAlCambioViewport);
+window.addEventListener("orientationchange", aggiornaSheetAlCambioViewport);
 mediaRiepilogoSheet.addEventListener("change", aggiornaSheetAlCambioViewport);
 aggiornaAccessibilitaBarraSheet();
 document.getElementById("btn-annulla").addEventListener("click", () => {
