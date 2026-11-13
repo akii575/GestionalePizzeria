@@ -185,9 +185,10 @@
                     </section>
                 </div>
                 <aside class="composer-summary">
-                    <section class="riepilogo">
-                        <h2>Riepilogo ordine</h2>
-                        <div class="gestione-extra-riepilogo">
+                    <div class="riepilogo-card">
+                        <section class="riepilogo">
+                            <h2>Riepilogo ordine</h2>
+                            <div class="gestione-extra-riepilogo">
                     <label for="riga-extra">Prodotto da modificare</label>
                     <select id="riga-extra" disabled>
                         <option value="">Seleziona un prodotto</option>
@@ -197,13 +198,20 @@
                         <button id="applica-extra" type="button">Applica extra</button>
                     </div>
                         </div>
-                        <div id="riepilogo-items"><p>Nessun prodotto selezionato</p></div>
-                        <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
-                        <p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
-                    </section>
+                            <div id="riepilogo-items"><p>Nessun prodotto selezionato</p></div>
+                            <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
+                            <p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
+                        </section>
+                        <button class="btn-annulla" id="btn-annulla" type="button">Annulla ordine</button>
+                    </div>
                     <p id="messaggio" role="status"></p>
-                    <button class="btn-invia" id="btn-invia" type="button" disabled>Aggiungi prodotti</button>
-                    <button class="btn-annulla" id="btn-annulla" type="button">Annulla ordine</button>
+                    <div class="barra-conto">
+                        <div class="barra-conto-dettagli">
+                            <p id="barra-totale" class="riepilogo-totale">Totale: 0,00 €</p>
+                            <p id="barra-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
+                        </div>
+                        <button class="btn-invia" id="btn-invia" type="button" disabled>Aggiungi prodotti</button>
+                    </div>
                 </aside>
             </div>
         </main>

@@ -717,7 +717,7 @@ button {
 .composer-main > .tavolo-input,
 .composer-main > .note-input,
 .composer-main > .extra-section,
-.composer-summary > .riepilogo {
+.composer-summary .riepilogo {
     border: 1px solid var(--theme-line);
     border-radius: 16px;
     background: #fff;
@@ -727,7 +727,7 @@ button {
 .composer-main > .tavolo-input,
 .composer-main > .note-input,
 .composer-main > .extra-section,
-.composer-summary > .riepilogo {
+.composer-summary .riepilogo {
     padding: 16px;
 }
 
@@ -863,7 +863,16 @@ button {
     min-width: 0;
 }
 
-.composer-summary > .riepilogo h2 {
+.composer-summary > .riepilogo-card,
+.composer-summary > .barra-conto {
+    display: contents;
+}
+
+.barra-conto-dettagli {
+    display: none;
+}
+
+.composer-summary .riepilogo h2 {
     margin-bottom: 12px;
     font-size: 19px;
 }
@@ -949,7 +958,7 @@ button {
         min-height: 0;
     }
 
-    .composer-summary > .riepilogo {
+    .composer-summary > .riepilogo-card > .riepilogo {
         display: flex;
         flex: 1 1 auto;
         flex-direction: column;
@@ -957,7 +966,7 @@ button {
         overflow: hidden;
     }
 
-    .composer-summary > .riepilogo #riepilogo-items {
+    .composer-summary > .riepilogo-card > .riepilogo #riepilogo-items {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
@@ -970,8 +979,31 @@ button {
         margin: 0;
     }
 
-    .composer-summary > .btn-invia,
-    .composer-summary > .btn-annulla {
+    .composer-summary > .riepilogo-card > .riepilogo,
+    .composer-summary > #messaggio,
+    .composer-summary > .barra-conto > .btn-invia,
+    .composer-summary > .riepilogo-card > .btn-annulla {
+        order: 0;
+    }
+
+    .composer-summary > .riepilogo-card > .riepilogo {
+        order: 1;
+    }
+
+    .composer-summary > #messaggio {
+        order: 2;
+    }
+
+    .composer-summary > .barra-conto > .btn-invia {
+        order: 3;
+    }
+
+    .composer-summary > .riepilogo-card > .btn-annulla {
+        order: 4;
+    }
+
+    .composer-summary > .barra-conto > .btn-invia,
+    .composer-summary > .riepilogo-card > .btn-annulla {
         flex: 0 0 auto;
         margin: 0;
     }
@@ -1038,10 +1070,28 @@ button {
     }
 
     .composer-summary {
-        display: contents;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
     }
 
-    .composer-summary > .riepilogo {
+    .composer-summary > .riepilogo-card {
+        order: 1;
+    }
+
+    .composer-summary > #messaggio {
+        order: 2;
+    }
+
+    .composer-summary > .barra-conto {
+        order: 3;
+    }
+
+    .composer-summary > .riepilogo-card > .btn-annulla {
+        order: 4;
+    }
+
+    .composer-summary > .barra-conto {
         position: fixed;
         z-index: 1090;
         right: 0;
@@ -1052,32 +1102,23 @@ button {
         min-height: var(--app-mobile-checkout-height);
         margin: 0;
         padding: 8px 12px;
-        padding-right: min(52%, 210px);
         border: 1px solid var(--theme-line);
         border-bottom: 0;
         border-radius: 16px 16px 0 0;
         background: #fff;
         box-shadow: 0 -4px 16px rgba(26, 94, 169, .08);
         display: flex;
-        flex-direction: column;
-        justify-content: center;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
     }
 
-    .composer-summary > .riepilogo h2,
-    .composer-summary > .riepilogo .gestione-extra-riepilogo {
-        display: none;
+    .barra-conto-dettagli {
+        display: block;
+        min-width: 0;
     }
 
-    .composer-summary > .riepilogo #riepilogo-items {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-    }
-
-    .composer-summary > .riepilogo .riepilogo-totale {
+    .barra-conto .riepilogo-totale {
         margin: 0;
         color: var(--theme-green-dark);
         font-size: 20px;
@@ -1085,27 +1126,26 @@ button {
         text-align: left;
     }
 
-    .composer-summary > .btn-invia {
-        position: fixed;
+    .composer-summary > .barra-conto > .btn-invia {
+        position: static;
         z-index: 1101;
-        right: 12px;
-        bottom: calc(var(--app-mobile-nav-height) + 16px);
         width: min(45%, 180px);
         height: 48px;
         min-height: 48px;
+        flex: 0 0 auto;
         margin: 0;
         border-radius: 14px;
         font-size: 14px;
     }
 
-    .composer-summary > .btn-invia:disabled {
+    .composer-summary > .barra-conto > .btn-invia:disabled {
         background: var(--theme-green);
         color: #fff;
         cursor: not-allowed;
         opacity: .45;
     }
 
-    .composer-summary > .btn-invia:not(:disabled) {
+    .composer-summary > .barra-conto > .btn-invia:not(:disabled) {
         background: var(--theme-green);
         color: #fff;
         opacity: 1;
@@ -1186,6 +1226,76 @@ button {
         min-height: 52px;
         border-radius: 12px;
         font-size: 20px;
+    }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+    .composer-summary > .riepilogo-card {
+        display: block;
+        margin-top: 10px;
+        padding: 16px;
+        border: 1px solid var(--theme-line);
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: var(--theme-shadow);
+    }
+
+    .composer-summary > .riepilogo-card > .riepilogo {
+        display: block;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .composer-summary > .riepilogo-card > .riepilogo #riepilogo-items {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+    }
+
+    .composer-summary > .riepilogo-card > .riepilogo .riepilogo-totale {
+        margin: 12px 0 0;
+    }
+
+    .composer-summary > .riepilogo-card > .btn-annulla {
+        width: 100%;
+        min-height: 48px;
+        margin: 12px 0 0;
+    }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+    .composer-summary {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .composer-summary > .riepilogo-card {
+        display: contents;
+    }
+
+    .composer-summary > #messaggio {
+        order: 2;
+    }
+
+    .composer-summary > .barra-conto {
+        order: 3;
+    }
+
+    .composer-summary > .riepilogo-card > .btn-annulla {
+        order: 4;
+    }
+
+    .composer-summary > .riepilogo-card > .riepilogo {
+        display: none;
     }
 }
 

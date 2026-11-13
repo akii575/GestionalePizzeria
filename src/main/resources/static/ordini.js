@@ -2,6 +2,8 @@ const stato = { categoria: "pizze", menu: [], extra: [], righe: [], extraSelezio
 const prodotti = document.getElementById("prodotti");
 const riepilogo = document.getElementById("riepilogo-items");
 const riepilogoConteggio = document.getElementById("riepilogo-conteggio");
+const barraTotale = document.getElementById("barra-totale");
+const barraConteggio = document.getElementById("barra-conteggio");
 const messaggio = document.getElementById("messaggio");
 const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
@@ -296,8 +298,11 @@ function renderRiepilogo() {
             renderRiepilogo();
         })
     );
-    document.getElementById("riepilogo-totale").textContent = `Totale: ${euro.format(totaleOrdine())}`;
+    const testoTotale = `Totale: ${euro.format(totaleOrdine())}`;
+    document.getElementById("riepilogo-totale").textContent = testoTotale;
+    barraTotale.textContent = testoTotale;
     aggiornaConteggioProdotti(riepilogoConteggio, stato.righe.length);
+    aggiornaConteggioProdotti(barraConteggio, stato.righe.length);
     invia.disabled = !stato.righe.length;
     invia.textContent = stato.righe.length ? "Rivedi e invia" : "Aggiungi prodotti";
     aggiornaSelettoreRighe();
