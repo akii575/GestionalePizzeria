@@ -304,34 +304,43 @@ button {
     font-weight: bold;
 }
 .riepilogo-item {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    align-items: start;
     min-width: 0;
     border-bottom: 1px solid var(--bordo);
-    padding: 9px 0;
+    padding: 10px 0;
 }
 .riepilogo-item > div {
-    flex: 1 1 auto;
     min-width: 0;
     overflow-wrap: anywhere;
 }
+.riepilogo-item strong {
+    font-size: 15px;
+    font-weight: 600;
+}
 .riepilogo-item .rimuovi {
-    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 6px 10px;
+    border: 1px solid #F7C1C1;
+    border-radius: 8px;
+    background: #FCEBEB;
+    color: #A32D2D;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
     white-space: nowrap;
 }
 .riepilogo-descrizione {
     display: block;
-    margin-top: 3px;
-    color: var(--inchiostro);
-    opacity: 0.7;
+    margin-top: 2px;
+    color: var(--theme-muted);
     font-size: 12px;
 }
 .rimuovi {
-    color: var(--rosso);
     border: 0;
     background: transparent;
-    text-decoration: underline;
 }
 .btn-invia,
 .btn-annulla {
@@ -437,17 +446,6 @@ button {
     .campo-indirizzo {
         grid-column: auto;
     }
-    /* Righe prodotto del riepilogo */
-    #riepilogo-items .riepilogo-item {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        max-width: 100%;
-        gap: 5px;
-        align-items: stretch;
-        overflow: hidden;
-    }
-
     #riepilogo-items .riepilogo-item > div {
         min-width: 0;
         max-width: 100%;
@@ -460,12 +458,6 @@ button {
         white-space: normal;
         overflow-wrap: anywhere;
         word-break: break-word;
-    }
-
-    #riepilogo-items .rimuovi {
-        align-self: flex-start;
-        white-space: nowrap;
-        max-width: 100%;
     }
 
     /* Card Extra del riepilogo */

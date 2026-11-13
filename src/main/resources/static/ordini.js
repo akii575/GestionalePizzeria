@@ -288,7 +288,10 @@ function renderRiepilogo() {
         const descrizione = riga.ingredienti?.length
             ? `<small class="riepilogo-descrizione">${testoSicuro(riga.ingredienti.join(", "))}</small>`
             : "";
-        voce.innerHTML = `<div><strong>${testoSicuro(riga.prodotto)}</strong>${descrizione}<span>${riga.extra.length ? `Extra: ${testoSicuro(nomiExtra(riga.extra).join(", "))}` : "Nessun extra"}</span></div><button class="rimuovi" type="button" data-indice="${indice}">Rimuovi</button>`;
+        const extra = riga.extra.length
+            ? `<span>Extra: ${testoSicuro(nomiExtra(riga.extra).join(", "))}</span>`
+            : "";
+        voce.innerHTML = `<div><strong>${testoSicuro(riga.prodotto)}</strong>${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${indice}">Rimuovi</button>`;
         riepilogo.appendChild(voce);
     });
     if (!stato.righe.length) riepilogo.innerHTML = "<p>Nessun prodotto selezionato</p>";
