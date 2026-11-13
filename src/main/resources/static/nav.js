@@ -41,6 +41,21 @@
             actions.append(refreshButton);
         }
 
+        if (resetButton && window.location.pathname === "/gestionale.html") {
+            const resetHeaderButton = document.createElement("button");
+            resetHeaderButton.type = "button";
+            resetHeaderButton.className = "app-reset-header";
+            resetHeaderButton.setAttribute("aria-label", "Reset ordini");
+            resetHeaderButton.title = "Reset ordini";
+            resetHeaderButton.append(createIcon("reset"));
+            resetHeaderButton.hidden = resetButton.hidden;
+            resetHeaderButton.addEventListener("click", () => resetButton.click());
+            actions.append(resetHeaderButton);
+            new MutationObserver(() => {
+                resetHeaderButton.hidden = resetButton.hidden;
+            }).observe(resetButton, { attributes: true, attributeFilter: ["hidden"] });
+        }
+
         const searchTarget = document.getElementById("btn-ricerca") || document.getElementById("filtro");
         if (searchTarget) {
             const searchButton = document.createElement("button");

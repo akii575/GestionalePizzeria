@@ -56,6 +56,11 @@ body.app-shell nav.app-bottom-nav {
     height: 22px;
 }
 
+.app-header-actions .app-reset-header,
+.app-header-actions .app-reset-header[hidden] {
+    display: none;
+}
+
 @media (min-width: 768px) {
     body.app-shell main {
         width: min(1180px, calc(100% - 104px));
@@ -371,6 +376,25 @@ body.app-shell nav.app-bottom-nav {
 
     .app-header-actions .app-search {
         width: 44px;
+    }
+
+    .app-header-actions .app-reset-header {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        padding: 10px;
+        border-color: #F7C1C1;
+        background: rgba(163, 45, 45, .35);
+        color: #FCEBEB;
+    }
+
+    .app-header-actions .app-reset-header[hidden] {
+        display: none;
+    }
+
+    .app-header-actions .app-reset-header svg {
+        width: 22px;
+        height: 22px;
     }
 
     body.app-shell nav.app-bottom-nav {
