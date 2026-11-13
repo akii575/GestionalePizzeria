@@ -234,6 +234,44 @@ body.app-shell nav.app-bottom-nav {
     }
 }
 
+@media (min-width: 1440px) {
+    body.app-shell main.dashboard {
+        width: min(1808px, calc(100% - 260px));
+        margin-left: calc(240px + max(0px, (100% - 2048px) / 2));
+        padding: 24px;
+    }
+
+    body.app-shell main.container,
+    body.app-shell main.modifica {
+        width: min(1400px, calc(100% - 260px));
+        margin-left: calc(240px + max(0px, (100% - 1640px) / 2));
+    }
+
+    body.app-shell main.home {
+        width: min(1100px, calc(100% - 260px));
+        margin-left: calc(240px + max(0px, (100% - 1340px) / 2));
+    }
+
+    body.app-shell main.dashboard .lista-ordini,
+    body.app-shell main.dashboard .lista-consegne {
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 14px;
+    }
+
+    body.app-shell main.dashboard .metriche {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    body.app-shell main.dashboard .metriche > div:last-child {
+        grid-column: auto;
+        min-height: 84px;
+    }
+
+    body.app-shell main.container .composer-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    }
+}
+
 @media (min-width: 768px) and (max-width: 1024px) {
     .app-sidebar .app-brand {
         width: 44px;

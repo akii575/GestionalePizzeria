@@ -310,6 +310,22 @@ test("all order-list pages use the same source header and navigation shell", () 
     assert.match(navigation, /sidebarActions\.append\(resetButton\)/);
 });
 
+test("wide desktop layouts use the space beside the sidebar", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
+    const orderStyles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
+
+    assert.match(navigation, /@media \(min-width: 1440px\)[\s\S]*?body\.app-shell main\.dashboard\s*\{[^}]*width: min\(1808px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 2048px\) \/ 2\)\);[^}]*padding: 24px;/);
+    assert.match(navigation, /body\.app-shell main\.container,\s*body\.app-shell main\.modifica\s*\{[^}]*width: min\(1400px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1640px\) \/ 2\)\);/);
+    assert.match(navigation, /body\.app-shell main\.home\s*\{[^}]*width: min\(1100px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1340px\) \/ 2\)\);/);
+    assert.match(navigation, /body\.app-shell main\.dashboard \.lista-ordini,\s*body\.app-shell main\.dashboard \.lista-consegne\s*\{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(340px, 1fr\)\);/);
+    assert.match(navigation, /body\.app-shell main\.dashboard \.metriche\s*\{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+    assert.match(navigation, /body\.app-shell main\.dashboard \.metriche > div:last-child\s*\{[^}]*grid-column: auto;/);
+    assert.match(navigation, /body\.app-shell main\.container \.composer-layout\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(320px, 420px\);/);
+    assert.match(orderStyles, /grid-template-rows: repeat\(3, 132px\)/);
+    assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1024px\)/);
+});
+
 test("mobile list headers keep the title and actions on one line", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
