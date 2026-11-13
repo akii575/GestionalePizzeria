@@ -101,7 +101,10 @@ test("staff can create a Firebase session", async t => {
 
     assert.equal(verifiedToken, "id-token");
     assert.equal(response.statusCode, 204);
-    assert.match(response.headers["Set-Cookie"], /__Host-session=staff-session/);
+    assert.equal(
+        response.headers["Set-Cookie"],
+        "__Host-session=staff-session; Max-Age=432000; Path=/; Secure; HttpOnly; SameSite=Lax"
+    );
 });
 
 test("verify reports staff and gives admin precedence when both claims are present", async t => {

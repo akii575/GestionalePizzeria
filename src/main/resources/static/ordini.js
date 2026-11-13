@@ -46,6 +46,7 @@ const ricercaMoltiplicatore = document.getElementById("ricerca-moltiplicatore");
 const ricercaMessaggio = document.getElementById("ricerca-messaggio");
 const paginaPrincipale = document.querySelector("main");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+const { escapeHtml } = window.htmlUtils;
 const {
     CATEGORIE_CON_EXTRA,
     filtraProdotti,
@@ -71,11 +72,6 @@ function categoriaConExtra() {
 function mostraMessaggio(testo, classe) {
     messaggio.textContent = testo;
     messaggio.className = classe;
-}
-function testoSicuro(valore) {
-    const elemento = document.createElement("span");
-    elemento.textContent = valore == null ? "" : valore;
-    return elemento.innerHTML;
 }
 function oraLocale() {
     const adesso = new Date();
@@ -134,7 +130,7 @@ function renderExtra(container, selezionati, onChange) {
             "selezionato",
             selezionati.some(elemento => elemento.id === extra.id)
         );
-        bottone.innerHTML = `<strong>${extra.nome}</strong><span>${euro.format(Number(extra.prezzo))}</span>`;
+        bottone.innerHTML = `<strong>${escapeHtml(extra.nome)}</strong><span>${escapeHtml(euro.format(Number(extra.prezzo)))}</span>`;
         bottone.addEventListener("click", () => {
             const presenti = selezionati.some(elemento => elemento.id === extra.id);
             selezionati = presenti ? selezionati.filter(elemento => elemento.id !== extra.id) : [...selezionati, extra];
@@ -160,9 +156,9 @@ function renderProdotti() {
             bottone.type = "button";
             const descrizioneIngredienti = prodotto.ingredienti?.length ? prodotto.ingredienti.join(", ") : "";
             const ingredienti = descrizioneIngredienti
-                ? `<span class="ingredienti-wrapper"><span class="ingredienti">${testoSicuro(descrizioneIngredienti)}</span></span>`
+                ? `<span class="ingredienti-wrapper"><span class="ingredienti">${escapeHtml(descrizioneIngredienti)}</span></span>`
                 : "";
-            bottone.innerHTML = `<strong>${testoSicuro(prodotto.nome)}</strong><span class="prezzo-prodotto">${euro.format(Number(prodotto.prezzo))}</span>${ingredienti}`;
+            bottone.innerHTML = `<strong>${escapeHtml(prodotto.nome)}</strong><span class="prezzo-prodotto">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>${ingredienti}`;
             if (descrizioneIngredienti) bottone.querySelector(".ingredienti").title = descrizioneIngredienti;
             bottone.addEventListener("click", () => aggiungiProdotto(prodotto));
             pagina.appendChild(bottone);
@@ -206,7 +202,7 @@ function renderRisultatiRicerca() {
         const bottone = document.createElement("button");
         bottone.type = "button";
         bottone.className = "ricerca-risultato";
-        bottone.innerHTML = `<span class="ricerca-nome">${testoSicuro(prodotto.nome)}</span><span class="ricerca-categoria">${testoSicuro(etichetteCategorie[prodotto.categoria] || prodotto.categoria)}</span><span class="ricerca-prezzo">${euro.format(Number(prodotto.prezzo))}</span>`;
+        bottone.innerHTML = `<span class="ricerca-nome">${escapeHtml(prodotto.nome)}</span><span class="ricerca-categoria">${escapeHtml(etichetteCategorie[prodotto.categoria] || prodotto.categoria)}</span><span class="ricerca-prezzo">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>`;
         bottone.addEventListener("click", () => {
             const quantita = quantitaDaApplicare(statoMoltiplicatore);
             const moltiplicatoreArmato = statoMoltiplicatore.armato;
@@ -319,12 +315,12 @@ function renderRigheRiepilogo(contenitore) {
         const voce = document.createElement("div");
         voce.className = "riepilogo-item";
         const descrizione = riga.ingredienti?.length
-            ? `<small class="riepilogo-descrizione">${testoSicuro(riga.ingredienti.join(", "))}</small>`
+            ? `<small class="riepilogo-descrizione">${escapeHtml(riga.ingredienti.join(", "))}</small>`
             : "";
         const extra = riga.extra.length
-            ? `<span>Extra: ${testoSicuro(nomiExtra(riga.extra).join(", "))}</span>`
+            ? `<span>Extra: ${escapeHtml(nomiExtra(riga.extra).join(", "))}</span>`
             : "";
-        voce.innerHTML = `<div><strong>${testoSicuro(riga.prodotto)}</strong>${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${indice}">Rimuovi</button>`;
+        voce.innerHTML = `<div><strong>${escapeHtml(riga.prodotto)}</strong>${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
         contenitore.appendChild(voce);
     });
     if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
@@ -512,19 +508,19 @@ function apriConferma() {
     if (tipoOrdine.value !== "tavolo" && !orario.reportValidity()) return;
     const dettagliServizio =
         tipoOrdine.value === "consegna"
-            ? `<div class="conferma-consegna"><strong>Consegna</strong><span>${testoSicuro(document.getElementById("indirizzo-consegna").value.trim())}</span><span>${testoSicuro(document.getElementById("telefono-consegna").value.trim())}</span></div>`
+              ? `<div class="conferma-consegna"><strong>Consegna</strong><span>${escapeHtml(document.getElementById("indirizzo-consegna").value.trim())}</span><span>${escapeHtml(document.getElementById("telefono-consegna").value.trim())}</span></div>`
             : tipoOrdine.value === "ritiro"
-              ? `<div class="conferma-consegna"><strong>Ritiro: ${testoSicuro(document.getElementById("cliente-ritiro").value.trim())}</strong><span>${testoSicuro(document.getElementById("telefono-ritiro").value.trim())}</span></div>`
+                ? `<div class="conferma-consegna"><strong>Ritiro: ${escapeHtml(document.getElementById("cliente-ritiro").value.trim())}</strong><span>${escapeHtml(document.getElementById("telefono-ritiro").value.trim())}</span></div>`
               : tipoOrdine.value === "banco"
-                ? `<div class="conferma-consegna"><strong>Banco · ${testoSicuro(document.getElementById("cognome-banco").value.trim())}</strong></div>`
-                : `<div class="conferma-consegna"><strong>${testoSicuro(document.getElementById("tavolo").value)} · ${testoSicuro(numeroPersone.value)} persone</strong></div>`;
+                  ? `<div class="conferma-consegna"><strong>Banco · ${escapeHtml(document.getElementById("cognome-banco").value.trim())}</strong></div>`
+                  : `<div class="conferma-consegna"><strong>${escapeHtml(document.getElementById("tavolo").value)} · ${escapeHtml(numeroPersone.value)} persone</strong></div>`;
     const dettaglioOrario =
         tipoOrdine.value === "tavolo"
             ? ""
-            : `<div class="conferma-consegna"><span>Orario richiesto: ${testoSicuro(orario.value)}</span>${ritiro ? `<span>Pagamento: ${testoSicuro(pagamentoRitiro.selectedOptions[0].textContent)}</span>` : consegna ? `<span>Pagamento: ${testoSicuro(pagamentoConsegna.selectedOptions[0].textContent)}</span>` : ""}</div>`;
+            : `<div class="conferma-consegna"><span>Orario richiesto: ${escapeHtml(orario.value)}</span>${ritiro ? `<span>Pagamento: ${escapeHtml(pagamentoRitiro.selectedOptions[0].textContent)}</span>` : consegna ? `<span>Pagamento: ${escapeHtml(pagamentoConsegna.selectedOptions[0].textContent)}</span>` : ""}</div>`;
     const dettaglioCostoConsegna =
         consegna && costoConsegna
-            ? `<div class="conferma-consegna"><span>Costo consegna</span><strong>${euro.format(costoConsegna)}</strong></div>`
+            ? `<div class="conferma-consegna"><span>Costo consegna</span><strong>${escapeHtml(euro.format(costoConsegna))}</strong></div>`
             : "";
     confermaRiepilogo.innerHTML =
         dettagliServizio +
@@ -535,10 +531,10 @@ function apriConferma() {
                 const extra = nomiExtra(riga.extra)
                     .map(nome => {
                         const dato = stato.extra.find(item => item.nome === nome);
-                        return `${testoSicuro(nome)} (${euro.format(Number(dato?.prezzo || 0))})`;
+                        return `${escapeHtml(nome)} (${escapeHtml(euro.format(Number(dato?.prezzo || 0)))})`;
                     })
                     .join(", ");
-                return `<div class="conferma-riga"><strong>${testoSicuro(riga.prodotto)} - ${euro.format(Number(riga.prezzo))}</strong>${riga.ingredienti?.length ? `<span>${testoSicuro(riga.ingredienti.join(", "))}</span>` : ""}${extra ? `<span>Extra: ${extra}</span>` : ""}<span>Totale riga: ${euro.format(prezzoRiga(riga))}</span></div>`;
+                return `<div class="conferma-riga"><strong>${escapeHtml(riga.prodotto)} - ${escapeHtml(euro.format(Number(riga.prezzo)))}</strong>${riga.ingredienti?.length ? `<span>${escapeHtml(riga.ingredienti.join(", "))}</span>` : ""}${extra ? `<span>Extra: ${extra}</span>` : ""}<span>Totale riga: ${escapeHtml(euro.format(prezzoRiga(riga)))}</span></div>`;
             })
             .join("");
     confermaTotale.textContent = `Totale: ${euro.format(totaleOrdine())}`;

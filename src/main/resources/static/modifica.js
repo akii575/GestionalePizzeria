@@ -2,6 +2,7 @@ const numero = new URLSearchParams(window.location.search).get("numero");
 const righe = document.getElementById("righe");
 const conteggioModifica = document.getElementById("conteggio-modifica");
 const { aggiornaConteggioProdotti } = window.prodottiUI;
+const { escapeHtml } = window.htmlUtils;
 let menu = [];
 let extra = [];
 let costoConsegna = 0;
@@ -69,7 +70,7 @@ function renderExtraSelezionati(container, selezionati, onChange) {
     selezionati.forEach(item => {
         const card = document.createElement("article");
         card.className = "extra-card extra-selezionato";
-        card.innerHTML = `<strong>${item.nome}</strong><span>${euro.format(Number(item.prezzo))}</span><button type="button" class="extra-rimuovi">Rimuovi</button>`;
+        card.innerHTML = `<strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml(euro.format(Number(item.prezzo)))}</span><button type="button" class="extra-rimuovi">Rimuovi</button>`;
         card.querySelector(".extra-rimuovi").onclick = () => {
             onChange(selezionati.filter(selected => selected.id !== item.id));
         };
@@ -117,7 +118,7 @@ function rigaEdit(riga = { prodotto: menu[0]?.nome || "", extra: [] }) {
     const categoria = prodottoMenu?.categoria || "";
     riga.ingredienti = riga.ingredienti || prodottoMenu?.ingredienti || [];
     const extraSelezionati = riga.extra.map(riferimentoExtra).filter(Boolean);
-    div.innerHTML = `<label>Prodotto<select class="prodotto">${menu.map(p => `<option value="${p.nome}" ${p.nome === riga.prodotto ? "selected" : ""}>${p.nome}</option>`).join("")}</select><small class="prodotto-ingredienti"></small></label><div class="extra-editor" ${CATEGORIE_CON_EXTRA.includes(categoria) ? "" : "hidden"}></div><button class="rimuovi" type="button">Rimuovi</button>`;
+    div.innerHTML = `<label>Prodotto<select class="prodotto">${menu.map(p => `<option value="${escapeHtml(p.nome)}" ${p.nome === riga.prodotto ? "selected" : ""}>${escapeHtml(p.nome)}</option>`).join("")}</select><small class="prodotto-ingredienti"></small></label><div class="extra-editor" ${CATEGORIE_CON_EXTRA.includes(categoria) ? "" : "hidden"}></div><button class="rimuovi" type="button">Rimuovi</button>`;
     const extraEditor = div.querySelector(".extra-editor");
     const descrizione = div.querySelector(".prodotto-ingredienti");
     function aggiornaDescrizione(prodotto) {

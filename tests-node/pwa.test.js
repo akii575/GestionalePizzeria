@@ -108,6 +108,15 @@ test("manifest and icons use public static routes and the manifest MIME type", (
     assert.equal(config.headers.find(header => header.source === "/fonts/(.*)").headers[0].value, "public, max-age=31536000, immutable");
     assert.equal(config.headers.find(header => header.source === "/icons/(.*)").headers[0].value, "public, max-age=604800");
     assert.equal(config.headers.find(header => header.source === "/favicon.ico").headers[0].value, "public, max-age=604800");
+    const securityHeaders = config.headers.find(header => header.source === "/(.*)").headers;
+    assert.equal(
+        securityHeaders.find(header => header.key === "Cross-Origin-Opener-Policy").value,
+        "same-origin"
+    );
+    assert.equal(
+        securityHeaders.find(header => header.key === "Content-Security-Policy").value,
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://identitytoolkit.googleapis.com http://127.0.0.1:8765; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    );
     assert.equal(config.rewrites.some(rewrite => /manifest\.webmanifest|favicon\.ico|favicon-32\.png|logo-tondo\.png|\/icons\//.test(rewrite.source)), false);
 });
 

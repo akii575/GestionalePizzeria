@@ -391,7 +391,7 @@ test("order summary rows keep a two-column remove action and omit empty extras",
     assert.match(styles, /\.riepilogo-item\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto;[^}]*column-gap:\s*12px;[^}]*align-items:\s*start;/);
     assert.match(styles, /\.riepilogo-item \.rimuovi\s*\{[^}]*min-height:\s*40px;[^}]*padding:\s*6px 10px;[^}]*border:\s*1px solid #F7C1C1;[^}]*border-radius:\s*8px;[^}]*background:\s*#FCEBEB;[^}]*color:\s*#A32D2D;[^}]*font-size:\s*13px;[^}]*font-weight:\s*600;[^}]*text-decoration:\s*none;[^}]*white-space:\s*nowrap;/);
     assert.doesNotMatch(styles, /#riepilogo-items \.riepilogo-item\s*\{|#riepilogo-items \.rimuovi\s*\{/);
-    assert.match(script, /const extra = riga\.extra\.length\s*\?\s*`<span>Extra: \$\{testoSicuro\(nomiExtra\(riga\.extra\)\.join\(", "\)\)\}<\/span>`\s*:\s*"";/);
+    assert.match(script, /const extra = riga\.extra\.length\s*\?\s*`<span>Extra: \$\{escapeHtml\(nomiExtra\(riga\.extra\)\.join\(", "\)\)\}<\/span>`\s*:\s*"";/);
     assert.doesNotMatch(script, /Nessun extra/);
 });
 
