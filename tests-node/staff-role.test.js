@@ -202,7 +202,9 @@ test("gestionale skips calculating the daily total for staff", async () => {
     const context = {
         document: {
             body: { dataset: { serviceType: "" } },
-            getElementById: element
+            getElementById: element,
+            addEventListener() {},
+            visibilityState: "visible"
         },
         window: {
             authReady: Promise.resolve(true),
@@ -218,6 +220,7 @@ test("gestionale skips calculating the daily total for staff", async () => {
         Intl,
         Date,
         Promise,
+        URLSearchParams,
         Set
     };
     vm.runInNewContext(source, context);

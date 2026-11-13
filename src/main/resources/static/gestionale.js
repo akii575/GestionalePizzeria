@@ -10,7 +10,6 @@ function mostraStato(testo, classe) { statoPagina.textContent = testo; statoPagi
 function tipoNormalizzato(tipo) { return tipo === "sala" ? "tavolo" : tipo || "tavolo"; }
 function ordiniFiltrati() {
     const testo = document.getElementById("filtro").value.trim().toLowerCase();
-    const data = document.getElementById("data").value;
     return stato.ordini.filter(ordine => (!tipoServizio || tipoNormalizzato(ordine.tipo) === tipoServizio)
         && (!testo || [
             ordine.tavoloOCliente,
@@ -19,8 +18,7 @@ function ordiniFiltrati() {
             ordine.telefonoConsegna,
             ordine.telefonoRitiro,
             ...(ordine.righe || []).map(riga => riga.prodotto)
-        ].some(valore => String(valore || "").toLowerCase().includes(testo)))
-        && (!data || ordine.dataOra.substring(0, 10) === data));
+        ].some(valore => String(valore || "").toLowerCase().includes(testo))));
 }
 function render() {
     const ordini = ordiniFiltrati();
@@ -63,14 +61,18 @@ async function caricaOrdini() {
     const richiesta = ++stato.richiestaCaricamento;
     mostraStato("Caricamento ordini...", "loading");
     try {
-        const urlOrdini = tipoServizio ? `/api/ordini?tipo=${encodeURIComponent(tipoServizio)}` : "/api/ordini";
-        const risposte = await Promise.all([fetch(urlOrdini, { cache: "no-store" }), fetch("/api/menu", { cache: "no-store" })]);
+        const parametri = new URLSearchParams();
+        const data = document.getElementById("data").value;
+        if (data) parametri.set("data", data);
+        if (tipoServizio) parametri.set("tipo", tipoServizio);
+        const query = parametri.toString();
+        const urlOrdini = `/api/ordini${query ? `?${query}` : ""}`;
+        const risposta = await fetch(urlOrdini, { cache: "no-store" });
         if (richiesta !== stato.richiestaCaricamento) return;
-        if (!risposte[0].ok || !risposte[1].ok) throw new Error("Impossibile caricare gli ordini.");
-        const [ordini, menu] = await Promise.all([risposte[0].json(), risposte[1].json()]);
+        if (!risposta.ok) throw new Error("Impossibile caricare gli ordini.");
+        const ordini = await risposta.json();
         if (richiesta !== stato.richiestaCaricamento) return;
         stato.ordini = ordini;
-        stato.menu = menu;
         document.getElementById("ultimo-aggiornamento").textContent = new Date().toLocaleTimeString("it-IT");
         render();
         mostraStato("");
@@ -79,11 +81,23 @@ async function caricaOrdini() {
         mostraStato(errore.message, "errore");
     }
 }
-function configuraAggiornamento() { if (stato.timer) clearInterval(stato.timer); if (document.getElementById("autoAggiorna").checked) stato.timer = setInterval(caricaOrdini, 15000); }
+function configuraAggiornamento() {
+    if (stato.timer) clearInterval(stato.timer);
+    stato.timer = null;
+    if (document.getElementById("autoAggiorna").checked && document.visibilityState === "visible") {
+        stato.timer = setInterval(caricaOrdini, 15000);
+    }
+}
 document.getElementById("aggiorna").addEventListener("click", caricaOrdini);
 document.getElementById("filtro").addEventListener("input", render);
-document.getElementById("data").addEventListener("change", render);
+document.getElementById("data").addEventListener("change", caricaOrdini);
 document.getElementById("autoAggiorna").addEventListener("change", configuraAggiornamento);
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && document.getElementById("autoAggiorna").checked) {
+        caricaOrdini();
+    }
+    configuraAggiornamento();
+});
 if (window.paymentUI) {
     window.paymentUI.bind(lista, {
         canEdit: () => window.currentAccount?.admin === true || window.currentAccount?.staff === true,
@@ -109,7 +123,16 @@ document.getElementById("reset-numeri").addEventListener("click", async () => {
 });
 async function avvia() {
     if (!await window.authReady || !window.currentAccount) return;
+    let erroreMenu = null;
+    try {
+        const risposta = await fetch("/api/menu", { cache: "no-store" });
+        if (!risposta.ok) throw new Error("Impossibile caricare il menu.");
+        stato.menu = await risposta.json();
+    } catch (errore) {
+        erroreMenu = errore;
+    }
     await caricaOrdini();
     configuraAggiornamento();
+    if (erroreMenu) mostraStato(erroreMenu.message, "errore");
 }
 avvia();

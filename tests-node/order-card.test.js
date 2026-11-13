@@ -470,10 +470,10 @@ test("Civico7 logo is used in the sidebar and mobile header", () => {
     const navigation = fs.readFileSync(path.join(directory, "nav.js"), "utf8");
     const styles = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
 
-    assert.match(navigation, /brandImage\.src = "\/icons\/logo-tondo\.png";/);
+    assert.match(navigation, /brandImage\.src = "\/icons\/logo-tondo-192\.png";/);
     assert.match(navigation, /brandImage\.alt = "Civico7 - Home";/);
     assert.match(navigation, /brandImage\.width = 96;[\s\S]*?brandImage\.height = 96;/);
-    assert.match(navigation, /mobileBrand\.src = "\/icons\/logo-tondo\.png";/);
+    assert.match(navigation, /mobileBrand\.src = "\/icons\/logo-tondo-192\.png";/);
     assert.match(navigation, /mobileBrand\.width = 32;[\s\S]*?mobileBrand\.height = 32;/);
     assert.match(navigation, /if \(isHome && title\) title\.textContent = "Civico7"/);
     assert.match(styles, /@media \(min-width: 1025px\)[\s\S]*?\.app-brand\s*\{[^}]*width:\s*96px;[^}]*height:\s*96px;/);

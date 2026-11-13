@@ -19,7 +19,7 @@
         if (title) {
             const mobileBrand = document.createElement("img");
             mobileBrand.className = "app-mobile-brand";
-            mobileBrand.src = "/icons/logo-tondo.png";
+            mobileBrand.src = "/icons/logo-tondo-192.png";
             mobileBrand.alt = "";
             mobileBrand.width = 32;
             mobileBrand.height = 32;
@@ -104,7 +104,7 @@
         brand.className = "app-brand";
         brand.href = "/";
         const brandImage = document.createElement("img");
-        brandImage.src = "/icons/logo-tondo.png";
+        brandImage.src = "/icons/logo-tondo-192.png";
         brandImage.alt = "Civico7 - Home";
         brandImage.width = 96;
         brandImage.height = 96;

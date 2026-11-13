@@ -47,16 +47,18 @@ test("delivery accounts can read only delivery orders and cannot use admin order
                 assert.equal(name, "orders");
                 return {
                     where(field, operator, value) {
-                        assert.deepEqual([field, operator, value], ["tipo", "==", "consegna"]);
+                        if (field === "tipo") assert.deepEqual([field, operator, value], ["tipo", "==", "consegna"]);
+                        return this;
+                    },
+                    orderBy() {
+                        return this;
+                    },
+                    async get() {
                         return {
-                            async get() {
-                                return {
-                                    docs: [
-                                        { data: () => ({ numero: 4, tipo: "consegna", tavoloOCliente: "Cliente A" }) },
-                                        { data: () => ({ numero: 3, tipo: "sala", tavoloOCliente: "Tavolo 2" }) }
-                                    ]
-                                };
-                            }
+                            docs: [
+                                { data: () => ({ numero: 4, tipo: "consegna", tavoloOCliente: "Cliente A" }) },
+                                { data: () => ({ numero: 3, tipo: "sala", tavoloOCliente: "Tavolo 2" }) }
+                            ]
                         };
                     }
                 };

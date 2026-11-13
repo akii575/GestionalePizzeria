@@ -14,7 +14,15 @@ const iconSizes = {
     "icon-192-maskable.png": 192,
     "icon-512.png": 512,
     "icon-512-maskable.png": 512,
-    "logo-tondo.png": 512
+    "logo-tondo-192.png": 192
+};
+const iconSizeLimits = {
+    "apple-touch-icon.png": 30 * 1024,
+    "favicon-32.png": 4 * 1024,
+    "icon-192.png": 30 * 1024,
+    "icon-192-maskable.png": 25 * 1024,
+    "icon-512.png": 160 * 1024,
+    "icon-512-maskable.png": 110 * 1024
 };
 
 function pngDimensions(filePath) {
@@ -75,6 +83,12 @@ test("manifest icons have the declared dimensions and are copied as public asset
         assert.deepEqual(pngDimensions(source), { width: size, height: size }, file);
         assert.deepEqual(fs.readFileSync(path.join(publicDirectory, "icons", file)), fs.readFileSync(source), file);
     }
+    assert.ok(fs.statSync(path.join(iconDirectory, "logo-tondo-192.png")).size < 20 * 1024);
+    for (const [file, limit] of Object.entries(iconSizeLimits)) {
+        assert.ok(fs.statSync(path.join(iconDirectory, file)).size < limit, file);
+    }
+    assert.equal(fs.existsSync(path.join(staticDirectory, "icons", "sorgente.png")), false);
+    assert.equal(fs.existsSync(path.join(root, "design", "sorgente.png")), true);
     assert.deepEqual(
         fs.readFileSync(path.join(publicDirectory, "favicon.ico")),
         fs.readFileSync(path.join(staticDirectory, "favicon.ico"))
@@ -88,9 +102,21 @@ test("manifest icons have the declared dimensions and are copied as public asset
 
 test("manifest and icons use public static routes and the manifest MIME type", () => {
     const config = JSON.parse(fs.readFileSync(path.join(root, "vercel.json"), "utf8"));
-    assert.equal(config.headers.find(header => header.source === "/manifest.webmanifest")
-        ?.headers.find(header => header.key === "Content-Type")?.value, "application/manifest+json");
+    const manifestHeaders = config.headers.find(header => header.source === "/manifest.webmanifest").headers;
+    assert.equal(manifestHeaders.find(header => header.key === "Content-Type").value, "application/manifest+json");
+    assert.equal(manifestHeaders.find(header => header.key === "Cache-Control").value, "public, max-age=604800");
+    assert.equal(config.headers.find(header => header.source === "/fonts/(.*)").headers[0].value, "public, max-age=31536000, immutable");
+    assert.equal(config.headers.find(header => header.source === "/icons/(.*)").headers[0].value, "public, max-age=604800");
+    assert.equal(config.headers.find(header => header.source === "/favicon.ico").headers[0].value, "public, max-age=604800");
     assert.equal(config.rewrites.some(rewrite => /manifest\.webmanifest|favicon\.ico|favicon-32\.png|logo-tondo\.png|\/icons\//.test(rewrite.source)), false);
+});
+
+test("login and app navigation use the optimized round logo", () => {
+    const login = fs.readFileSync(path.join(staticDirectory, "login.html"), "utf8");
+    const navigation = fs.readFileSync(path.join(staticDirectory, "nav.js"), "utf8");
+    assert.match(login, /src="\/icons\/logo-tondo-192\.png"/);
+    assert.match(navigation, /\/icons\/logo-tondo-192\.png/);
+    assert.doesNotMatch(login + navigation, /\/icons\/logo-tondo\.png/);
 });
 
 test("safe-area padding protects the mobile header, sidebar and bottom navigation", () => {

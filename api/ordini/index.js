@@ -3,6 +3,7 @@ const { httpError, requireStaffAccess, requireSameOrigin } = require("../../lib/
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { filterOrdersByType, prepareOrder, publicOrder } = require("../../lib/orders");
 const { hasExpiredPrinterQueuePause, isPrinterQueuePaused, jobId } = require("../../lib/printer-jobs");
+const { getRomeDayRange } = require("../../lib/rome-day-range");
 
 module.exports = api(async (req, res) => {
     await requireStaffAccess(req);
@@ -11,11 +12,21 @@ module.exports = api(async (req, res) => {
 
     if (req.method === "GET") {
         res.setHeader("Cache-Control", "no-store");
-        const snapshot = await orders.orderBy("numero", "desc").get();
+        const queryParams = req.query || {};
+        const { start, end } = getRomeDayRange(queryParams.data);
+        const tipo = queryParams.tipo === "" ? undefined : queryParams.tipo;
+        if (typeof tipo !== "undefined") filterOrdersByType([], tipo);
+
+        let query = orders.where("dataOra", ">=", start).where("dataOra", "<", end);
+        if (typeof tipo !== "undefined") {
+            query = tipo === "tavolo"
+                ? query.where("tipo", "in", ["tavolo", "sala"])
+                : query.where("tipo", "==", tipo);
+        }
+        const snapshot = await query.orderBy("dataOra", "asc").orderBy("numero", "desc").get();
         const results = snapshot.docs.map(document => publicOrder(document.data()));
-        const filtered = typeof req.query.tipo === "undefined"
-            ? results
-            : filterOrdersByType(results, req.query.tipo);
+        const filtered = typeof tipo === "undefined" ? results : filterOrdersByType(results, tipo);
+        filtered.sort((first, second) => Number(second.numero) - Number(first.numero));
         return res.status(200).json(filtered);
     }
     if (req.method === "POST") {

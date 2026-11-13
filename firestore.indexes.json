@@ -1,0 +1,22 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dataOra", "order": "ASCENDING" },
+        { "fieldPath": "numero", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tipo", "order": "ASCENDING" },
+        { "fieldPath": "dataOra", "order": "ASCENDING" },
+        { "fieldPath": "numero", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
