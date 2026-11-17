@@ -9,7 +9,8 @@ const extras = require("../lib/extras.json");
 
 const PROJECT_ID = "gestionalecivico7";
 const LEASE_MILLISECONDS = 120_000;
-const POLL_MILLISECONDS = 10_000;
+const POLL_MILLISECONDS = 15_000;
+const LOCK_RENEW_MILLISECONDS = 30_000;
 const RECEIPT_WIDTH_58_MM = 16;
 const PRODUCT_CATEGORIES = [...new Set(menu.map(product => product.categoria))];
 const CATEGORY_BY_PRODUCT = new Map(menu.map(product => [product.nome, product.categoria]));
@@ -279,9 +280,22 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     let workerState = "starting";
     let lastPrintedOrder = null;
     let lastError = null;
+    let printers = [];
+    let ownsLock = false;
+    let drainPromise = null;
+    let drainRequested = false;
+    let securityPromise = null;
+    let lockPromise = null;
+    let unsubscribeQueue = null;
+    let listenerRetryTimer = null;
+    let listenerRetryAttempt = 0;
+    let securityTimer = null;
+    let lockTimer = null;
+    let running = false;
 
     async function acquireLock() {
-        return db.runTransaction(async transaction => {
+        if (lockPromise) return lockPromise;
+        lockPromise = db.runTransaction(async transaction => {
             const snapshot = await transaction.get(lockRef);
             const lock = snapshot.exists ? snapshot.data() : {};
             const leaseUntil = lock.leaseUntil && lock.leaseUntil.toMillis();
@@ -293,12 +307,29 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 leaseUntil: Timestamp.fromMillis(Date.now() + LEASE_MILLISECONDS)
             });
             return true;
+        }).then(acquired => {
+            ownsLock = acquired;
+            return acquired;
+        }).finally(() => {
+            lockPromise = null;
         });
+        return lockPromise;
     }
 
-    async function selectedPrinters() {
-        const printers = await queryPrinters();
-        return Array.isArray(printers) ? printers : [];
+    async function refreshPrinters() {
+        try {
+            const available = await queryPrinters();
+            printers = Array.isArray(available) ? available : [];
+            workerState = printers.length > 0
+                    && printers.every(printer => !printer.isVirtual && printer.state === "ready")
+                ? "ready"
+                : "printer_unavailable";
+        } catch (error) {
+            printers = [];
+            workerState = "printer_unavailable";
+            console.error("Unable to refresh printer status:", error.code || error.name || "unknown");
+        }
+        return printers;
     }
 
     function printersForJob(job, printers) {
@@ -480,13 +511,13 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         });
     }
 
-    async function processOneJob(printers) {
+    async function processOneJob() {
         const job = await claimNextJob(printers);
-        if (!job) return;
+        if (!job) return false;
         const selected = printersForJob(job, printers);
         if (hasMissingPrinter(job, selected)) {
             await finishJob(job, new Error("stampante_non_configurata"), "stampante_non_configurata");
-            return;
+            return true;
         }
         try {
             await sendOrderToPrinters(job.order, selected, {
@@ -503,7 +534,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             await finishJob(job, error);
             lastError = "Una o più stampanti non hanno ricevuto la comanda.";
             console.error(`Printing order #${job.numero} failed:`, error.code || error.name || "unknown");
-            return;
+            await refreshPrinters();
+            return true;
         }
         try {
             await finishJob(job, null);
@@ -514,25 +546,103 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             lastError = "Comanda inviata, ma non e' stato possibile confermare la stampa.";
             console.error("Unable to acknowledge printed order:", error.code || error.name || "unknown");
         }
+        return true;
     }
 
-    async function tick() {
-        const control = await controlRef.get();
-        if (control.data()?.paused) {
-            workerState = "paused";
-            return;
+    async function drainQueue() {
+        drainRequested = true;
+        if (drainPromise) return drainPromise;
+        drainPromise = (async () => {
+            while (active && drainRequested) {
+                drainRequested = false;
+                while (active) {
+                    const control = await controlRef.get();
+                    if (control.data()?.paused) {
+                        workerState = "paused";
+                        break;
+                    }
+                    if (!await acquireLock()) {
+                        workerState = "another_terminal_active";
+                        break;
+                    }
+                    if (!await processOneJob()) break;
+                }
+            }
+        })().catch(error => {
+            workerState = "cloud_unavailable";
+            lastError = "Connessione alla coda di stampa non disponibile.";
+            console.error("Printer queue drain failed:", error.code || error.name || "unknown");
+        }).finally(() => {
+            drainPromise = null;
+            if (active && drainRequested) void drainQueue();
+        });
+        return drainPromise;
+    }
+
+    function handleListenerError(error) {
+        unsubscribeQueue?.();
+        unsubscribeQueue = null;
+        if (!active || listenerRetryTimer) return;
+        workerState = "cloud_unavailable";
+        lastError = "Connessione alla coda di stampa non disponibile.";
+        console.error("Printer queue listener failed:", error.code || error.name || "unknown");
+        const delays = [1_000, 2_000, 5_000, 10_000, 20_000, 30_000];
+        const delay = delays[Math.min(listenerRetryAttempt, delays.length - 1)];
+        listenerRetryAttempt++;
+        listenerRetryTimer = setTimeout(() => {
+            listenerRetryTimer = null;
+            listenForQueuedJobs();
+        }, delay);
+    }
+
+    function listenForQueuedJobs() {
+        if (!active || unsubscribeQueue) return;
+        try {
+            unsubscribeQueue = jobs.where("status", "==", "queued").onSnapshot(snapshot => {
+                listenerRetryAttempt = 0;
+                if (!snapshot.empty) {
+                    void drainQueue().catch(error => {
+                        workerState = "cloud_unavailable";
+                        lastError = "Connessione alla coda di stampa non disponibile.";
+                        console.error("Printer queue drain failed:", error.code || error.name || "unknown");
+                    });
+                }
+            }, handleListenerError);
+        } catch (error) {
+            handleListenerError(error);
         }
-        if (!await acquireLock()) {
-            workerState = "another_terminal_active";
-            return;
+    }
+
+    async function refreshQueueState() {
+        if (securityPromise) return securityPromise;
+        securityPromise = (async () => {
+            const control = await controlRef.get();
+            if (control.data()?.paused) {
+                workerState = "paused";
+                return;
+            }
+            if (!await acquireLock()) {
+                workerState = "another_terminal_active";
+                return;
+            }
+            await recoverExpiredJob();
+            await refreshPrinters();
+            if (lastError === "Connessione alla coda di stampa non disponibile.") lastError = null;
+            await drainQueue();
+        })().finally(() => {
+            securityPromise = null;
+        });
+        return securityPromise;
+    }
+
+    async function runSafely(operation, label) {
+        try {
+            await operation();
+        } catch (error) {
+            workerState = "cloud_unavailable";
+            lastError = "Connessione alla coda di stampa non disponibile.";
+            console.error(`${label}:`, error.code || error.name || "unknown");
         }
-        if (await recoverExpiredJob()) return;
-        const printers = await selectedPrinters();
-        workerState = printers.length > 0
-                && printers.every(printer => !printer.isVirtual && printer.state === "ready")
-            ? "ready"
-            : "printer_unavailable";
-        await processOneJob(printers);
     }
 
     async function countsFor(status) {
@@ -587,26 +697,40 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     }
 
     async function run() {
-        while (active) {
-            try {
-                await tick();
-            } catch (error) {
-                workerState = "cloud_unavailable";
-                lastError = "Connessione alla coda di stampa non disponibile.";
-                console.error("Printer agent poll failed:", error.code || error.name || "unknown");
-            }
-            await new Promise(resolve => setTimeout(resolve, POLL_MILLISECONDS));
-        }
+        if (running) return;
+        active = true;
+        running = true;
+        listenForQueuedJobs();
+        securityTimer = setInterval(
+            () => runSafely(refreshQueueState, "Printer agent security poll failed"),
+            POLL_MILLISECONDS
+        );
+        lockTimer = setInterval(
+            () => runSafely(acquireLock, "Printer agent lock renewal failed"),
+            LOCK_RENEW_MILLISECONDS
+        );
+        await runSafely(refreshQueueState, "Printer agent startup failed");
     }
 
     async function stop() {
         active = false;
+        running = false;
+        unsubscribeQueue?.();
+        unsubscribeQueue = null;
+        clearInterval(securityTimer);
+        clearInterval(lockTimer);
+        clearTimeout(listenerRetryTimer);
+        securityTimer = null;
+        lockTimer = null;
+        listenerRetryTimer = null;
+        await Promise.all([drainPromise, securityPromise, lockPromise].filter(Boolean));
         await db.runTransaction(async transaction => {
             const snapshot = await transaction.get(lockRef);
-            if (snapshot.data()?.instanceId === instanceId) {
+            if (ownsLock && snapshot.data()?.instanceId === instanceId) {
                 transaction.set(lockRef, { instanceId, leaseUntil: Timestamp.fromMillis(0) });
             }
         });
+        ownsLock = false;
     }
 
     return {

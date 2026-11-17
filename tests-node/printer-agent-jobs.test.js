@@ -46,6 +46,13 @@ function createDatabase(seed) {
                             size = limit;
                             return query;
                         },
+                        onSnapshot(callback) {
+                            callback(querySnapshot(name, [...documents(name).entries()]
+                                .filter(([, data]) => data[field] === value)
+                                .sort(([first], [second]) => first.localeCompare(second))
+                                .slice(0, size)));
+                            return () => {};
+                        },
                         async get() {
                             const entries = [...documents(name).entries()]
                                 .filter(([, data]) => data[field] === value)
@@ -70,26 +77,8 @@ function createDatabase(seed) {
 }
 
 async function runOneTick(agent) {
-    let releasePoll;
-    let signalPollInstalled;
-    const pollInstalled = new Promise(resolve => {
-        signalPollInstalled = resolve;
-    });
-    const originalSetTimeout = global.setTimeout;
-    global.setTimeout = resolve => {
-        releasePoll = resolve;
-        signalPollInstalled();
-        return 0;
-    };
-    try {
-        const running = agent.run();
-        await pollInstalled;
-        await agent.stop();
-        releasePoll();
-        await running;
-    } finally {
-        global.setTimeout = originalSetTimeout;
-    }
+    await agent.run();
+    await agent.stop();
 }
 
 function order() {
@@ -264,7 +253,7 @@ test("the agent prints only added rows and reports both addition totals", async 
     )));
 });
 
-test("an added job keeps the common queued message when another job remains", async () => {
+test("the queue drain prints consecutive added jobs and clears the queued message", async () => {
     const addedRows = [{ prodotto: "Patatine Piccole", prezzoBase: 3, extra: [], totale: 3 }];
     const database = createDatabase({
         orders: { "7": order() },
@@ -294,9 +283,8 @@ test("an added job keeps the common queued message when another job remains", as
 
     await runOneTick(agent);
 
-    assert.equal(database.documents("orders").get("7").stampaInCoda, true);
-    assert.equal(
-        database.documents("orders").get("7").messaggioStampa,
-        "Comanda in attesa di stampa automatica."
-    );
+    assert.equal(database.documents("printerJobs").get("000000000007-01").status, "printed");
+    assert.equal(database.documents("printerJobs").get("000000000007-02").status, "printed");
+    assert.equal(database.documents("orders").get("7").stampaInCoda, false);
+    assert.equal(database.documents("orders").get("7").messaggioStampa, "Aggiunta completata.");
 });

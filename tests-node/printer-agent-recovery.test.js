@@ -38,6 +38,9 @@ function createDatabase(seed) {
                 where(field, operator, value) {
                     assert.equal(operator, "==");
                     return {
+                        orderBy() {
+                            return this;
+                        },
                         limit(size) {
                             return {
                                 async get() {
@@ -47,6 +50,11 @@ function createDatabase(seed) {
                                     return querySnapshot(name, entries);
                                 }
                             };
+                        },
+                        onSnapshot(callback) {
+                            callback(querySnapshot(name, [...documents(name).entries()]
+                                .filter(([, data]) => data[field] === value)));
+                            return () => {};
                         }
                     };
                 }
@@ -84,27 +92,8 @@ test("expired printing leases are queued again when printers are unavailable", a
             return [];
         }
     });
-    let finishPoll;
-    let signalPollInstalled;
-    const pollInstalled = new Promise(resolve => {
-        signalPollInstalled = resolve;
-    });
-    const originalSetTimeout = global.setTimeout;
-    global.setTimeout = resolve => {
-        finishPoll = resolve;
-        signalPollInstalled();
-        return 0;
-    };
-
-    try {
-        const running = agent.run();
-        await pollInstalled;
-        await agent.stop();
-        finishPoll();
-        await running;
-    } finally {
-        global.setTimeout = originalSetTimeout;
-    }
+    await agent.run();
+    await agent.stop();
 
     const job = database.documents("printerJobs").get("000000000007");
     const order = database.documents("orders").get("7");
@@ -112,5 +101,5 @@ test("expired printing leases are queued again when printers are unavailable", a
     assert.equal(job.lastError, "stampa_interrotta");
     assert.equal(order.stampaInCoda, true);
     assert.equal(order.messaggioStampa, "Stampa interrotta; la comanda verra' ritentata automaticamente.");
-    assert.equal(printerQueryCount, 0);
+    assert.equal(printerQueryCount, 1);
 });
