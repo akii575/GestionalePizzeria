@@ -10,6 +10,7 @@ test("menu editor page loads protected navigation, accessible editor and shared 
     const page = readStatic("menu.html");
     const navigation = readStatic("nav.js");
     const editor = readStatic("menu-editor.js");
+    const styles = readStatic("menu.css");
 
     assert.match(page, /src="\/auth-guard\.js"/);
     assert.match(page, /role="tablist"/);
@@ -18,6 +19,24 @@ test("menu editor page loads protected navigation, accessible editor and shared 
     assert.match(navigation, /if \(account\.admin === true\) links\.push\(\{ label: "Menu", href: "\/menu\.html"/);
     assert.match(editor, /escapeHtml\(/);
     assert.match(editor, /data-action="restore"/);
+    assert.match(editor, /permanent \? "delete-permanently"/);
+    assert.match(editor, /Eliminare '\$\{item\.nome\}' dal menu\?/);
+    assert.match(editor, /setTimeout\(hideUndoToast, 6000\)/);
+    assert.match(page, /aria-label="Nuovo"/);
+    assert.match(page, /id="menu-undo-toast"/);
+    assert.match(styles, /\.menu-delete-button \{(?=[^}]*color: #A32D2D)(?=[^}]*background: #FCEBEB)(?=[^}]*border-color: #F7C1C1)[^}]*\}/);
+    assert.match(styles, /@media \(max-width: 359px\)[\s\S]*\.menu-new-label/);
+});
+
+test("product row metadata omits the repeated category name", () => {
+    const editor = readStatic("menu-editor.js");
+    const productRow = editor.slice(
+        editor.indexOf("function renderProductRow"),
+        editor.indexOf("function renderProducts")
+    );
+    assert.match(productRow, /euro\.format\(Number\(product\.prezzo\)\)/);
+    assert.match(productRow, /ingredientText/);
+    assert.doesNotMatch(productRow, /category\?\.nome/);
 });
 
 test("menu page is protected by the server rewrite and included in protected-page generation", () => {

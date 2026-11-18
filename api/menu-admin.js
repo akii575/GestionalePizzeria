@@ -148,20 +148,24 @@ async function mutateMenu(db, method, body) {
     const collection = db.collection(RESOURCES[resource]);
     const versionRef = db.collection("metadata").doc("menuVersion");
     const isOrdering = method === "PUT" && body.azione === "ordine";
+    const isDeleting = method === "DELETE";
     if (method === "PUT" && !isOrdering && (typeof body.id !== "string" || !body.id)) {
         throw httpError(400, "Identificativo del menu non valido.");
     }
-    if (method === "PATCH" && (typeof body.id !== "string" || !body.id)) {
+    if ((method === "PATCH" || isDeleting) && (typeof body.id !== "string" || !body.id)) {
         throw httpError(400, "Identificativo del menu non valido.");
     }
     const newRef = method === "POST" ? collection.doc() : null;
 
     return db.runTransaction(async transaction => {
-        const [versionSnapshot, collectionSnapshot, categoriesSnapshot] = await Promise.all([
+        const [versionSnapshot, collectionSnapshot, categoriesSnapshot, productsSnapshot] = await Promise.all([
             transaction.get(versionRef),
             transaction.get(collection),
             resource === "prodotti" || isOrdering && body.risorsa === "prodotti"
                 ? transaction.get(db.collection(RESOURCES.categorie))
+                : Promise.resolve(null),
+            isDeleting && resource === "categorie"
+                ? transaction.get(db.collection(RESOURCES.prodotti))
                 : Promise.resolve(null)
         ]);
         const documents = collectionSnapshot.docs;
@@ -194,6 +198,20 @@ async function mutateMenu(db, method, body) {
             const byId = new Map(orderedDocuments.map(document => [document.id, document.ref]));
             body.ids.forEach((id, ordine) => transaction.update(byId.get(id), { ordine }));
             result = { ok: true };
+        } else if (method === "DELETE") {
+            const document = documents.find(entry => entry.id === body.id);
+            if (!document) throw httpError(404, "Elemento del menu non trovato.");
+            const archiveField = resource === "categorie" ? "archiviata" : "archiviato";
+            if (document.data()[archiveField] !== true) {
+                throw httpError(409, "Solo gli elementi archiviati possono essere eliminati definitivamente.");
+            }
+            if (resource === "categorie" && productsSnapshot.docs.some(product => (
+                product.data().categoriaId === body.id
+            ))) {
+                throw httpError(409, "La categoria contiene prodotti, anche archiviati, e non puo' essere eliminata definitivamente.");
+            }
+            transaction.delete(document.ref);
+            result = { ok: true, id: body.id };
         } else if (method === "PATCH") {
             const document = documents.find(entry => entry.id === body.id);
             if (!document) throw httpError(404, "Elemento del menu non trovato.");
@@ -244,8 +262,8 @@ async function mutateMenu(db, method, body) {
 }
 
 module.exports = api(async (req, res) => {
-    if (!["GET", "POST", "PUT", "PATCH"].includes(req.method)) {
-        return methodNotAllowed(res, ["GET", "POST", "PUT", "PATCH"]);
+    if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+        return methodNotAllowed(res, ["GET", "POST", "PUT", "PATCH", "DELETE"]);
     }
     res.setHeader("Cache-Control", "no-store");
     await requireAdmin(req);

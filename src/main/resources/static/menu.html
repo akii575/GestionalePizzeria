@@ -38,7 +38,10 @@
                     <span>Cerca nel menu</span>
                     <input id="menu-search" type="search" autocomplete="off" placeholder="Nome, categoria o ingrediente" />
                 </label>
-                <button id="menu-new" class="menu-primary" type="button">+ Nuovo</button>
+                <button id="menu-new" class="menu-primary" type="button" aria-label="Nuovo">
+                    <span class="menu-new-icon" aria-hidden="true">+</span>
+                    <span class="menu-new-label">Nuovo</span>
+                </button>
             </section>
             <p id="menu-status" class="menu-status" role="status" aria-live="polite"></p>
             <section id="menu-content" class="menu-content" aria-live="polite"></section>
@@ -47,6 +50,10 @@
                 <div id="menu-archived-content"></div>
             </details>
         </main>
+        <div id="menu-undo-toast" class="menu-undo-toast" role="status" aria-live="polite" hidden>
+            <span>Eliminato ·</span>
+            <button id="menu-undo" type="button">Annulla</button>
+        </div>
         <div id="menu-editor-backdrop" class="menu-editor-backdrop" hidden>
             <aside id="menu-editor" class="menu-editor" role="dialog" aria-modal="true" aria-labelledby="menu-editor-title">
                 <div class="menu-editor-handle" aria-hidden="true"></div>

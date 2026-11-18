@@ -33,6 +33,7 @@
 .menu-primary,
 .menu-secondary,
 .menu-danger,
+.menu-delete-button,
 .menu-icon-button,
 .menu-order-button,
 .menu-edit-button,
@@ -73,7 +74,7 @@
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    min-height: 46px;
+    min-height: 48px;
     padding: 10px 12px;
     border: 1px solid var(--theme-line);
     border-radius: 11px;
@@ -89,10 +90,24 @@
 }
 
 .menu-primary {
-    padding: 9px 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0 14px;
     border-color: var(--theme-green);
     background: var(--theme-green);
     color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.menu-new-icon {
+    font-size: 20px;
+    line-height: 1;
 }
 
 .menu-secondary {
@@ -199,6 +214,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
+    min-width: 0;
 }
 
 .menu-row-actions {
@@ -209,11 +225,14 @@
 
 .menu-availability {
     min-width: 112px;
-    padding: 7px 10px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 10px;
     border-color: #b7d7bc;
     background: #eef8ef;
     color: #245c2e;
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 600;
     white-space: nowrap;
 }
 
@@ -228,6 +247,7 @@
     display: inline-grid;
     width: 44px;
     min-width: 44px;
+    height: 44px;
     place-items: center;
     padding: 0;
     background: #fff;
@@ -241,9 +261,27 @@
 }
 
 .menu-edit-button {
-    padding: 7px 12px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 10px;
     background: #fff;
     color: var(--theme-green-dark);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.menu-delete-button {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 9px;
+    border-color: #F7C1C1;
+    border-radius: 12px;
+    background: #FCEBEB;
+    color: #A32D2D;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 .menu-row.is-archived {
@@ -282,6 +320,40 @@
 
 .menu-archived[open] > summary {
     border-bottom: 1px solid var(--theme-line);
+}
+
+.menu-undo-toast {
+    position: fixed;
+    z-index: 1300;
+    right: 20px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 48px;
+    padding: 4px 8px 4px 16px;
+    border: 1px solid var(--theme-line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: var(--theme-shadow);
+    color: var(--theme-ink);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.menu-undo-toast[hidden] {
+    display: none;
+}
+
+.menu-undo-toast button {
+    min-height: 40px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--theme-green-dark);
+    font: inherit;
+    font-weight: 700;
 }
 
 .menu-editor-backdrop {
@@ -382,7 +454,7 @@ body.menu-editor-open {
 
     .menu-controls {
         grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
+        align-items: end;
         gap: 10px;
         padding: 10px;
     }
@@ -405,7 +477,6 @@ body.menu-editor-open {
 
     .menu-primary {
         min-height: 48px;
-        white-space: nowrap;
     }
 
     .menu-row {
@@ -420,10 +491,13 @@ body.menu-editor-open {
 
     .menu-row-end {
         justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 4px;
     }
 
     .menu-row-actions {
         margin-left: auto;
+        gap: 4px;
     }
 
     .menu-editor-backdrop {
@@ -450,17 +524,33 @@ body.menu-editor-open {
     .menu-editor-header {
         margin-bottom: 12px;
     }
+
+    .menu-undo-toast {
+        right: 12px;
+        bottom: max(12px, env(safe-area-inset-bottom));
+    }
 }
 
-@media (max-width: 390px) {
+@media (max-width: 414px) {
     .menu-availability {
-        min-width: 100px;
-        padding-inline: 7px;
-        font-size: 12px;
+        min-width: 0;
+        padding-inline: 2px;
     }
 
-    .menu-edit-button {
-        padding-inline: 9px;
-        font-size: 14px;
+    .menu-edit-button,
+    .menu-delete-button {
+        padding-inline: 4px;
+    }
+}
+
+@media (max-width: 359px) {
+    #menu-new {
+        width: 48px;
+        min-width: 48px;
+        padding-inline: 0;
+    }
+
+    .menu-new-label {
+        display: none;
     }
 }

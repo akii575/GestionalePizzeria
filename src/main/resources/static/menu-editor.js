@@ -4,13 +4,23 @@
     const archivedContent = document.getElementById("menu-archived-content");
     const search = document.getElementById("menu-search");
     const status = document.getElementById("menu-status");
+    const undoToast = document.getElementById("menu-undo-toast");
+    const undoButton = document.getElementById("menu-undo");
     const backdrop = document.getElementById("menu-editor-backdrop");
     const editor = document.getElementById("menu-editor");
     const form = document.getElementById("menu-form");
     const formError = document.getElementById("menu-form-error");
     const categorySelect = document.getElementById("menu-category");
     const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
-    const state = { resource: "prodotti", menu: { categorie: [], prodotti: [], extra: [] }, id: null, focusReturn: null, saving: false };
+    const state = {
+        resource: "prodotti",
+        menu: { categorie: [], prodotti: [], extra: [] },
+        id: null,
+        focusReturn: null,
+        saving: false,
+        undo: null,
+        undoTimer: null
+    };
 
     function sortByOrder(items) {
         return [...items].sort((first, second) => Number(first.ordine || 0) - Number(second.ordine || 0)
@@ -20,6 +30,22 @@
     function setStatus(message, isError = false) {
         status.textContent = message;
         status.classList.toggle("is-error", isError);
+    }
+
+    function hideUndoToast() {
+        window.clearTimeout(state.undoTimer);
+        state.undoTimer = null;
+        state.undo = null;
+        undoToast.hidden = true;
+        undoButton.disabled = false;
+    }
+
+    function showUndoToast(resource, id) {
+        window.clearTimeout(state.undoTimer);
+        state.undo = { resource, id };
+        undoToast.hidden = false;
+        undoButton.disabled = false;
+        state.undoTimer = window.setTimeout(hideUndoToast, 6000);
     }
 
     function matchesSearch(...values) {
@@ -53,19 +79,23 @@
         return `<button class="menu-edit-button" type="button" data-action="archive" data-resource="${resource}" data-id="${escapeHtml(id)}">Archivia</button>`;
     }
 
+    function deleteButton(resource, id, permanent = false) {
+        const action = permanent ? "delete-permanently" : "delete";
+        const label = permanent ? "Elimina definitivamente" : "Elimina";
+        return `<button class="menu-delete-button" type="button" data-action="${action}" data-resource="${resource}" data-id="${escapeHtml(id)}">${label}</button>`;
+    }
+
     function renderProductRow(product, products) {
         const index = products.findIndex(item => item.id === product.id);
-        const category = categoryFor(product);
         const ingredientText = Array.isArray(product.ingredienti) ? product.ingredienti.join(", ") : "";
         const meta = [
             euro.format(Number(product.prezzo)),
-            ingredientText,
-            category?.nome || ""
+            ingredientText
         ].filter(Boolean).join(" · ");
         const available = product.disponibile !== false;
         return `<div class="menu-row" data-id="${escapeHtml(product.id)}">
             ${rowMain(product.nome, meta)}
-            <div class="menu-row-end"><button class="menu-availability${available ? "" : " is-unavailable"}" type="button" data-action="availability" data-resource="prodotti" data-id="${escapeHtml(product.id)}" aria-pressed="${available}">${available ? "Disponibile" : "Esaurito"}</button>${editButton("prodotti", product.id)}</div>
+            <div class="menu-row-end"><button class="menu-availability${available ? "" : " is-unavailable"}" type="button" data-action="availability" data-resource="prodotti" data-id="${escapeHtml(product.id)}" aria-pressed="${available}">${available ? "Disponibile" : "Esaurito"}</button>${editButton("prodotti", product.id)}${deleteButton("prodotti", product.id)}</div>
             ${orderButtons(product.id, index, products.length, "prodotti", product.categoriaId)}
         </div>`;
     }
@@ -102,7 +132,7 @@
                 )).length;
                 return `<div class="menu-row" data-id="${escapeHtml(category.id)}">
                     ${rowMain(category.nome, `${productCount} prodotti · ${category.ammetteExtra ? "Ammette extra" : "Senza extra"}`)}
-                    <div class="menu-row-end">${editButton("categorie", category.id)}${archiveButton("categorie", category.id)}</div>
+                    <div class="menu-row-end">${editButton("categorie", category.id)}${archiveButton("categorie", category.id)}${deleteButton("categorie", category.id)}</div>
                     ${orderButtons(category.id, index, categories.length, "categorie")}
                 </div>`;
             }).join("")}
@@ -117,7 +147,7 @@
                 const available = extra.disponibile !== false;
                 return `<div class="menu-row" data-id="${escapeHtml(extra.id)}">
                     ${rowMain(extra.nome, euro.format(Number(extra.prezzo)))}
-                    <div class="menu-row-end"><button class="menu-availability${available ? "" : " is-unavailable"}" type="button" data-action="availability" data-resource="extra" data-id="${escapeHtml(extra.id)}" aria-pressed="${available}">${available ? "Disponibile" : "Esaurito"}</button>${editButton("extra", extra.id)}${archiveButton("extra", extra.id)}</div>
+                    <div class="menu-row-end"><button class="menu-availability${available ? "" : " is-unavailable"}" type="button" data-action="availability" data-resource="extra" data-id="${escapeHtml(extra.id)}" aria-pressed="${available}">${available ? "Disponibile" : "Esaurito"}</button>${editButton("extra", extra.id)}${archiveButton("extra", extra.id)}${deleteButton("extra", extra.id)}</div>
                 </div>`;
             }).join("")}
         </section>` : `<div class="menu-empty">Nessun extra trovato.</div>`;
@@ -126,7 +156,7 @@
     function renderArchivedRow(resource, item, meta, canRestore = true) {
         return `<div class="menu-row is-archived">
             ${rowMain(item.nome, meta)}
-            <div class="menu-row-end">${canRestore ? `<button class="menu-restore" type="button" data-action="restore" data-resource="${resource}" data-id="${escapeHtml(item.id)}">Ripristina</button>` : ""}</div>
+            <div class="menu-row-end">${canRestore ? `<button class="menu-restore" type="button" data-action="restore" data-resource="${resource}" data-id="${escapeHtml(item.id)}">Ripristina</button>${deleteButton(resource, item.id, true)}` : ""}</div>
         </div>`;
     }
 
@@ -309,8 +339,28 @@
             } else if (action === "archive") {
                 if (!window.confirm("Archiviare questo elemento?")) return;
                 await updateItem(resource, id, { [resource === "categorie" ? "archiviata" : "archiviato"]: true }, "Elemento archiviato.");
+            } else if (action === "delete") {
+                const item = recordFor(resource, id);
+                if (!item || !window.confirm(`Eliminare '${item.nome}' dal menu?`)) return;
+                await updateItem(
+                    resource,
+                    id,
+                    { [resource === "categorie" ? "archiviata" : "archiviato"]: true },
+                    "Eliminato."
+                );
+                showUndoToast(resource, id);
             } else if (action === "restore") {
                 await updateItem(resource, id, { [resource === "categorie" ? "archiviata" : "archiviato"]: false }, "Elemento ripristinato.");
+            } else if (action === "delete-permanently") {
+                const item = recordFor(resource, id);
+                if (!item || !window.confirm(
+                    `Eliminare definitivamente '${item.nome}' dal menu? Questa operazione non si può annullare.`
+                )) return;
+                await request("/api/menu-admin", {
+                    method: "DELETE",
+                    body: JSON.stringify({ risorsa: resource, id })
+                });
+                await loadMenu("Elemento eliminato definitivamente.");
             } else if (action === "up" || action === "down") {
                 button.disabled = true;
                 await moveItem(button);
@@ -338,6 +388,25 @@
     ));
     content.addEventListener("click", handleItemAction);
     archivedContent.addEventListener("click", handleItemAction);
+    undoButton.addEventListener("click", async () => {
+        if (!state.undo) return;
+        const undo = state.undo;
+        window.clearTimeout(state.undoTimer);
+        undoButton.disabled = true;
+        try {
+            await updateItem(
+                undo.resource,
+                undo.id,
+                { [undo.resource === "categorie" ? "archiviata" : "archiviato"]: false },
+                "Elemento ripristinato."
+            );
+            hideUndoToast();
+        } catch (error) {
+            setStatus(error.message, true);
+        } finally {
+            undoButton.disabled = false;
+        }
+    });
     document.getElementById("menu-editor-close").addEventListener("click", closeEditor);
     document.getElementById("menu-cancel").addEventListener("click", closeEditor);
     backdrop.addEventListener("click", event => {

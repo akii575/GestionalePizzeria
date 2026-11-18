@@ -71,6 +71,9 @@ function createDatabase(seed) {
                     const current = data[reference.collection]?.get(reference.id);
                     if (!current) throw new Error("Missing document");
                     data[reference.collection].set(reference.id, { ...current, ...value });
+                },
+                delete(reference) {
+                    data[reference.collection]?.delete(reference.id);
                 }
             });
         },
@@ -83,6 +86,7 @@ function createDatabase(seed) {
 function createSeed() {
     return {
         metadata: { menuVersion: { versione: 3 } },
+        orders: { "000000000001": { numero: "000000000001", righe: ["Margherita"] } },
         menuCategorie: {
             pizze: { nome: "Pizze", ordine: 0, ammetteExtra: true, archiviata: false },
             dolci: { nome: "Dolci", ordine: 1, ammetteExtra: false, archiviata: false },
@@ -397,4 +401,67 @@ test("menu admin API rejects mutations from unauthenticated or cross-origin requ
         body: { risorsa: "categorie", nome: "Nuova", ammetteExtra: false }
     });
     assert.equal(crossOrigin.statusCode, 403);
+});
+
+test("menu admin API permanently deletes only archived records and increments the version", async () => {
+    const db = useDatabase();
+    const savedOrder = db.get("orders", "000000000001");
+
+    for (const token of ["staff", "delivery"]) {
+        const denied = await invoke("DELETE", {
+            token,
+            body: { risorsa: "extra", id: "hidden" }
+        });
+        assert.equal(denied.statusCode, 403);
+    }
+    const unauthenticated = await invoke("DELETE", {
+        body: { risorsa: "extra", id: "hidden" }
+    });
+    assert.equal(unauthenticated.statusCode, 401);
+    const crossOrigin = await invoke("DELETE", {
+        token: "admin",
+        origin: "https://untrusted.example",
+        body: { risorsa: "extra", id: "hidden" }
+    });
+    assert.equal(crossOrigin.statusCode, 403);
+
+    const activeItem = await invoke("DELETE", {
+        token: "admin",
+        body: { risorsa: "extra", id: "bocconcino" }
+    });
+    assert.equal(activeItem.statusCode, 409);
+    assert.equal(db.get("metadata", "menuVersion").versione, 3);
+
+    await invoke("PATCH", {
+        token: "admin",
+        body: { risorsa: "prodotti", id: "marinara", archiviato: true }
+    });
+    await invoke("PATCH", {
+        token: "admin",
+        body: { risorsa: "categorie", id: "pizze", archiviata: true }
+    });
+    const categoryWithArchivedProduct = await invoke("DELETE", {
+        token: "admin",
+        body: { risorsa: "categorie", id: "pizze" }
+    });
+    assert.equal(categoryWithArchivedProduct.statusCode, 409);
+    assert.match(categoryWithArchivedProduct.body.errore, /anche archiviati/);
+    assert.equal(db.get("metadata", "menuVersion").versione, 5);
+
+    const archivedProduct = await invoke("DELETE", {
+        token: "admin",
+        body: { risorsa: "prodotti", id: "marinara" }
+    });
+    assert.equal(archivedProduct.statusCode, 200);
+    assert.equal(archivedProduct.body.versione, 6);
+    assert.equal(db.get("menuProdotti", "marinara"), undefined);
+
+    const emptyArchivedCategory = await invoke("DELETE", {
+        token: "admin",
+        body: { risorsa: "categorie", id: "hidden" }
+    });
+    assert.equal(emptyArchivedCategory.statusCode, 200);
+    assert.equal(emptyArchivedCategory.body.versione, 7);
+    assert.equal(db.get("menuCategorie", "hidden"), undefined);
+    assert.deepEqual(db.get("orders", "000000000001"), savedOrder);
 });
