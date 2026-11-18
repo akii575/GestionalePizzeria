@@ -217,6 +217,28 @@ button {
     transform: scale(0.98);
     border-color: var(--rosso);
 }
+.prodotto-btn:disabled,
+.ricerca-risultato:disabled {
+    color: #777;
+    background: #f0f1f2;
+    border-color: #d7d9dc;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: .78;
+}
+.prodotto-btn:disabled:active,
+.ricerca-risultato:disabled:active {
+    transform: none;
+}
+.prodotto-btn .prodotto-esaurito,
+.ricerca-esaurito {
+    color: #777;
+    font-size: 12px;
+    font-weight: 600;
+}
+.prodotto-btn .prodotto-esaurito {
+    margin-top: 3px;
+}
 .ingredienti {
     display: block;
     margin-top: 4px;
@@ -650,6 +672,12 @@ button {
     font-size: 14px;
     color: var(--theme-muted);
 }
+.ricerca-esaurito {
+    grid-area: categoria;
+}
+.ricerca-risultato.esaurito .ricerca-categoria {
+    display: none;
+}
 .ricerca-prezzo {
     grid-area: prezzo;
     font-weight: bold;
@@ -793,6 +821,13 @@ button {
 
 .prodotto-btn:active {
     border-color: var(--theme-green);
+}
+
+.prodotto-btn:disabled,
+.ricerca-risultato:disabled {
+    border-color: var(--theme-line);
+    box-shadow: none;
+    color: var(--theme-muted);
 }
 
 .prodotto-btn strong {

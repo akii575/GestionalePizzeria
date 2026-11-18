@@ -35,6 +35,9 @@ function createDatabase(seed) {
         collection(name) {
             return {
                 doc: id => ref(name, id),
+                async get() {
+                    return querySnapshot(name, [...documents(name).entries()]);
+                },
                 where(field, operator, value) {
                     assert.equal(operator, "==");
                     let size = Infinity;

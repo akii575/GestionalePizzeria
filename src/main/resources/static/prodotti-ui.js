@@ -1,5 +1,4 @@
 const prodottiUI = (() => {
-    const CATEGORIE_CON_EXTRA = ["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"];
     const LIMITE_RIGHE_ORDINE = 100;
 
     // Minuscolo e senza accenti: "Caffè" -> "caffe", "Crocché" -> "crocche".
@@ -29,20 +28,21 @@ const prodottiUI = (() => {
             .map(voce => voce.prodotto);
     }
 
-    function ammetteExtra(categoria) {
-        return CATEGORIE_CON_EXTRA.includes(categoria);
+    function ammetteExtra(prodotto) {
+        return prodotto?.ammetteExtra === true;
     }
 
     // Crea la riga del conto per un prodotto. Gli extra in attesa ("per il prossimo piatto")
     // vengono consumati solo se la categoria li ammette; altrimenti restano per il piatto successivo.
     function creaRiga(prodotto, extraInAttesa) {
-        const conExtra = ammetteExtra(prodotto.categoria);
+        const conExtra = ammetteExtra(prodotto);
         return {
             riga: {
                 prodotto: prodotto.nome,
                 prezzo: prodotto.prezzo,
                 categoria: prodotto.categoria,
                 ingredienti: prodotto.ingredienti || [],
+                ammetteExtra: conExtra,
                 extra: conExtra ? extraInAttesa || [] : []
             },
             extraRimanenti: conExtra ? [] : extraInAttesa || []
@@ -91,7 +91,6 @@ const prodottiUI = (() => {
     }
 
     return {
-        CATEGORIE_CON_EXTRA,
         LIMITE_RIGHE_ORDINE,
         normalizza,
         filtraProdotti,

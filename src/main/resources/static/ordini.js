@@ -48,7 +48,6 @@ const paginaPrincipale = document.querySelector("main");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const { escapeHtml } = window.htmlUtils;
 const {
-    CATEGORIE_CON_EXTRA,
     filtraProdotti,
     creaRiga,
     creaStatoMoltiplicatore,
@@ -58,16 +57,19 @@ const {
     aggiornaConteggioProdotti,
     controllaLimiteRighe
 } = window.prodottiUI;
-const etichetteCategorie = Object.fromEntries(
+let etichetteCategorie = Object.fromEntries(
     [...document.querySelectorAll(".tab[data-tab]")].map(tab => [tab.dataset.tab, tab.textContent.trim()])
 );
+const tabsCategorie = document.querySelector(".tab-container");
 let costoConsegna = 0;
 let statoMoltiplicatore = creaStatoMoltiplicatore();
 let trascinamentoProdotti = null;
 let ignoraClickDopoTrascinamento = false;
 
 function categoriaConExtra() {
-    return CATEGORIE_CON_EXTRA.includes(stato.categoria);
+    return stato.menu.some(prodotto => (
+        prodotto.categoria === stato.categoria && prodotto.ammetteExtra === true
+    ));
 }
 function mostraMessaggio(testo, classe) {
     messaggio.textContent = testo;
@@ -122,7 +124,7 @@ function totaleOrdine() {
 }
 function renderExtra(container, selezionati, onChange) {
     container.innerHTML = "";
-    stato.extra.forEach(extra => {
+    stato.extra.filter(extra => extra.disponibile !== false).forEach(extra => {
         const bottone = document.createElement("button");
         bottone.type = "button";
         bottone.className = "extra-card";
@@ -146,7 +148,7 @@ function renderProdotti() {
     prodotti.scrollLeft = 0;
     const disponibili = stato.menu
         .filter(prodotto => prodotto.categoria === stato.categoria)
-        .sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+        .sort((a, b) => a.ordine - b.ordine || a.nome.localeCompare(b.nome, "it"));
     for (let inizio = 0; inizio < disponibili.length; inizio += 9) {
         const pagina = document.createElement("div");
         pagina.className = "pagina-prodotti";
@@ -154,11 +156,13 @@ function renderProdotti() {
             const bottone = document.createElement("button");
             bottone.className = "prodotto-btn";
             bottone.type = "button";
+            bottone.disabled = prodotto.disponibile === false;
+            bottone.classList.toggle("esaurito", prodotto.disponibile === false);
             const descrizioneIngredienti = prodotto.ingredienti?.length ? prodotto.ingredienti.join(", ") : "";
             const ingredienti = descrizioneIngredienti
                 ? `<span class="ingredienti-wrapper"><span class="ingredienti">${escapeHtml(descrizioneIngredienti)}</span></span>`
                 : "";
-            bottone.innerHTML = `<strong>${escapeHtml(prodotto.nome)}</strong><span class="prezzo-prodotto">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>${ingredienti}`;
+            bottone.innerHTML = `<strong>${escapeHtml(prodotto.nome)}</strong><span class="prezzo-prodotto">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>${prodotto.disponibile === false ? '<span class="prodotto-esaurito">Esaurito</span>' : ""}${ingredienti}`;
             if (descrizioneIngredienti) bottone.querySelector(".ingredienti").title = descrizioneIngredienti;
             bottone.addEventListener("click", () => aggiungiProdotto(prodotto));
             pagina.appendChild(bottone);
@@ -168,6 +172,7 @@ function renderProdotti() {
 }
 // Unico punto di aggiunta al conto: usato dalle tab delle categorie e dalla ricerca.
 function aggiungiProdotto(prodotto) {
+    if (prodotto.disponibile === false) return false;
     const limite = controllaLimiteRighe(stato.righe.length, 1);
     if (!limite.consentito) {
         mostraMessaggio(`Massimo 100 prodotti per comanda: puoi aggiungerne ancora ${limite.disponibili}`, "errore");
@@ -202,7 +207,9 @@ function renderRisultatiRicerca() {
         const bottone = document.createElement("button");
         bottone.type = "button";
         bottone.className = "ricerca-risultato";
-        bottone.innerHTML = `<span class="ricerca-nome">${escapeHtml(prodotto.nome)}</span><span class="ricerca-categoria">${escapeHtml(etichetteCategorie[prodotto.categoria] || prodotto.categoria)}</span><span class="ricerca-prezzo">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>`;
+        bottone.disabled = prodotto.disponibile === false;
+        bottone.classList.toggle("esaurito", prodotto.disponibile === false);
+        bottone.innerHTML = `<span class="ricerca-nome">${escapeHtml(prodotto.nome)}</span><span class="ricerca-categoria">${escapeHtml(etichetteCategorie[prodotto.categoria] || prodotto.categoriaNome || prodotto.categoria)}</span><span class="ricerca-prezzo">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>${prodotto.disponibile === false ? '<span class="ricerca-esaurito">Esaurito</span>' : ""}`;
         bottone.addEventListener("click", () => {
             const quantita = quantitaDaApplicare(statoMoltiplicatore);
             const moltiplicatoreArmato = statoMoltiplicatore.armato;
@@ -263,7 +270,8 @@ function chiudiRicerca() {
 }
 function aggiornaGestioneExtra() {
     const riga = stato.righe[Number(selettoreRigaExtra.value)];
-    const modificabile = riga && CATEGORIE_CON_EXTRA.includes(riga.categoria);
+    const prodotto = riga && stato.menu.find(item => item.nome === riga.prodotto);
+    const modificabile = riga && prodotto?.ammetteExtra === true;
     extraRiepilogo.hidden = !modificabile;
     if (modificabile)
         renderExtra(
@@ -601,15 +609,14 @@ async function inviaOrdine() {
         invia.disabled = false;
     }
 }
-document.querySelectorAll(".tab[data-tab]").forEach(tab =>
-    tab.addEventListener("click", () => {
-        stato.categoria = tab.dataset.tab;
-        document
-            .querySelectorAll(".tab[data-tab]")
-            .forEach(elemento => elemento.classList.toggle("active", elemento === tab));
-        renderProdotti();
-    })
-);
+tabsCategorie.addEventListener("click", evento => {
+    const tab = evento.target.closest(".tab[data-tab]");
+    if (!tab || !tabsCategorie.contains(tab)) return;
+    stato.categoria = tab.dataset.tab;
+    tabsCategorie.querySelectorAll(".tab[data-tab]")
+        .forEach(elemento => elemento.classList.toggle("active", elemento === tab));
+    renderProdotti();
+});
 prodotti.addEventListener("pointerdown", evento => {
     if (evento.pointerType !== "mouse" || evento.button !== 0) return;
     trascinamentoProdotti = {
@@ -727,6 +734,33 @@ Promise.all([fetch("/api/menu"), fetch("/api/extra")])
         stato.extra = (await risposte[1].json()).sort((primo, secondo) =>
             primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" })
         );
+        const labels = new Map(
+            [...tabsCategorie.querySelectorAll(".tab[data-tab]")]
+                .map(tab => [tab.dataset.tab, tab.textContent.trim()])
+        );
+        const categorie = new Map();
+        for (const prodotto of stato.menu) {
+            if (!categorie.has(prodotto.categoria)) {
+                categorie.set(prodotto.categoria, {
+                    id: prodotto.categoria,
+                    nome: prodotto.categoriaNome || labels.get(prodotto.categoria) || prodotto.categoria,
+                    ordine: Number(prodotto.categoriaOrdine || 0)
+                });
+            }
+        }
+        tabsCategorie.querySelectorAll(".tab[data-tab]").forEach(tab => tab.remove());
+        const ordinate = [...categorie.values()].sort((first, second) => first.ordine - second.ordine);
+        etichetteCategorie = {};
+        for (const [index, categoria] of ordinate.entries()) {
+            const tab = document.createElement("button");
+            tab.type = "button";
+            tab.className = `tab${index === 0 ? " active" : ""}`;
+            tab.dataset.tab = categoria.id;
+            tab.textContent = categoria.nome || labels.get(categoria.id) || categoria.id;
+            etichetteCategorie[categoria.id] = tab.textContent;
+            tabsCategorie.appendChild(tab);
+        }
+        stato.categoria = ordinate[0]?.id || "";
         renderExtra(
             document.getElementById("extra-lista"),
             stato.extraSelezionati,

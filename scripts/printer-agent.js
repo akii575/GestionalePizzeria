@@ -4,18 +4,13 @@ const path = require("node:path");
 const { cert, initializeApp } = require("firebase-admin/app");
 const { FieldPath, FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { DEFAULT_RECEIPT_WIDTH, listNetworkPrinters, sendEscPosReceipt } = require("./network-printer");
-const menu = require("../lib/menu.json");
-const extras = require("../lib/extras.json");
+const { getMenuData } = require("../lib/menu-store");
 
 const PROJECT_ID = "gestionalecivico7";
 const LEASE_MILLISECONDS = 120_000;
 const POLL_MILLISECONDS = 15_000;
 const LOCK_RENEW_MILLISECONDS = 30_000;
 const RECEIPT_WIDTH_58_MM = 16;
-const PRODUCT_CATEGORIES = [...new Set(menu.map(product => product.categoria))];
-const CATEGORY_BY_PRODUCT = new Map(menu.map(product => [product.nome, product.categoria]));
-const PRODUCT_BY_NAME = new Map(menu.map(product => [product.nome, product]));
-const EXTRA_BY_NAME = new Map(extras.map(extra => [extra.nome, extra]));
 
 function initializeFirestore() {
     let serviceAccount;
@@ -88,9 +83,8 @@ function wrapReceiptText(value, width = DEFAULT_RECEIPT_WIDTH) {
 }
 
 function receiptExtra(extra) {
-    const name = typeof extra === "string" ? extra : extra.nome || "";
-    const catalogExtra = EXTRA_BY_NAME.get(name);
-    const price = Number(typeof extra === "string" ? catalogExtra?.prezzo : extra.prezzo ?? catalogExtra?.prezzo ?? 0);
+    const name = typeof extra === "string" ? extra : extra?.nome || "";
+    const price = Number(typeof extra === "string" ? 0 : extra?.prezzo ?? 0);
     return { name, price: Number.isFinite(price) ? price : 0 };
 }
 
@@ -98,7 +92,7 @@ function receiptUnitPrice(row) {
     if (row.totale !== undefined && row.totale !== null && Number.isFinite(Number(row.totale))) {
         return Number(row.totale);
     }
-    const basePrice = Number(row.prezzoBase ?? row.prezzo ?? PRODUCT_BY_NAME.get(row.prodotto)?.prezzo ?? 0);
+    const basePrice = Number(row.prezzoBase ?? row.prezzo ?? 0);
     return basePrice + (row.extra || []).reduce((sum, extra) => sum + receiptExtra(extra).price, 0);
 }
 
@@ -183,15 +177,19 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
     }
     const rowsByCategory = new Map();
     const receiptRows = options.tipoStampa === "aggiunta" ? options.righe || [] : order.righe || [];
+    const productCategories = options.productCategories || {};
     for (const row of receiptRows) {
-        const category = row.categoria || CATEGORY_BY_PRODUCT.get(row.prodotto) || "altro";
+        const category = row.categoria || productCategories[row.prodotto] || "altro";
         if (!rowsByCategory.has(category)) rowsByCategory.set(category, []);
         rowsByCategory.get(category).push(row);
     }
-    const categories = [
-        ...PRODUCT_CATEGORIES.filter(category => rowsByCategory.has(category)),
-        ...Array.from(rowsByCategory.keys()).filter(category => !PRODUCT_CATEGORIES.includes(category))
-    ];
+    const requestedCategoryOrder = Array.isArray(options.categoryOrder) ? options.categoryOrder : [];
+    const categoryOrder = new Map(requestedCategoryOrder.map((category, index) => [category, index]));
+    const categories = [...rowsByCategory.keys()].sort((first, second) => {
+        const firstOrder = categoryOrder.has(first) ? categoryOrder.get(first) : Number.MAX_SAFE_INTEGER;
+        const secondOrder = categoryOrder.has(second) ? categoryOrder.get(second) : Number.MAX_SAFE_INTEGER;
+        return firstOrder - secondOrder;
+    });
     for (const category of categories) {
         lines.push(`@@SECTION:${category.toLocaleUpperCase("it-IT")}@@`);
         const groupedRows = new Map();
@@ -286,6 +284,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     let drainRequested = false;
     let securityPromise = null;
     let lockPromise = null;
+    let receiptMenuPromise = null;
     let unsubscribeQueue = null;
     let listenerRetryTimer = null;
     let listenerRetryAttempt = 0;
@@ -330,6 +329,26 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             console.error("Unable to refresh printer status:", error.code || error.name || "unknown");
         }
         return printers;
+    }
+
+    async function getReceiptMenuData() {
+        if (!receiptMenuPromise) {
+            receiptMenuPromise = getMenuData(db)
+                .then(data => ({
+                    categoryOrder: data.categories.map(category => category.id),
+                    productCategories: Object.fromEntries(
+                        data.allProducts.map(product => [product.nome, product.categoriaId])
+                    )
+                }))
+                .catch(error => {
+                    console.error("Unable to load menu categories for receipt:", error.code || error.name || "unknown");
+                    return { categoryOrder: [], productCategories: {} };
+                })
+                .finally(() => {
+                    receiptMenuPromise = null;
+                });
+        }
+        return receiptMenuPromise;
     }
 
     function printersForJob(job, printers) {
@@ -527,7 +546,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 receiptOptions: {
                     tipoStampa: job.tipoStampa,
                     motivo: job.motivo,
-                    righe: job.righe
+                    righe: job.righe,
+                    ...(await getReceiptMenuData())
                 }
             });
         } catch (error) {

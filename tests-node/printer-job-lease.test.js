@@ -1,11 +1,22 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { isValidPrinterSelection, jobId } = require("../lib/printer-jobs");
-const { prepareOrder } = require("../lib/orders");
 const menu = require("../lib/menu.json");
+const extras = require("../lib/extras.json");
+const extraCategories = new Set(["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"]);
+const testCatalog = {
+    menu: menu.map(product => ({
+        ...product,
+        categoriaId: product.categoria,
+        ammetteExtra: extraCategories.has(product.categoria),
+        disponibile: true
+    })),
+    extras: extras.map(extra => ({ ...extra, disponibile: true }))
+};
 
 const authPath = require.resolve("../lib/auth");
 const firebasePath = require.resolve("../lib/firebase-admin");
+const menuStorePath = require.resolve("../lib/menu-store");
 let database;
 
 require.cache[authPath] = {
@@ -28,7 +39,17 @@ require.cache[firebasePath] = {
     loaded: true,
     exports: { getFirebaseServices: () => ({ db: database }) }
 };
+require.cache[menuStorePath] = {
+    id: menuStorePath,
+    filename: menuStorePath,
+    loaded: true,
+    exports: { getMenuData: async () => testCatalog }
+};
 
+const { prepareOrder: validateOrder } = require("../lib/orders");
+function prepareOrder(input) {
+    return validateOrder(input, testCatalog);
+}
 const resetHandler = require("../api/reset-numeri");
 const orderHandler = require("../api/ordini/[numero]");
 

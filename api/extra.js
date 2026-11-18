@@ -1,6 +1,7 @@
 const { api, methodNotAllowed } = require("../lib/api");
 const { requireStaffAccess } = require("../lib/auth");
-const { extras } = require("../lib/orders");
+const { getFirebaseServices } = require("../lib/firebase-admin");
+const { getMenuData } = require("../lib/menu-store");
 
 module.exports = api(async (req, res) => {
     if (req.method !== "GET") {
@@ -8,5 +9,7 @@ module.exports = api(async (req, res) => {
     }
     await requireStaffAccess(req);
     res.setHeader("Cache-Control", "no-store");
+    const { db } = getFirebaseServices();
+    const { extras } = await getMenuData(db);
     return res.status(200).json(extras);
 });

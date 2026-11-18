@@ -1,6 +1,7 @@
 const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireStaffAccess, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
+const { getMenuData } = require("../../lib/menu-store");
 const { filterOrdersByType, prepareOrder, publicOrder } = require("../../lib/orders");
 const { hasExpiredPrinterQueuePause, isPrinterQueuePaused, jobId } = require("../../lib/printer-jobs");
 const { getRomeDayRange } = require("../../lib/rome-day-range");
@@ -31,7 +32,7 @@ module.exports = api(async (req, res) => {
     }
     if (req.method === "POST") {
         requireSameOrigin(req);
-        const prepared = prepareOrder(req.body);
+        const prepared = await prepareOrder(req.body, await getMenuData(db));
         const counter = db.collection("metadata").doc("orderCounter");
         const control = db.collection("metadata").doc("printerControl");
         const order = await db.runTransaction(async transaction => {

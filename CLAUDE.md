@@ -2,7 +2,7 @@
 
 Gestionale web degli ordini di una pizzeria (tavolo, banco, ritiro, consegna) con stampa delle comande su stampanti Epson di rete.
 
-- **Produzione**: Vercel con API serverless Node.js 22 (CommonJS) in `api/`, Firebase Auth (cookie di sessione) e Firestore.
+- **Produzione**: Vercel con API serverless Node.js 22 (CommonJS) in `api/`, Firebase Auth (cookie di sessione) e Firestore. Il menu operativo e' in Firestore.
 - **Pagine**: HTML/CSS/JS vanilla in `src/main/resources/static/`, servite dopo la verifica server-side della sessione.
 - **Stampa**: agente Windows locale (`scripts/printer-agent*.js`) che legge una coda Firestore e invia ESC/POS via TCP 9100.
 - **Legacy**: backend Spring Boot 4 / Java 25 / SQLite in `src/main/java` (avvio locale, `mvn`). Non è usato dal deploy Vercel.
@@ -13,6 +13,8 @@ Gestionale web degli ordini di una pizzeria (tavolo, banco, ritiro, consegna) co
 ```powershell
 npm install              # dipendenze
 npm run build            # rigenera lib/menu.json, lib/extras.json, public/ e lib/generated-pages.js
+node scripts/seed-menu.js --dry-run  # anteprima import menu Firestore
+node scripts/seed-menu.js            # importa il menu in Firestore (richiede credenziali)
 npm test                 # build + node --test (tests-node/*.test.js)
 npm run lint             # ESLint
 npm run typecheck        # node --check su tutti i .js (non c'è TypeScript)
@@ -55,10 +57,13 @@ tests-node/               test node:test
 firestore.rules           regole Firestore    vercel.json   rewrites + header di sicurezza (CSP)
 ```
 
-### Flusso di generazione (importante)
-- `scripts/export-menu.js` estrae prodotti ed extra da `MenuService.java`/`ExtraMenu.java` e genera `lib/menu.json` e `lib/extras.json`.
+### Menu Firestore e sorgenti legacy
+- Le API e il printer agent leggono il menu operativo da `menuCategorie`, `menuProdotti` e `menuExtra`; `metadata/menuVersion.versione` invalida la cache.
+- `scripts/seed-menu.js --dry-run` mostra l'import senza scrivere. Per importare realmente: `node scripts/seed-menu.js` con le credenziali Firebase configurate. Non eseguire il seed automaticamente durante build o test.
+- Ogni modifica al menu deve incrementare `metadata/menuVersion.versione` nella stessa scrittura Firestore.
+- `scripts/export-menu.js` estrae prodotti ed extra dal backend Java legacy e genera `lib/menu.json` e `lib/extras.json`; questi file restano solo per il backend legacy, i test di compatibilita' e il seed iniziale, non sono il menu operativo.
 - `scripts/copy-static.js` copia `src/main/resources/static/` in `public/` e incorpora le pagine protette in `lib/generated-pages.js`.
-→ Per cambiare il menu modifica i file **Java**; per cambiare la UI modifica `src/main/resources/static/`. Poi `npm run build`.
+→ Per modificare il menu operativo aggiorna Firestore; il backend Java e `export-menu.js` restano sorgenti legacy. Per cambiare la UI modifica `src/main/resources/static/`. Poi `npm run build`.
 
 ## Convenzioni di codice
 

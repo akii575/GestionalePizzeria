@@ -7,7 +7,6 @@ let menu = [];
 let extra = [];
 let costoConsegna = 0;
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
-const CATEGORIE_CON_EXTRA = ["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"];
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const stato = testo => (document.getElementById("stato").textContent = testo);
 function oraLocale() {
@@ -92,7 +91,8 @@ function opzioniExtra(selezionati) {
         renderExtraSelezionati(lista, selezionati, aggiorna);
         select.innerHTML = '<option value="">Seleziona un extra</option>';
         extra
-            .filter(item => !selezionati.some(selected => selected.id === item.id))
+            .filter(item => item.disponibile !== false
+                && !selezionati.some(selected => selected.id === item.id))
             .forEach(item => {
                 const opzione = document.createElement("option");
                 opzione.value = item.id;
@@ -115,10 +115,9 @@ function rigaEdit(riga = { prodotto: menu[0]?.nome || "", extra: [] }) {
     const div = document.createElement("div");
     div.className = "riga-edit";
     const prodottoMenu = menu.find(p => p.nome === riga.prodotto);
-    const categoria = prodottoMenu?.categoria || "";
     riga.ingredienti = riga.ingredienti || prodottoMenu?.ingredienti || [];
     const extraSelezionati = riga.extra.map(riferimentoExtra).filter(Boolean);
-    div.innerHTML = `<label>Prodotto<select class="prodotto">${menu.map(p => `<option value="${escapeHtml(p.nome)}" ${p.nome === riga.prodotto ? "selected" : ""}>${escapeHtml(p.nome)}</option>`).join("")}</select><small class="prodotto-ingredienti"></small></label><div class="extra-editor" ${CATEGORIE_CON_EXTRA.includes(categoria) ? "" : "hidden"}></div><button class="rimuovi" type="button">Rimuovi</button>`;
+    div.innerHTML = `<label>Prodotto<select class="prodotto">${menu.map(p => `<option value="${escapeHtml(p.nome)}" ${p.nome === riga.prodotto ? "selected" : ""} ${p.disponibile === false && p.nome !== riga.prodotto ? "disabled" : ""}>${escapeHtml(p.nome)}${p.disponibile === false ? " (Esaurito)" : ""}</option>`).join("")}</select><small class="prodotto-ingredienti"></small></label><div class="extra-editor" ${prodottoMenu?.ammetteExtra === true ? "" : "hidden"}></div><button class="rimuovi" type="button">Rimuovi</button>`;
     const extraEditor = div.querySelector(".extra-editor");
     const descrizione = div.querySelector(".prodotto-ingredienti");
     function aggiornaDescrizione(prodotto) {
@@ -133,7 +132,7 @@ function rigaEdit(riga = { prodotto: menu[0]?.nome || "", extra: [] }) {
     div.querySelector(".prodotto").onchange = event => {
         const nuovo = menu.find(p => p.nome === event.target.value);
         aggiornaDescrizione(nuovo);
-        extraEditor.hidden = !CATEGORIE_CON_EXTRA.includes(nuovo?.categoria);
+        extraEditor.hidden = nuovo?.ammetteExtra !== true || nuovo.disponibile === false;
         extraEditor.innerHTML = "";
         if (!extraEditor.hidden) extraEditor.appendChild(opzioniExtra([]));
         aggiornaTotale();

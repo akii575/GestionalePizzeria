@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createPrinterAgent } = require("../scripts/printer-agent");
+const { createPrinterAgent, formatReceipt } = require("../scripts/printer-agent");
 const { Timestamp } = require("firebase-admin/firestore");
 
 function createDatabase(seed = {}, { emitInitial = true } = {}) {
@@ -78,7 +78,10 @@ function createDatabase(seed = {}, { emitInitial = true } = {}) {
         collection(name) {
             return {
                 doc: id => documentRef(name, id),
-                where: (field, operator, value) => makeQuery(name).where(field, operator, value)
+                where: (field, operator, value) => makeQuery(name).where(field, operator, value),
+                async get() {
+                    return snapshotFor(makeQuery(name));
+                }
             };
         },
         async runTransaction(callback) {
@@ -315,5 +318,86 @@ test("the security timer drains queued jobs when the listener is stopped", async
         assert.equal(printCount, 1);
         assert.equal(database.documents("printerJobs").get("000000000007").status, "printed");
         await agent.stop();
+    });
+});
+
+test("receipts use Firestore category order and fall back to order rows", async () => {
+    await withFakeTimers(async () => {
+        const order = {
+            ...makeOrder(),
+            righe: [
+                { prodotto: "Bevanda", categoria: "bibite", prezzoBase: 2, totale: 2, extra: [] },
+                { prodotto: "Fritto", categoria: "fritti", prezzoBase: 3, totale: 3, extra: [] },
+                { prodotto: "Pizza", categoria: "pizze", prezzoBase: 5, totale: 5, extra: [] }
+            ],
+            totale: 10
+        };
+        const database = createDatabase({
+            metadata: { menuVersion: { versione: 1 } },
+            menuCategorie: {
+                pizze: { nome: "Pizze", ordine: 0, ammetteExtra: true, archiviata: false },
+                fritti: { nome: "Fritti", ordine: 1, ammetteExtra: true, archiviata: false },
+                bibite: { nome: "Bibite", ordine: 2, ammetteExtra: false, archiviata: false }
+            },
+            orders: { "7": order },
+            printerJobs: { "000000000007": queuedJob(7) }
+        });
+        const receipts = [];
+        const agent = createPrinterAgent(database, {
+            getPrinters: async () => readyPrinter(),
+            printOrder: async (_order, _printer, receipt) => receipts.push(receipt)
+        });
+        await agent.run();
+        await agent.stop();
+
+        assert.ok(receipts[0].indexOf("@@SECTION:PIZZE@@")
+            < receipts[0].indexOf("@@SECTION:FRITTI@@"));
+        assert.ok(receipts[0].indexOf("@@SECTION:FRITTI@@")
+            < receipts[0].indexOf("@@SECTION:BIBITE@@"));
+
+        const fallback = formatReceipt(order);
+        assert.ok(fallback.indexOf("@@SECTION:BIBITE@@")
+            < fallback.indexOf("@@SECTION:FRITTI@@"));
+        assert.ok(fallback.indexOf("@@SECTION:FRITTI@@")
+            < fallback.indexOf("@@SECTION:PIZZE@@"));
+    });
+});
+
+test("the agent resolves legacy receipt rows without categories from Firestore", async () => {
+    await withFakeTimers(async () => {
+        const order = {
+            ...makeOrder(),
+            righe: [{ prodotto: "Bevanda", prezzoBase: 2, totale: 2, extra: [] }],
+            totale: 2
+        };
+        const database = createDatabase({
+            metadata: { menuVersion: { versione: 1 } },
+            menuCategorie: {
+                bibite: { nome: "Bibite", ordine: 0, ammetteExtra: false, archiviata: false }
+            },
+            menuProdotti: {
+                bevanda: {
+                    nome: "Bevanda",
+                    categoriaId: "bibite",
+                    prezzo: 2,
+                    ingredienti: [],
+                    ordine: 0,
+                    disponibile: true,
+                    archiviato: false
+                }
+            },
+            orders: { "7": order },
+            printerJobs: { "000000000007": queuedJob(7) }
+        });
+        const receipts = [];
+        const agent = createPrinterAgent(database, {
+            getPrinters: async () => readyPrinter(),
+            printOrder: async (_order, _printer, receipt) => receipts.push(receipt)
+        });
+        await agent.run();
+        await agent.stop();
+
+        assert.match(receipts[0], /^@@SECTION:BIBITE@@$/m);
+        assert.doesNotMatch(receipts[0], /^@@SECTION:ALTRO@@$/m);
     });
 });

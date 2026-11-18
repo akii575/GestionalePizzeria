@@ -7,7 +7,6 @@ const {
     normalizza,
     filtraProdotti,
     creaRiga,
-    CATEGORIE_CON_EXTRA,
     LIMITE_RIGHE_ORDINE,
     creaStatoMoltiplicatore,
     premiTastoMoltiplicatore,
@@ -83,9 +82,15 @@ test("every typed word must appear in the product name", () => {
     assert.ok(!trovati.includes("Salsiccia e Patatine"));
 });
 
-test("pending extras are applied to products whose category allows them", () => {
+test("pending extras are applied when the product metadata allows them", () => {
     const extra = [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }];
-    const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 5, ingredienti: ["pomodoro"] };
+    const pizza = {
+        nome: "Margherita",
+        categoria: "pizze",
+        prezzo: 5,
+        ingredienti: ["pomodoro"],
+        ammetteExtra: true
+    };
     const { riga, extraRimanenti } = creaRiga(pizza, extra);
 
     assert.deepEqual(riga, {
@@ -93,6 +98,7 @@ test("pending extras are applied to products whose category allows them", () => 
         prezzo: 5,
         categoria: "pizze",
         ingredienti: ["pomodoro"],
+        ammetteExtra: true,
         extra
     });
     assert.deepEqual(extraRimanenti, []);
@@ -100,7 +106,7 @@ test("pending extras are applied to products whose category allows them", () => 
 
 test("pending extras are kept for the next dish when the product does not allow extras", () => {
     const extra = [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }];
-    const bibita = { nome: "Coca Cola 33cl", categoria: "bibite", prezzo: 2.5 };
+    const bibita = { nome: "Coca Cola 33cl", categoria: "bibite", prezzo: 2.5, ammetteExtra: false };
     const { riga, extraRimanenti } = creaRiga(bibita, extra);
 
     assert.deepEqual(riga.extra, []);
@@ -116,11 +122,10 @@ test("missing pending extras and ingredients are treated as empty lists", () => 
     assert.deepEqual(creaRiga({ nome: "Acqua", categoria: "bibite", prezzo: 1 }, null).extraRimanenti, []);
 });
 
-test("client extra categories match the server validation", () => {
-    const sorgenteServer = fs.readFileSync(path.join(__dirname, "..", "lib", "orders.js"), "utf8");
-    const elenco = sorgenteServer.match(/categoriesWithExtras = new Set\(\[([^\]]+)\]\)/)[1];
-    const categorieServer = elenco.match(/"([^"]+)"/g).map(voce => voce.slice(1, -1));
-    assert.deepEqual([...CATEGORIE_CON_EXTRA].sort(), categorieServer.sort());
+test("extra eligibility follows category metadata provided by the menu API", () => {
+    const extra = [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }];
+    assert.equal(creaRiga({ nome: "Margherita", categoria: "pizze", ammetteExtra: true }, extra).riga.extra.length, 1);
+    assert.equal(creaRiga({ nome: "Acqua", categoria: "bibite", ammetteExtra: false }, extra).riga.extra.length, 0);
 });
 
 test("multiplier keypad composes up to two digits and ignores a leading zero", () => {

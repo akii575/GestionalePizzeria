@@ -1,6 +1,21 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { filterOrdersByType, prepareOrder, publicOrder } = require("../lib/orders");
+const { filterOrdersByType, prepareOrder: validateOrder, publicOrder } = require("../lib/orders");
+const menu = require("../lib/menu.json");
+const extras = require("../lib/extras.json");
+const extraCategories = new Set(["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"]);
+const testCatalog = {
+    menu: menu.map(product => ({
+        ...product,
+        categoriaId: product.categoria,
+        ammetteExtra: extraCategories.has(product.categoria),
+        disponibile: true
+    })),
+    extras: extras.map(extra => ({ ...extra, disponibile: true }))
+};
+function prepareOrder(input, catalog = testCatalog, options) {
+    return validateOrder(input, catalog, options);
+}
 
 test("validates an order and calculates product and extra totals", () => {
     const order = prepareOrder({
@@ -38,6 +53,83 @@ test("uses the current beverage prices when calculating order totals", () => {
 
     assert.equal(water.totale, 1);
     assert.equal(cola.totale, 2.5);
+});
+
+test("order prices and categories come from Firestore menu data, not client fields", () => {
+    const order = prepareOrder({
+        tavoloOCliente: "Tavolo 1",
+        righe: [{
+            prodotto: "Margherita",
+            prezzo: 0.01,
+            prezzoBase: 0.01,
+            categoria: "bibite",
+            ingredienti: ["Contenuto inviato dal client"],
+            extra: [{ id: "bocconcino", prezzo: 0.01, nome: "Bocconcino" }]
+        }]
+    });
+
+    assert.equal(order.righe[0].prezzoBase, 5);
+    assert.equal(order.righe[0].categoria, "pizze");
+    assert.deepEqual(order.righe[0].ingredienti, menu[0].ingredienti);
+    assert.deepEqual(order.righe[0].extra, [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }]);
+    assert.equal(order.totale, 7);
+});
+
+test("order validation rejects archived and unavailable products", () => {
+    const product = testCatalog.menu.find(item => item.nome === "Margherita");
+    const customCatalog = {
+        ...testCatalog,
+        allProducts: [
+            { ...product, disponibile: false },
+            { ...testCatalog.menu.find(item => item.nome === "Acqua 0,5L"), archiviato: true }
+        ]
+    };
+
+    assert.throws(() => prepareOrder({
+        tavoloOCliente: "Tavolo 1",
+        righe: [{ prodotto: "Margherita" }]
+    }, customCatalog), /e' esaurito/);
+    assert.throws(() => prepareOrder({
+        tavoloOCliente: "Tavolo 1",
+        righe: [{ prodotto: "Acqua 0,5L" }]
+    }, customCatalog), /e' archiviato/);
+});
+
+test("order edits can keep existing unavailable products but cannot add more", () => {
+    const product = testCatalog.menu.find(item => item.nome === "Margherita");
+    const customCatalog = {
+        ...testCatalog,
+        allProducts: [{ ...product, disponibile: false }]
+    };
+    const input = {
+        tavoloOCliente: "Tavolo 1",
+        note: "Aggiornato",
+        righe: [{ prodotto: "Margherita" }]
+    };
+
+    assert.equal(
+        prepareOrder(input, customCatalog, { existingRows: [{ prodotto: "Margherita" }] }).righe.length,
+        1
+    );
+    assert.throws(() => prepareOrder({
+        ...input,
+        righe: [...input.righe, { prodotto: "Margherita" }]
+    }, customCatalog, { existingRows: [{ prodotto: "Margherita" }] }), /e' esaurito/);
+});
+
+test("order validation rejects unavailable extras", () => {
+    const customCatalog = {
+        ...testCatalog,
+        allExtras: [
+            ...testCatalog.extras,
+            { id: "extra-esaurito", nome: "Extra esaurito", prezzo: 1, disponibile: false }
+        ]
+    };
+
+    assert.throws(() => prepareOrder({
+        tavoloOCliente: "Tavolo 1",
+        righe: [{ prodotto: "Margherita", extra: ["extra-esaurito"] }]
+    }, customCatalog), /non e' disponibile/);
 });
 
 test("requires delivery contact details and includes them in public order data", () => {

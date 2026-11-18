@@ -1,9 +1,9 @@
 const { api, methodNotAllowed } = require("../../lib/api");
 const { httpError, requireStaffAccess, requireSameOrigin } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
+const { getMenuData } = require("../../lib/menu-store");
 const { prepareOrder, preparePaymentUpdate, publicOrder } = require("../../lib/orders");
 const { diffRighe } = require("../../lib/order-diff");
-const menu = require("../../lib/menu.json");
 const {
     hasExpiredPrinterQueuePause,
     isActivePrintingJob,
@@ -78,7 +78,7 @@ module.exports = api(async (req, res) => {
     }
     if (req.method === "PUT") {
         requireSameOrigin(req);
-        const prepared = prepareOrder(req.body);
+        const catalog = await getMenuData(db);
         const saved = await db.runTransaction(async transaction => {
             const controlSnapshot = await transaction.get(printerControl);
             const controlData = controlSnapshot.data();
@@ -89,6 +89,7 @@ module.exports = api(async (req, res) => {
             if (!snapshot.exists) throw httpError(404, `Ordine non trovato: ${numero}`);
             const jobSnapshot = await transaction.get(printerJobs.where("numero", "==", numero));
             const previous = snapshot.data();
+            const prepared = prepareOrder(req.body, catalog, { existingRows: previous.righe || [] });
             const jobs = jobSnapshot.docs.map(document => ({ ref: document.ref, ...document.data() }));
             if (jobs.some(job => job.status === "printing")) {
                 throw httpError(409, "La comanda e' gia' in fase di stampa e non puo' essere modificata.");
@@ -119,10 +120,7 @@ module.exports = api(async (req, res) => {
                     ...(tipoNuovoJob === "ristampa"
                         ? { motivo: "modificata" }
                         : {
-                            righe: rowDiff.aggiunte.map(row => ({
-                                ...row,
-                                categoria: row.categoria || menu.find(product => product.nome === row.prodotto)?.categoria
-                            }))
+                            righe: rowDiff.aggiunte.map(row => ({ ...row }))
                         })
                 };
             }

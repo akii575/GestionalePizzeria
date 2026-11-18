@@ -110,7 +110,7 @@ test("receipt prints the service first and uses the fixed-width uppercase layout
         tavoloOCliente: "Tavolo 4",
         numeroPersone: 3,
         dataOra: "2026-10-14T12:00:00.000Z",
-        righe: [{ prodotto: "Margherita", prezzoBase: 8.5, extra: [{ nome: "Bufala", prezzo: 2 }], totale: 10.5 }],
+        righe: [{ prodotto: "Margherita", categoria: "pizze", prezzoBase: 8.5, extra: [{ nome: "Bufala", prezzo: 2 }], totale: 10.5 }],
         note: "Senza basilico",
         totale: 10.5
     });
@@ -157,19 +157,19 @@ test("delivery surcharge is printed separately before the total within the paper
     assert.equal(lines[surcharge].length, 24);
 });
 
-test("receipt groups products by menu category in catalog order with their prices", () => {
+test("receipt groups products in Firestore category order using prices stored in order rows", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
         numero: 13,
         tavoloOCliente: "Tavolo 2",
         dataOra: "2026-10-14T12:00:00.000Z",
         righe: [
-            { prodotto: "Coca Cola 33cl" },
-            { prodotto: "Patatine Piccole" },
-            { prodotto: "Margherita" }
+            { prodotto: "Coca Cola 33cl", categoria: "bibite", prezzoBase: 2.5, totale: 2.5 },
+            { prodotto: "Patatine Piccole", categoria: "fritti", prezzoBase: 3, totale: 3 },
+            { prodotto: "Margherita", categoria: "pizze", prezzoBase: 5, totale: 5 }
         ],
         totale: 15
-    });
+    }, 80, { categoryOrder: ["pizze", "fritti", "bibite"] });
     const lines = receipt.split(/\r?\n/);
     const pizzaSection = lines.indexOf("@@SECTION:PIZZE@@");
     const friesSection = lines.indexOf("@@SECTION:FRITTI@@");
