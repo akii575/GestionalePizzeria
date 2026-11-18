@@ -90,6 +90,7 @@
                 { label: "Tutti gli ordini", href: "/gestionale.html", icon: "orders" },
                 { label: "Stato stampanti", href: "/#printer-title", icon: "printer" }
             ];
+        if (account.admin === true) links.push({ label: "Menu", href: "/menu.html", icon: "menu" });
         const currentHref = currentPageHref(isHome);
         const primaryLinks = isDelivery ? links : links.slice(0, 4);
         const secondaryLinks = isDelivery ? [] : links.slice(4);
@@ -256,6 +257,7 @@
             counter: ["M4 10h16v10H4z", "M3 10l2-6h14l2 6", "M9 20v-6h6v6"],
             orders: ["M6 4h12v17H6z", "M9 8h6", "M9 12h6", "M9 16h4"],
             printer: ["M6 8V3h12v5", "M5 18H3V9h18v9h-2", "M6 14h12v7H6z", "M17 11h.01"],
+            menu: ["M4 5h16v14H4z", "M8 9h8", "M8 13h8", "M8 17h5"],
             more: ["M5 12h.01", "M12 12h.01", "M19 12h.01"],
             logout: ["M10 5H5v14h5", "M14 8l4 4-4 4", "M8 12h10"],
             reset: ["M4 12a8 8 0 1 0 2.4-5.7", "M4 4v5h5"],

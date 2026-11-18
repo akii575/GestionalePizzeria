@@ -146,6 +146,18 @@ test("staff can access protected pages", async t => {
     assert.match(response.body, /Tutti gli ordini/);
 });
 
+test("the server protects the menu page with the admin-only role", async t => {
+    t.mock.method(auth, "requireAdmin", async () => ({ admin: true, email: "admin@example.com" }));
+    const handlerPath = require.resolve("../api/pages/[page]");
+    delete require.cache[handlerPath];
+    const handler = require(handlerPath);
+    t.after(() => delete require.cache[handlerPath]);
+
+    const response = await invoke(handler, { query: { page: "menu.html" } });
+    assert.equal(response.statusCode, 200);
+    assert.match(response.body, /menu-editor\.js/);
+});
+
 test("delivery accounts can access only the delivery page on the server", async t => {
     t.mock.method(auth, "requireDeliveryAccess", async () => ({ delivery: true }));
     t.mock.method(auth, "requireStaffAccess", async () => {
@@ -162,6 +174,21 @@ test("delivery accounts can access only the delivery page on the server", async 
     assert.equal(deliveryPage.statusCode, 200);
     const adminPage = await invoke(handler, { query: { page: "gestionale.html" } });
     assert.equal(adminPage.statusCode, 403);
+});
+
+test("staff and delivery roles cannot access the menu page on the server", async t => {
+    t.mock.method(auth, "requireAdmin", async () => {
+        const error = new Error("Accesso negato.");
+        error.statusCode = 403;
+        throw error;
+    });
+    const handlerPath = require.resolve("../api/pages/[page]");
+    delete require.cache[handlerPath];
+    const handler = require(handlerPath);
+    t.after(() => delete require.cache[handlerPath]);
+
+    const response = await invoke(handler, { query: { page: "menu.html" } });
+    assert.equal(response.statusCode, 403);
 });
 
 test("staff pages hide only the four daily displayed totals", () => {

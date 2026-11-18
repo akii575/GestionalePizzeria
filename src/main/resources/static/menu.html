@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="it">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+        <meta name="theme-color" content="#1A5EA9" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Civico7" />
+        <title>Menu | CIVICO7</title>
+        <style>
+            html.auth-loading body {
+                visibility: hidden;
+            }
+        </style>
+        <script src="/auth-guard.js"></script>
+        <link rel="stylesheet" href="/theme.css" />
+        <link rel="stylesheet" href="/nav.css" />
+        <link rel="stylesheet" href="/menu.css" />
+    </head>
+    <body>
+        <main class="dashboard menu-dashboard">
+            <header class="dashboard-header">
+                <h1>Menu</h1>
+            </header>
+            <section class="menu-controls" aria-label="Controlli menu">
+                <div class="menu-tabs" role="tablist" aria-label="Sezioni menu">
+                    <button class="menu-tab is-active" type="button" role="tab" aria-selected="true" data-tab="prodotti">Prodotti</button>
+                    <button class="menu-tab" type="button" role="tab" aria-selected="false" data-tab="categorie">Categorie</button>
+                    <button class="menu-tab" type="button" role="tab" aria-selected="false" data-tab="extra">Extra</button>
+                </div>
+                <label class="menu-search" for="menu-search">
+                    <span>Cerca nel menu</span>
+                    <input id="menu-search" type="search" autocomplete="off" placeholder="Nome, categoria o ingrediente" />
+                </label>
+                <button id="menu-new" class="menu-primary" type="button">+ Nuovo</button>
+            </section>
+            <p id="menu-status" class="menu-status" role="status" aria-live="polite"></p>
+            <section id="menu-content" class="menu-content" aria-live="polite"></section>
+            <details id="menu-archived" class="menu-archived">
+                <summary>Archiviati</summary>
+                <div id="menu-archived-content"></div>
+            </details>
+        </main>
+        <div id="menu-editor-backdrop" class="menu-editor-backdrop" hidden>
+            <aside id="menu-editor" class="menu-editor" role="dialog" aria-modal="true" aria-labelledby="menu-editor-title">
+                <div class="menu-editor-handle" aria-hidden="true"></div>
+                <header class="menu-editor-header">
+                    <h2 id="menu-editor-title">Nuovo elemento</h2>
+                    <button id="menu-editor-close" class="menu-icon-button" type="button" aria-label="Chiudi">×</button>
+                </header>
+                <form id="menu-form">
+                    <label class="menu-field" for="menu-name">Nome
+                        <input id="menu-name" name="nome" type="text" maxlength="80" required />
+                    </label>
+                    <label id="menu-category-field" class="menu-field" for="menu-category">Categoria
+                        <select id="menu-category" name="categoriaId"></select>
+                    </label>
+                    <label id="menu-price-field" class="menu-field" for="menu-price">Prezzo
+                        <input id="menu-price" name="prezzo" type="number" min="0" step="0.01" inputmode="decimal" />
+                    </label>
+                    <label id="menu-ingredients-field" class="menu-field" for="menu-ingredients">Ingredienti (separati da virgola)
+                        <textarea id="menu-ingredients" name="ingredienti" rows="3"></textarea>
+                    </label>
+                    <label id="menu-extra-allowed-field" class="menu-check" for="menu-extra-allowed">
+                        <input id="menu-extra-allowed" name="ammetteExtra" type="checkbox" />
+                        <span>Ammette extra</span>
+                    </label>
+                    <label id="menu-available-field" class="menu-check" for="menu-available">
+                        <input id="menu-available" name="disponibile" type="checkbox" checked />
+                        <span>Disponibile</span>
+                    </label>
+                    <p id="menu-form-error" class="menu-form-error" role="alert"></p>
+                    <div class="menu-form-actions">
+                        <button id="menu-save" class="menu-primary" type="submit">Salva</button>
+                        <button id="menu-archive" class="menu-danger" type="button" hidden>Archivia</button>
+                        <button id="menu-cancel" class="menu-secondary" type="button">Annulla</button>
+                    </div>
+                </form>
+            </aside>
+        </div>
+        <script src="/html-utils.js"></script>
+        <script src="/menu-editor.js"></script>
+        <script src="/theme.js"></script>
+        <script src="/nav.js"></script>
+    </body>
+</html>

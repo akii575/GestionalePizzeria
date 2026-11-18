@@ -82,6 +82,20 @@ test("delivery account is allowed only on the delivery page", async () => {
     }
 });
 
+test("the menu page is restricted to administrators", async () => {
+    const admin = await runGuard("/menu.html", { admin: true, staff: false, delivery: false });
+    assert.equal(admin.authorized, true);
+
+    for (const account of [
+        { admin: false, staff: true, delivery: false },
+        { admin: false, staff: false, delivery: true }
+    ]) {
+        const denied = await runGuard("/menu.html", account);
+        assert.equal(denied.authorized, false);
+        assert.equal(denied.window.currentAccount, undefined);
+    }
+});
+
 test("admin can see admin-only navigation on the delivery page", async () => {
     const page = await runGuard("/consegne.html");
     assert.equal(page.authorized, true);

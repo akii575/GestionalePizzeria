@@ -3,7 +3,7 @@ const path = require("node:path");
 
 const source = path.join(__dirname, "..", "src", "main", "resources", "static");
 const destination = path.join(__dirname, "..", "public");
-const protectedPages = ["index.html", "ordini.html", "gestionale.html", "modifica.html", "consegne.html", "ritiri.html", "banco.html", "tavoli.html"];
+const protectedPages = ["index.html", "ordini.html", "gestionale.html", "modifica.html", "consegne.html", "ritiri.html", "banco.html", "tavoli.html", "menu.html"];
 const fontFiles = [
     "poppins-latin-400-normal.woff2",
     "poppins-latin-500-normal.woff2",

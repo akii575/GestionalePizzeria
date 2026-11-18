@@ -16,10 +16,11 @@
             const account = await response.json();
             const isHome = window.location.pathname === "/" || window.location.pathname === "/index.html";
             const isDeliveryPage = window.location.pathname === "/consegne.html";
+            const isAdminPage = window.location.pathname === "/menu.html";
             const isAdmin = account.admin === true;
             const isStaff = !isAdmin && account.staff === true;
             const isDelivery = !isAdmin && !isStaff && account.delivery === true;
-            if (!isAdmin && !isStaff && !(isDelivery && isDeliveryPage)) {
+            if (isAdminPage && !isAdmin || !isAdmin && !isStaff && !(isDelivery && isDeliveryPage)) {
                 showMessage("Accesso negato", "Questo account non è autorizzato.", true);
                 return false;
             }
