@@ -58,7 +58,6 @@ function wrapReceiptText(value, width = DEFAULT_RECEIPT_WIDTH) {
     for (const paragraph of paragraphs) {
         const words = paragraph.trim().split(/\s+/).filter(Boolean);
         if (!words.length) {
-            lines.push("");
             continue;
         }
         let line = "";
@@ -96,37 +95,88 @@ function receiptUnitPrice(row) {
     return basePrice + (row.extra || []).reduce((sum, extra) => sum + receiptExtra(extra).price, 0);
 }
 
+function receiptBasePrice(row) {
+    const storedValue = row.prezzoBase ?? row.prezzo;
+    const storedBase = Number(storedValue);
+    if (storedValue !== undefined && storedValue !== null && Number.isFinite(storedBase)) {
+        return storedBase;
+    }
+    const total = Number(row.totale);
+    if (Number.isFinite(total)) {
+        return total - (row.extra || []).reduce((sum, extra) => sum + receiptExtra(extra).price, 0);
+    }
+    return 0;
+}
+
+function receiptAmount(price) {
+    const rounded = Math.round(Number(price) * 100) / 100;
+    return `EUR ${rounded.toFixed(2).replace(".", ",")}`;
+}
+
+function wrapReceiptItemParts(description, price, width) {
+    const name = String(description).toLocaleUpperCase("it-IT").trim();
+    const amount = receiptAmount(price);
+    const nameLength = Array.from(name).length;
+    if (nameLength + amount.length + 1 <= width) {
+        return {
+            nameLines: [`${name}${" ".repeat(width - nameLength - amount.length)}${amount}`],
+            amountLine: null
+        };
+    }
+    return {
+        nameLines: wrapReceiptText(name, width),
+        amountLine: `${" ".repeat(Math.max(0, width - amount.length))}${amount}`
+    };
+}
+
 function wrapReceiptItem(description, price, width) {
-    const amount = `EUR ${price.toFixed(2).replace(".", ",")}`;
-    const descriptionWidth = Math.max(1, width - amount.length - 1);
-    const wrapped = [];
-    let line = "";
-    const words = String(description).toLocaleUpperCase("it-IT").split(/\s+/).filter(Boolean);
-    for (const word of words) {
-        const wordLength = Array.from(word).length;
-        if (wordLength > width) {
-            if (line) wrapped.push(line);
-            line = "";
-            wrapped.push(...wrapReceiptText(word, width));
-        } else if (line && Array.from(line).length + 1 + wordLength > descriptionWidth) {
-            wrapped.push(line);
-            line = word;
-        } else {
-            line = line ? `${line} ${word}` : word;
-        }
+    const parts = wrapReceiptItemParts(description, price, width);
+    return [...parts.nameLines, ...(parts.amountLine ? [parts.amountLine] : [])];
+}
+
+function wrapReceiptBig(value, width) {
+    return wrapReceiptText(value, width).map(line => `@@BIG:${line}@@`);
+}
+
+function wrapReceiptPrefix(prefix, value, width) {
+    const prefixLength = Array.from(prefix).length;
+    return wrapReceiptText(value, Math.max(1, width - prefixLength)).map((line, index) => (
+        `${index === 0 ? prefix : " ".repeat(prefixLength)}${line}`
+    ));
+}
+
+function wrapReceiptPrefixedItem(prefix, value, price, width) {
+    const name = String(value).toLocaleUpperCase("it-IT").trim();
+    const prefixLength = Array.from(prefix).length;
+    const nameLength = Array.from(name).length;
+    const amount = receiptAmount(price);
+    if (prefixLength + nameLength + amount.length + 1 <= width) {
+        return [`${prefix}${name}${" ".repeat(width - prefixLength - nameLength - amount.length)}${amount}`];
     }
-    if (line) wrapped.push(line);
-    const lastLine = wrapped.pop() || "";
-    if (Array.from(lastLine).length + amount.length + 1 > width) {
-        if (lastLine) wrapped.push(lastLine);
-        return [...wrapped, `${" ".repeat(Math.max(0, width - amount.length))}${amount}`];
-    }
-    const gap = Math.max(1, width - Array.from(lastLine).length - amount.length);
-    return [...wrapped, `${lastLine}${" ".repeat(gap)}${amount}`];
+    const nameLines = wrapReceiptText(name, Math.max(1, width - prefixLength));
+    return [
+        ...nameLines.map((line, index) => `${index === 0 ? prefix : " ".repeat(prefixLength)}${line}`),
+        `${" ".repeat(Math.max(0, width - amount.length))}${amount}`
+    ];
+}
+
+function receiptRowsForProfile(order, options) {
+    const rows = options.tipoStampa === "aggiunta" ? options.righe || [] : order.righe || [];
+    if (options.profile !== "cucina") return rows;
+    const kitchenCategories = options.kitchenCategories;
+    if (!(kitchenCategories instanceof Set) && !Array.isArray(kitchenCategories)) return rows;
+    const allowed = kitchenCategories instanceof Set ? kitchenCategories : new Set(kitchenCategories);
+    const productCategories = options.productCategories || {};
+    return rows.filter(row => {
+        const category = row.categoria || productCategories[row.prodotto];
+        return category !== undefined && allowed.has(category);
+    });
 }
 
 function formatReceipt(order, paperWidthMm = 80, options = {}) {
     const receiptWidth = paperWidthMm === 58 ? RECEIPT_WIDTH_58_MM : DEFAULT_RECEIPT_WIDTH;
+    const normalWidth = receiptWidth * 2;
+    const bigWidth = Math.floor(receiptWidth * 2 / 3);
     const divider = "-".repeat(receiptWidth);
     const date = new Date(order.dataOra).toLocaleDateString("it-IT", {
         day: "2-digit",
@@ -147,11 +197,11 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
     const receiptTitle = options.tipoStampa === "ristampa"
         ? `${options.motivo === "modificata" ? "RISTAMPA MODIFICATA" : "RISTAMPA"} - ${title}`
         : options.tipoStampa === "aggiunta" ? `AGGIUNTA - ${title}` : title;
-    const lines = [`@@TITLE:${receiptTitle}@@`, divider];
-    if (order.orario) {
-        lines.push(...wrapReceiptText(`ORARIO RICHIESTO ${order.orario}`, receiptWidth)
-            .map(line => `@@BOLD:${line}@@`));
-    }
+    const lines = [
+        ...wrapReceiptBig(`#${order.numero ?? ""}`, bigWidth),
+        `@@TITLE:${receiptTitle}@@`,
+        divider
+    ];
     lines.push(...wrapReceiptText(`DATA: ${date}`, receiptWidth));
     if (tipo === "consegna") {
         lines.push(...wrapReceiptText(`TEL: ${order.telefonoConsegna || ""}`, receiptWidth));
@@ -176,7 +226,8 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         lines.push("NOTE:", ...wrapReceiptText(order.note, receiptWidth), divider);
     }
     const rowsByCategory = new Map();
-    const receiptRows = options.tipoStampa === "aggiunta" ? options.righe || [] : order.righe || [];
+    const receiptOptions = { ...options, profile: options.profile === "cucina" ? "cucina" : "sala" };
+    const receiptRows = receiptRowsForProfile(order, receiptOptions);
     const productCategories = options.productCategories || {};
     for (const row of receiptRows) {
         const category = row.categoria || productCategories[row.prodotto] || "altro";
@@ -195,49 +246,68 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         const groupedRows = new Map();
         for (const row of rowsByCategory.get(category)) {
             const rowExtras = (row.extra || []).map(receiptExtra);
-            const price = receiptUnitPrice(row);
+            const basePrice = receiptBasePrice(row);
             const key = JSON.stringify([
                 row.prodotto,
                 rowExtras.map(extra => [extra.name, extra.price]).sort((first, second) => first[0].localeCompare(second[0], "it")),
-                price
+                basePrice
             ]);
             const existing = groupedRows.get(key);
             if (existing) {
                 existing.quantity++;
             } else {
-                groupedRows.set(key, { row, rowExtras, price, quantity: 1 });
+                groupedRows.set(key, { row, rowExtras, basePrice, quantity: 1 });
             }
         }
-        for (const { row, rowExtras, price, quantity } of groupedRows.values()) {
-            const lineTotal = Math.round(price * quantity * 100) / 100;
-            lines.push(...wrapReceiptItem(`${quantity}x ${row.prodotto}`, lineTotal, receiptWidth));
+        for (const { row, rowExtras, basePrice, quantity } of groupedRows.values()) {
+            if (receiptOptions.profile === "cucina") {
+                lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, receiptWidth)
+                    .map(line => `@@ITEM:${line}@@`));
+                const ingredients = options.productIngredients?.[row.prodotto];
+                if (Array.isArray(ingredients) && ingredients.length) {
+                    lines.push(...wrapReceiptPrefix("  ", ingredients.join(", "), normalWidth)
+                        .map(line => `@@SMALL:${line}@@`));
+                }
+                for (const extra of rowExtras) {
+                    lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth)
+                        .map(line => `@@ITEM:${line}@@`));
+                }
+                continue;
+            }
+            const baseTotal = Math.round(basePrice * quantity * 100) / 100;
+            const itemParts = wrapReceiptItemParts(`${quantity}x ${row.prodotto}`, baseTotal, receiptWidth);
+            lines.push(...itemParts.nameLines.map(line => `@@ITEM:${line}@@`));
+            if (itemParts.amountLine) lines.push(itemParts.amountLine);
             for (const extra of rowExtras) {
-                const name = extra.name;
-                const prefix = "  + ";
-                const wrappedExtra = wrapReceiptText(name, receiptWidth - prefix.length);
-                lines.push(...wrappedExtra.map((line, index) => (
-                    `${index === 0 ? prefix : " ".repeat(prefix.length)}${line}`
-                )));
+                const extraTotal = Math.round(extra.price * quantity * 100) / 100;
+                if (extra.price > 0) {
+                    lines.push(...wrapReceiptPrefixedItem("  + ", extra.name, extraTotal, receiptWidth));
+                } else {
+                    lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth));
+                }
             }
         }
-        lines.push("", "", divider);
+        lines.push(divider);
     }
-    if (options.tipoStampa === "aggiunta") {
+    if (receiptOptions.profile === "sala" && options.tipoStampa === "aggiunta") {
         const totalAdded = Math.round(receiptRows.reduce((sum, row) => sum + receiptUnitPrice(row), 0) * 100) / 100;
         lines.push(...wrapReceiptItem("TOTALE AGGIUNTA", totalAdded, receiptWidth));
         lines.push(...wrapReceiptItem("NUOVO TOTALE", Number(order.totale || 0), receiptWidth));
-    } else if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
+    } else if (receiptOptions.profile === "sala" && tipo === "consegna" && Number(order.costoConsegna) > 0) {
         lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
     }
-    const amount = `EUR ${Number(order.totale || 0).toFixed(2).replace(".", ",")}`;
-    const totalGap = receiptWidth - "TOTALE".length - amount.length;
-    if (categories.length === 0) lines.push(divider);
-    if (options.tipoStampa !== "aggiunta" && totalGap > 0) {
-        lines.push(`TOTALE${" ".repeat(totalGap)}${amount}`);
-    } else if (options.tipoStampa !== "aggiunta") {
-        lines.push(...wrapReceiptText(`TOTALE ${amount}`, receiptWidth));
+    if (receiptOptions.profile === "sala" && options.tipoStampa !== "aggiunta") {
+        const amount = receiptAmount(Number(order.totale || 0));
+        const totalGap = receiptWidth - "TOTALE".length - amount.length;
+        if (categories.length === 0) lines.push(divider);
+        if (totalGap > 0) {
+            lines.push(`TOTALE${" ".repeat(totalGap)}${amount}`);
+        } else {
+            lines.push(...wrapReceiptText(`TOTALE ${amount}`, receiptWidth));
+        }
+        lines.push(divider);
     }
-    lines.push(divider);
+    if (order.orario) lines.push(...wrapReceiptBig(`ORARIO ${order.orario}`, bigWidth));
     return lines.join("\r\n");
 }
 
@@ -257,7 +327,14 @@ async function sendOrderToPrinters(order, printers, {
     const completed = new Set(alreadyPrinted);
     for (const printer of printers) {
         if (completed.has(printer.name)) continue;
-        const receipt = formatReceipt(order, printer.paperWidthMm, receiptOptions);
+        const profile = printer.name.trim().toLocaleLowerCase("it-IT") === "cucina" ? "cucina" : "sala";
+        const printerReceiptOptions = { ...receiptOptions, profile };
+        if (profile === "cucina" && receiptRowsForProfile(order, printerReceiptOptions).length === 0) {
+            await onPrinterPrinted(printer.name);
+            completed.add(printer.name);
+            continue;
+        }
+        const receipt = formatReceipt(order, printer.paperWidthMm, printerReceiptOptions);
         await print(order, printer, receipt);
         await onPrinterPrinted(printer.name);
         completed.add(printer.name);
@@ -356,11 +433,27 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                             .filter(product => product.nome && product.categoriaId)
                             .map(product => [product.nome, product.categoriaId])
                     );
-                    return { categoryOrder, productCategories };
+                    const productIngredients = Object.fromEntries(
+                        productSnapshot.docs
+                            .map(document => document.data())
+                            .filter(product => product.nome && Array.isArray(product.ingredienti))
+                            .map(product => [product.nome, product.ingredienti])
+                    );
+                    const kitchenCategories = new Set(
+                        categorySnapshot.docs
+                            .filter(document => document.data().stampaCucina !== false)
+                            .map(document => document.id)
+                    );
+                    return { categoryOrder, productCategories, productIngredients, kitchenCategories };
                 })
                 .catch(error => {
                     console.error("Unable to load menu categories for receipt:", error.code || error.name || "unknown");
-                    return { categoryOrder: [], productCategories: {} };
+                    return {
+                        categoryOrder: [],
+                        productCategories: {},
+                        productIngredients: {},
+                        kitchenCategories: null
+                    };
                 })
                 .then(menuData => {
                     receiptMenuCache = menuData;

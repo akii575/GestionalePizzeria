@@ -97,7 +97,10 @@ function makeFields(resource, body, existing, categories) {
     if (resource === "categorie") {
         return {
             nome,
-            ammetteExtra: requiredBoolean(body.ammetteExtra, "Indica se la categoria ammette extra.")
+            ammetteExtra: requiredBoolean(body.ammetteExtra, "Indica se la categoria ammette extra."),
+            stampaCucina: body.stampaCucina === undefined
+                ? true
+                : requiredBoolean(body.stampaCucina, "Indica se la categoria viene stampata in cucina.")
         };
     }
     if (resource === "prodotti") {

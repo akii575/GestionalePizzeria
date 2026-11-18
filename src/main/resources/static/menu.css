@@ -419,6 +419,16 @@ body.menu-editor-open {
     font-weight: 600;
 }
 
+.menu-category-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+}
+
+.menu-category-options .menu-check {
+    margin: 0;
+}
+
 .menu-check input {
     width: 20px;
     height: 20px;

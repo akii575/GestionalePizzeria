@@ -3,10 +3,20 @@ const assert = require("node:assert/strict");
 const { createPrinterAgent, formatReceipt } = require("../scripts/printer-agent");
 const { Timestamp } = require("firebase-admin/firestore");
 
-function createDatabase(seed = {}, { emitInitial = true } = {}) {
+function createDatabase(seed = {}, { emitInitial = true, failReads = [] } = {}) {
+    const initialData = { ...seed };
+    if (!Object.prototype.hasOwnProperty.call(seed, "menuCategorie")) {
+        initialData.menuCategorie = {
+            pizze: { nome: "Pizze", ordine: 0, archiviata: false }
+        };
+        initialData.menuProdotti = {
+            margherita: { nome: "Margherita", categoriaId: "pizze", ingredienti: [] }
+        };
+    }
     const collections = new Map(
-        Object.entries(seed).map(([name, documents]) => [name, new Map(Object.entries(documents))])
+        Object.entries(initialData).map(([name, documents]) => [name, new Map(Object.entries(documents))])
     );
+    const failedReads = new Set(failReads);
     const listeners = new Set();
     let subscriptionCount = 0;
     const documents = name => {
@@ -80,6 +90,7 @@ function createDatabase(seed = {}, { emitInitial = true } = {}) {
                 doc: id => documentRef(name, id),
                 where: (field, operator, value) => makeQuery(name).where(field, operator, value),
                 async get() {
+                    if (failedReads.has(name)) throw new Error(`read_failed_${name}`);
                     return snapshotFor(makeQuery(name));
                 }
             };
@@ -316,6 +327,62 @@ test("the security timer drains queued jobs when the listener is stopped", async
         await securityPoll.run();
 
         assert.equal(printCount, 1);
+        assert.equal(database.documents("printerJobs").get("000000000007").status, "printed");
+        await agent.stop();
+    });
+});
+
+test("a kitchen job with only excluded categories is completed without printing", async () => {
+    await withFakeTimers(async () => {
+        const order = {
+            ...makeOrder(),
+            righe: [{ prodotto: "Acqua", categoria: "bibite", prezzoBase: 2, totale: 2 }]
+        };
+        const database = createDatabase({
+            menuCategorie: {
+                bibite: { nome: "Bibite", ordine: 0, stampaCucina: false }
+            },
+            orders: { "7": order },
+            printerJobs: { "000000000007": queuedJob(7) }
+        });
+        let printCount = 0;
+        const agent = createPrinterAgent(database, {
+            getPrinters: async () => readyPrinter(),
+            printOrder: async () => { printCount++; }
+        });
+
+        await agent.run();
+
+        assert.equal(printCount, 0);
+        assert.equal(database.documents("printerJobs").get("000000000007").status, "printed");
+        assert.equal(database.documents("orders").get("7").stampaCompletata, true);
+        await agent.stop();
+    });
+});
+
+test("kitchen prints all rows when the Firestore menu cannot be read", async () => {
+    await withFakeTimers(async () => {
+        const order = {
+            ...makeOrder(),
+            righe: [{ prodotto: "Acqua", categoria: "bibite", prezzoBase: 2, totale: 2 }]
+        };
+        const database = createDatabase({
+            menuCategorie: {
+                bibite: { nome: "Bibite", ordine: 0, stampaCucina: false }
+            },
+            orders: { "7": order },
+            printerJobs: { "000000000007": queuedJob(7) }
+        }, { failReads: ["menuCategorie"] });
+        const receipts = [];
+        const agent = createPrinterAgent(database, {
+            getPrinters: async () => readyPrinter(),
+            printOrder: async (_order, _printer, receipt) => receipts.push(receipt)
+        });
+
+        await agent.run();
+
+        assert.equal(receipts.length, 1);
+        assert.match(receipts[0], /@@SECTION:BIBITE@@/);
         assert.equal(database.documents("printerJobs").get("000000000007").status, "printed");
         await agent.stop();
     });

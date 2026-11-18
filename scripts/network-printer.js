@@ -144,8 +144,18 @@ function encodeEscPosReceipt(receipt) {
     normalText();
     for (const line of receiptLines) {
         const section = /^@@SECTION:(.*)@@$/.exec(line);
+        const big = /^@@BIG:(.*)@@$/.exec(line);
         const title = /^@@TITLE:(.*)@@$/.exec(line);
+        const itemMarker = /^@@ITEM:(.*)@@$/.exec(line);
+        const small = /^@@SMALL:(.*)@@$/.exec(line);
         const bold = /^@@BOLD:(.*)@@$/.exec(line);
+        if (big) {
+            bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x22);
+            text(big[1]);
+            lineFeed();
+            normalText();
+            continue;
+        }
         if (section) {
             bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x11);
             text(section[1]);
@@ -158,6 +168,20 @@ function encodeEscPosReceipt(receipt) {
         if (title) {
             bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x11);
             text(title[1]);
+            lineFeed();
+            normalText();
+            continue;
+        }
+        if (itemMarker) {
+            bytes(0x1b, 0x61, 0, 0x1b, 0x45, 1, 0x1d, 0x21, 0x11);
+            text(itemMarker[1]);
+            lineFeed();
+            normalText();
+            continue;
+        }
+        if (small) {
+            bytes(0x1b, 0x45, 0, 0x1d, 0x21, 0x00, 0x1b, 0x61, 0);
+            text(small[1]);
             lineFeed();
             normalText();
             continue;
@@ -176,12 +200,12 @@ function encodeEscPosReceipt(receipt) {
             normalText();
             continue;
         }
-        const item = /^\d+X /.test(line);
-        if (item) bytes(0x1b, 0x45, 1);
+        const legacyItem = /^\d+X /.test(line);
+        if (legacyItem) bytes(0x1b, 0x45, 1);
         if (line.startsWith("TOTALE")) bytes(0x1b, 0x45, 1);
         text(line);
         lineFeed();
-        if (item || line.startsWith("TOTALE")) bytes(0x1b, 0x45, 0);
+        if (legacyItem || line.startsWith("TOTALE")) bytes(0x1b, 0x45, 0);
     }
     bytes(0x0a, 0x0a, 0x1d, 0x56, 0x41, 0x03);
     return Buffer.concat(commands);

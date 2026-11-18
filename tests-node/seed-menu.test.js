@@ -17,6 +17,9 @@ test("menu seed preserves current category labels and displayed ordering", () =>
     assert.equal(seed.categories.find(category => category.id === "pizze").data.nome, "Pizze");
     assert.equal(seed.categories.find(category => category.id === "pizze").data.ammetteExtra, true);
     assert.equal(seed.categories.find(category => category.id === "bibite").data.ammetteExtra, false);
+    assert.equal(seed.categories.find(category => category.id === "pizze").data.stampaCucina, true);
+    assert.equal(seed.categories.find(category => category.id === "bibite").data.stampaCucina, false);
+    assert.equal(seed.categories.find(category => category.id === "vini").data.stampaCucina, false);
     assert.deepEqual(
         seed.products.filter(product => product.data.categoriaId === "pizze").slice(0, 2)
             .map(product => product.data.nome),
@@ -34,4 +37,65 @@ test("menu seed dry run reports planned records without Firestore access", async
     assert.equal(result.menuExtra, 51);
     assert.equal(result.writes, 0);
     assert.match(messages[0], /Dry run/);
+});
+
+test("menu seed keeps an existing kitchen-printing category setting", async () => {
+    const collections = new Map([
+        ["menuCategorie", new Map([
+            ["bibite", { nome: "Bibite", ordine: 0, ammetteExtra: false, stampaCucina: true }]
+        ])],
+        ["menuProdotti", new Map()],
+        ["menuExtra", new Map()],
+        ["metadata", new Map([["menuVersion", { versione: 1 }]])]
+    ]);
+    const getDocuments = name => {
+        if (!collections.has(name)) collections.set(name, new Map());
+        return collections.get(name);
+    };
+    const db = {
+        collection(name) {
+            return {
+                doc(id) {
+                    return {
+                        collection: name,
+                        id,
+                        async get() {
+                            const value = getDocuments(name).get(id);
+                            return { exists: value !== undefined, data: () => value };
+                        }
+                    };
+                },
+                async get() {
+                    return {
+                        docs: [...getDocuments(name)].map(([id, value]) => ({
+                            id,
+                            ref: { collection: name, id },
+                            data: () => value
+                        }))
+                    };
+                }
+            };
+        },
+        batch() {
+            const operations = [];
+            return {
+                set(reference, value) {
+                    operations.push(() => getDocuments(reference.collection).set(reference.id, value));
+                },
+                update(reference, value) {
+                    operations.push(() => getDocuments(reference.collection).set(reference.id, {
+                        ...getDocuments(reference.collection).get(reference.id),
+                        ...value
+                    }));
+                },
+                async commit() {
+                    for (const apply of operations) apply();
+                }
+            };
+        }
+    };
+
+    await seedMenu({ db, log: () => {} });
+
+    assert.equal(getDocuments("menuCategorie").get("bibite").stampaCucina, true);
 });

@@ -3,8 +3,17 @@ const assert = require("node:assert/strict");
 const { createPrinterAgent, formatReceipt } = require("../scripts/printer-agent");
 
 function createDatabase(seed) {
+    const initialData = { ...seed };
+    if (!Object.prototype.hasOwnProperty.call(seed, "menuCategorie")) {
+        initialData.menuCategorie = {
+            pizze: { nome: "Pizze", ordine: 0, archiviata: false }
+        };
+        initialData.menuProdotti = {
+            margherita: { nome: "Margherita", categoriaId: "pizze", ingredienti: [] }
+        };
+    }
     const collections = new Map(
-        Object.entries(seed).map(([name, documents]) => [name, new Map(Object.entries(documents))])
+        Object.entries(initialData).map(([name, documents]) => [name, new Map(Object.entries(documents))])
     );
     const documents = name => {
         if (!collections.has(name)) collections.set(name, new Map());
@@ -27,6 +36,7 @@ function createDatabase(seed) {
     const querySnapshot = (name, entries) => ({
         empty: entries.length === 0,
         docs: entries.map(([id, value]) => ({
+            id,
             ref: ref(name, id),
             data: () => value
         }))
@@ -223,7 +233,7 @@ test("the agent prints only added rows and reports both addition totals", async 
     });
     const prints = [];
     const agent = createPrinterAgent(database, {
-        getPrinters: async () => readyPrinters("Cucina"),
+        getPrinters: async () => readyPrinters("Sala"),
         printOrder: async (_order, _printer, receipt) => prints.push(receipt)
     });
 
@@ -231,14 +241,16 @@ test("the agent prints only added rows and reports both addition totals", async 
 
     const receipt = prints[0];
     assert.match(receipt, /@@TITLE:AGGIUNTA - CONSEGNA@@/);
-    assert.match(receipt, /ORARIO RICHIESTO 20:00/);
+    assert.match(receipt, /@@BIG:ORARIO 20:00@@$/);
     assert.match(receipt, /TEL: 3331234567/);
     assert.match(receipt, /VIA ROMA 12/);
     assert.match(receipt, /NOTE:\r?\nSENZA BASILICO/);
-    assert.match(receipt, /2X PATATINE\s+PICCOLE\s+EUR 6,00/);
+    assert.match(receipt, /@@ITEM:2X PATATINE PICCOLE@@\r?\n\s+EUR 6,00/);
     assert.doesNotMatch(receipt, /1X MARGHERITA|COSTO CONSEGNA/);
-    assert.match(receipt, /TOTALE AGGIUNTA\s+EUR 6,00/);
-    assert.match(receipt, /NUOVO TOTALE\s+EUR 10,00/);
+    assert.match(receipt, /TOTALE AGGIUNTA/);
+    assert.match(receipt, /NUOVO TOTALE/);
+    assert.match(receipt, /EUR 6,00/);
+    assert.match(receipt, /EUR 10,00/);
     assert.equal(database.documents("printerJobs").get("000000000007-01").status, "printed");
     assert.equal(database.documents("orders").get("7").messaggioStampa, "Aggiunta completata.");
 
@@ -247,13 +259,18 @@ test("the agent prints only added rows and reports both addition totals", async 
         righe: addedRows
     });
     const narrowLines = narrowReceipt.split(/\r?\n/);
-    assert.match(narrowReceipt, /TOTALE\r?\nAGGIUNTA\r?\n {8}EUR 6,00/);
-    assert.match(narrowReceipt, /NUOVO\r?\nTOTALE EUR 10,00/);
-    assert.ok(narrowLines.every(line => (
-        line.startsWith("@@TITLE:") || line.startsWith("@@SECTION:") || line.startsWith("@@BOLD:")
-            ? true
-            : Array.from(line).length <= 16
-    )));
+    assert.match(narrowReceipt, /TOTALE AGGIUNTA\r?\n {8}EUR 6,00/);
+    assert.match(narrowReceipt, /NUOVO TOTALE\r?\n {7}EUR 10,00/);
+    assert.match(narrowReceipt, /@@BIG:ORARIO@@\r?\n@@BIG:20:00@@$/);
+    assert.ok(narrowLines.every(line => {
+        const marker = /^@@(TITLE|SECTION|BIG|ITEM|SMALL|BOLD):(.*)@@$/.exec(line);
+        if (!marker) return Array.from(line).length <= 16;
+        if (marker[1] === "TITLE" || marker[1] === "SECTION") return true;
+        const width = marker[1] === "SMALL"
+            ? 32
+            : marker[1] === "BIG" ? 10 : 16;
+        return Array.from(marker[2]).length <= width;
+    }));
 });
 
 test("the queue drain prints consecutive added jobs and clears the queued message", async () => {

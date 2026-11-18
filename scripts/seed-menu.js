@@ -42,6 +42,7 @@ function buildSeedData() {
             nome: labels.get(id) || id.replace(/\b\w/g, character => character.toLocaleUpperCase("it-IT")),
             ordine,
             ammetteExtra: CATEGORIE_CON_EXTRA_LEGACY.has(id),
+            stampaCucina: id !== "bibite" && id !== "vini",
             archiviata: false
         }
     }));
@@ -111,9 +112,12 @@ async function seedMenu({ dryRun = false, db = null, log = console.log } = {}) {
         const expectedIds = new Set(records.map(record => record.id));
         for (const record of records) {
             const current = existing.get(record.id);
-            if (valuesMatch(current, record.data)
-                    && (name !== "menuProdotti" || current.aggiornatoIl)) continue;
             const data = { ...record.data };
+            if (name === "menuCategorie" && current?.stampaCucina !== undefined) {
+                data.stampaCucina = current.stampaCucina;
+            }
+            if (valuesMatch(current, data)
+                    && (name !== "menuProdotti" || current.aggiornatoIl)) continue;
             if (name === "menuProdotti") data.aggiornatoIl = Timestamp.now();
             batch.set(firestore.collection(name).doc(record.id), data);
             writes++;

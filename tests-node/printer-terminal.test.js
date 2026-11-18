@@ -4,6 +4,16 @@ const { createServer } = require("../scripts/printer-terminal");
 
 const allowedOrigin = "https://gestionale-pizzeria-six.vercel.app";
 
+function receiptLineFits(line, doubleWidth) {
+    const marker = /^@@(TITLE|SECTION|BIG|ITEM|SMALL|BOLD):(.*)@@$/.exec(line);
+    if (!marker) return Array.from(line).length <= doubleWidth;
+    if (marker[1] === "TITLE" || marker[1] === "SECTION") return true;
+    const width = marker[1] === "SMALL"
+        ? doubleWidth * 2
+        : marker[1] === "BIG" ? Math.floor(doubleWidth * 2 / 3) : doubleWidth;
+    return Array.from(marker[2]).length <= width;
+}
+
 async function withServer(t, dependencies, run) {
     const server = createServer(dependencies);
     await new Promise((resolve, reject) => {
@@ -102,7 +112,7 @@ test("failed print jobs can be retried only from the production app", async t =>
     });
 });
 
-test("receipt prints the service first and uses the fixed-width uppercase layout", () => {
+test("receipt prints the number first and uses the fixed-width uppercase layout", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
         numero: 12,
@@ -114,8 +124,8 @@ test("receipt prints the service first and uses the fixed-width uppercase layout
         note: "Senza basilico",
         totale: 10.5
     });
-    assert.match(receipt, /^@@TITLE:TAVOLO X3@@/);
-    assert.equal(receipt.split(/\r?\n/)[1], "-".repeat(24));
+    assert.match(receipt, /^@@BIG:#12@@\r?\n@@TITLE:TAVOLO X3@@/);
+    assert.equal(receipt.split(/\r?\n/)[2], "-".repeat(24));
     assert.match(receipt, /TAVOLO: TAVOLO 4/);
     assert.match(receipt, /PERSONE: 3/);
     assert.ok(receipt.includes("NOTE:"));
@@ -124,15 +134,11 @@ test("receipt prints the service first and uses the fixed-width uppercase layout
     assert.ok(receipt.indexOf("NOTE:") < receipt.indexOf("@@SECTION:"));
     assert.ok(receipt.indexOf("NOTE:") < receipt.indexOf("1X MARGHERITA"));
     assert.match(receipt, /^@@SECTION:PIZZE@@$/m);
-    assert.match(receipt, /1X MARGHERITA\s+EUR 10,50/);
-    assert.match(receipt, /\+ BUFALA/);
+    assert.match(receipt, /@@ITEM:1X MARGHERITA\s+EUR 8,50@@/);
+    assert.match(receipt, /^ {2}\+ BUFALA\s+EUR 2,00$/m);
     assert.doesNotMatch(receipt, /COMANDA #12/);
-    assert.ok(receipt.includes("EUR 10,50"));
-    assert.ok(receipt.split(/\r?\n/).every(line => (
-        line.startsWith("@@TITLE:") || line.startsWith("@@SECTION:") || line.startsWith("@@BOLD:")
-            ? true
-            : Array.from(line).length <= 24
-    )));
+    assert.ok(receipt.includes("EUR 8,50"));
+    assert.ok(receipt.split(/\r?\n/).every(line => receiptLineFits(line, 24)));
 });
 
 test("delivery surcharge is printed separately before the total within the paper width", () => {
@@ -155,6 +161,90 @@ test("delivery surcharge is printed separately before the total within the paper
     assert.ok(surcharge < total);
     assert.match(lines[surcharge], /COSTO CONSEGNA\s+EUR 2,00/);
     assert.equal(lines[surcharge].length, 24);
+});
+
+test("receipt number is first and requested time is the final large line", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const lines = formatReceipt({
+        numero: 42,
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        orario: "20:30",
+        righe: [],
+        totale: 0
+    }).split(/\r?\n/);
+
+    assert.equal(lines[0], "@@BIG:#42@@");
+    assert.equal(lines[lines.length - 1], "@@BIG:ORARIO 20:30@@");
+    assert.equal(lines.some(line => line.includes("ORARIO 20:30") && !line.startsWith("@@BIG:")), false);
+});
+
+test("long product names stay separate from the right-aligned price", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const lines = formatReceipt({
+        numero: 42,
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{ prodotto: "THE PUMPKIN 2.0", prezzoBase: 9, totale: 9 }],
+        totale: 9
+    }).split(/\r?\n/);
+    const productLine = lines.indexOf("@@ITEM:1X THE PUMPKIN 2.0@@");
+
+    assert.ok(productLine >= 0);
+    assert.match(lines[productLine + 1], /^\s+EUR 9,00$/);
+    assert.doesNotMatch(lines[productLine], /EUR|2\.0\s+EUR/);
+});
+
+test("kitchen receipts include only kitchen categories and ingredients, while sala keeps prices", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const order = {
+        numero: 42,
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 2",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        orario: "20:30",
+        righe: [
+            {
+                prodotto: "Margherita",
+                categoria: "pizze",
+                prezzoBase: 8,
+                extra: [{ nome: "Bufala", prezzo: 2 }],
+                totale: 10
+            },
+            { prodotto: "Acqua", categoria: "bibite", prezzoBase: 2, totale: 2 }
+        ],
+        totale: 12
+    };
+    const options = {
+        kitchenCategories: new Set(["pizze"]),
+        productIngredients: { Margherita: ["Pomodoro", "Mozzarella"] }
+    };
+    const kitchen = formatReceipt(order, 80, { ...options, profile: "cucina" });
+    const sala = formatReceipt(order, 80, { ...options, profile: "sala" });
+
+    assert.match(kitchen, /@@SECTION:PIZZE@@/);
+    assert.doesNotMatch(kitchen, /BIBITE|EUR|TOTALE|COSTO CONSEGNA/);
+    assert.match(kitchen, /@@SMALL: {2}POMODORO, MOZZARELLA@@/);
+    assert.match(kitchen, /@@ITEM: {2}\+ BUFALA@@/);
+    assert.doesNotMatch(sala, /@@SMALL:/);
+    assert.match(sala, /@@SECTION:BIBITE@@/);
+    assert.match(sala, /EUR 8,00/);
+    assert.match(sala, /EUR 2,00/);
+    assert.match(sala, /TOTALE/);
+    const addedKitchen = formatReceipt(order, 80, {
+        ...options,
+        profile: "cucina",
+        tipoStampa: "aggiunta",
+        righe: [
+            order.righe[0],
+            { prodotto: "Acqua", categoria: "bibite", prezzoBase: 2, totale: 2 }
+        ]
+    });
+    assert.match(addedKitchen, /@@TITLE:AGGIUNTA - TAVOLO@@/);
+    assert.match(addedKitchen, /@@SECTION:PIZZE@@/);
+    assert.doesNotMatch(addedKitchen, /BIBITE|EUR|TOTALE/);
+    assert.equal(kitchen.split(/\r?\n/).some((line, index, lines) => (
+        line === "" && lines[index + 1] === ""
+    )), false);
 });
 
 test("receipt groups products in Firestore category order using prices stored in order rows", () => {
@@ -182,9 +272,9 @@ test("receipt groups products in Firestore category order using prices stored in
     };
 
     assert.ok(pizzaSection >= 0 && pizzaSection < friesSection && friesSection < drinksSection);
-    assert.match(sectionText(pizzaSection), /1X MARGHERITA\s+EUR /);
-    assert.match(sectionText(friesSection), /1X PATATINE\nPICCOLE\s+EUR /);
-    assert.match(sectionText(drinksSection), /1X COCA COLA\n33CL\s+EUR /);
+    assert.match(sectionText(pizzaSection), /@@ITEM:1X MARGHERITA\s+EUR /);
+    assert.match(sectionText(friesSection), /@@ITEM:1X PATATINE PICCOLE@@\n\s+EUR /);
+    assert.match(sectionText(drinksSection), /@@ITEM:1X COCA COLA 33CL@@\n\s+EUR /);
 });
 
 test("grouped identical products print their combined line total", () => {
@@ -199,7 +289,7 @@ test("grouped identical products print their combined line total", () => {
         totale: 10
     });
 
-    assert.match(receipt, /2X MARGHERITA\s+EUR 10,00/);
+    assert.match(receipt, /@@ITEM:2X MARGHERITA\s+EUR 10,00@@/);
 });
 
 test("receipt combines identical product variants while keeping different extras separate", () => {
@@ -218,15 +308,17 @@ test("receipt combines identical product variants while keeping different extras
         totale: 17
     });
     const lines = receipt.split(/\r?\n/);
-    const itemLines = lines.filter(line => /^\d+X MARGHERITA/.test(line));
+    const itemLines = lines.filter(line => /^@@ITEM:\d+X MARGHERITA/.test(line));
 
     assert.match(receipt, /@@TITLE:RITIRO@@/);
-    assert.match(receipt, /ORARIO RICHIESTO 18:45/);
+    assert.match(receipt, /@@BIG:ORARIO 18:45@@$/);
+    assert.equal(lines[lines.length - 1], "@@BIG:ORARIO 18:45@@");
     assert.match(receipt, /TEL: 333 1234567/);
     assert.equal(itemLines.length, 2);
-    assert.ok(itemLines.some(line => line.startsWith("2X MARGHERITA") && line.includes("EUR 14,00")));
+    assert.ok(itemLines.some(line => line.startsWith("@@ITEM:2X MARGHERITA") && line.includes("EUR 10,00")));
     assert.equal((receipt.match(/\+ BOCCONCINO/g) || []).length, 1);
-    assert.ok(itemLines.some(line => line.startsWith("1X MARGHERITA") && line.includes("EUR 5,00")));
+    assert.ok(itemLines.some(line => line.startsWith("@@ITEM:1X MARGHERITA") && line.includes("EUR 5,00")));
+    assert.match(receipt, /^ {2}\+ BOCCONCINO\s+EUR 4,00$/m);
 });
 
 test("delivery receipt prints contact details without a customer name", () => {
@@ -247,19 +339,18 @@ test("delivery receipt prints contact details without a customer name", () => {
 
     assert.match(receipt, /@@TITLE:CONSEGNA - POS@@/);
     assert.doesNotMatch(receipt, /CLIENTE:|Anna Rossi/);
-    assert.ok(receipt.includes("@@BOLD:ORARIO RICHIESTO 22:00@@"));
+    assert.ok(receipt.includes("@@BIG:ORARIO 22:00@@"));
     assert.ok(receipt.includes("DATA: 14/10/2026"));
     assert.ok(receipt.includes("TEL: +39 333 1234567"));
     assert.ok(receipt.includes("INDIRIZZO:\r\n@@BOLD:VIA ROMA 12, NAPOLI@@"));
-    assert.ok(receipt.indexOf("ORARIO RICHIESTO") < receipt.indexOf("DATA:"));
     assert.ok(receipt.indexOf("DATA:") < receipt.indexOf("TEL:"));
     assert.ok(receipt.indexOf("TEL:") < receipt.indexOf("INDIRIZZO:"));
     assert.ok(receipt.indexOf("@@TITLE:") < receipt.indexOf("@@SECTION:"));
-    assert.equal(lines[1], "-".repeat(24));
-    const productLine = lines.findIndex(line => line.startsWith("1X MARGHERITA"));
-    assert.equal(lines[productLine + 1], "");
-    assert.equal(lines[productLine + 2], "");
-    assert.equal(lines[productLine + 3], "-".repeat(24));
+    assert.equal(lines[2], "-".repeat(24));
+    const productLine = lines.findIndex(line => line.startsWith("@@ITEM:1X MARGHERITA"));
+    assert.ok(productLine >= 0);
+    assert.equal(lines.some((line, index) => line === "" && lines[index + 1] === ""), false);
+    assert.equal(lines[lines.length - 1], "@@BIG:ORARIO 22:00@@");
 });
 
 test("delivery title displays the available payment status", () => {
@@ -276,7 +367,7 @@ test("delivery title displays the available payment status", () => {
         ["pagato", "PAGATO"],
         ["non_pagato", "NON PAGATO"]
     ]) {
-        const titleLine = formatReceipt({ ...order, statoPagamento: status }).split(/\r?\n/)[0];
+        const titleLine = formatReceipt({ ...order, statoPagamento: status }).split(/\r?\n/)[1];
         assert.equal(titleLine, `@@TITLE:CONSEGNA - ${label}@@`);
         assert.ok(label.length + "CONSEGNA - ".length <= 24);
     }
@@ -297,7 +388,7 @@ test("counter receipt has a dedicated title without destination details", () => 
     assert.doesNotMatch(receipt, /CLIENTE:|TAVOLO:/);
 });
 
-test("the same receipt is sent to both printers and retries skip a printer that already received it", async () => {
+test("printer-specific receipts are sent and retries skip a printer that already received it", async () => {
     const { sendOrderToPrinters } = require("../scripts/printer-agent");
     const order = {
         numero: 19,
@@ -331,8 +422,8 @@ test("the same receipt is sent to both printers and retries skip a printer that 
     });
 
     assert.deepEqual(retry.map(item => item.name), ["Sala"]);
-    assert.equal(retry[0].receipt, firstAttempt[0].receipt);
-    assert.equal(firstAttempt[0].receipt, firstAttempt[1].receipt);
+    assert.equal(retry[0].receipt, firstAttempt[1].receipt);
+    assert.notEqual(firstAttempt[0].receipt, firstAttempt[1].receipt);
 });
 
 test("receipt wraps long product, destination and note text to the configured roll width", () => {
@@ -350,11 +441,7 @@ test("receipt wraps long product, destination and note text to the configured ro
     });
     const lines = receipt.split(/\r?\n/);
 
-    assert.ok(lines.every(line => (
-        line.startsWith("@@TITLE:") || line.startsWith("@@SECTION:") || line.startsWith("@@BOLD:")
-            ? true
-            : Array.from(line).length <= 24
-    )));
+    assert.ok(lines.every(line => receiptLineFits(line, 24)));
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("CLIENTE CON UN NOMINATIVO MOLTO LUNGO"));
     assert.ok(receipt.includes("NOTE:"));
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("DETTAGLI IMPORTANTI"));
@@ -373,13 +460,8 @@ test("receipt fills the configured 58 mm and 80 mm roll widths", () => {
     const narrowReceipt = formatReceipt(order, 58);
     const wideReceipt = formatReceipt(order, 80);
 
-    assert.equal(narrowReceipt.split(/\r?\n/)[1], "-".repeat(16));
-    assert.equal(wideReceipt.split(/\r?\n/)[1], "-".repeat(24));
-    const fitsWidth = (line, width) => (
-        line.startsWith("@@TITLE:") || line.startsWith("@@SECTION:") || line.startsWith("@@BOLD:")
-            ? true
-            : Array.from(line).length <= width
-    );
-    assert.ok(narrowReceipt.split(/\r?\n/).every(line => fitsWidth(line, 16)));
-    assert.ok(wideReceipt.split(/\r?\n/).every(line => fitsWidth(line, 24)));
+    assert.equal(narrowReceipt.split(/\r?\n/)[2], "-".repeat(16));
+    assert.equal(wideReceipt.split(/\r?\n/)[2], "-".repeat(24));
+    assert.ok(narrowReceipt.split(/\r?\n/).every(line => receiptLineFits(line, 16)));
+    assert.ok(wideReceipt.split(/\r?\n/).every(line => receiptLineFits(line, 24)));
 });

@@ -61,7 +61,7 @@ function seed() {
         metadata: { menuVersion: { versione: 1 } },
         menuCategorie: {
             pizze: { nome: "Pizze", ordine: 1, ammetteExtra: true, archiviata: false },
-            dolci: { nome: "Dolci", ordine: 2, ammetteExtra: false, archiviata: false },
+            dolci: { nome: "Dolci", ordine: 2, ammetteExtra: false, archiviata: false, stampaCucina: false },
             hidden: { nome: "Archivio", ordine: 3, ammetteExtra: false, archiviata: true }
         },
         menuProdotti: {
@@ -129,6 +129,8 @@ test("menu store orders active categories and products and keeps unavailable ent
     assert.deepEqual(menu.menu.map(product => product.nome), ["Margherita", "Esaurita", "Dolce"]);
     assert.equal(menu.menu[0].ammetteExtra, true);
     assert.equal(menu.menu[1].disponibile, false);
+    assert.equal(menu.categories[0].stampaCucina, true);
+    assert.equal(menu.categories[1].stampaCucina, false);
     assert.equal(menu.extras.length, 2);
     assert.equal(menu.extras[1].disponibile, false);
     assert.equal(menu.menu.some(product => product.nome === "Archiviata"), false);

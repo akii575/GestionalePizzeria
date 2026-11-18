@@ -230,6 +230,12 @@ test("menu admin API validates names, prices, ingredients, categories and unique
     });
     assert.equal(invalidIngredients.statusCode, 400);
 
+    const invalidKitchenFlag = await invoke("POST", {
+        token: "admin",
+        body: { risorsa: "categorie", nome: "Categoria nuova", ammetteExtra: false, stampaCucina: "no" }
+    });
+    assert.equal(invalidKitchenFlag.statusCode, 400);
+
     const archivedCategory = await invoke("POST", {
         token: "admin",
         body: {
@@ -277,6 +283,20 @@ test("menu admin API creates and updates records while incrementing the menu ver
     assert.equal(createdCategory.body.versione, 4);
     const categoryId = createdCategory.body.id;
     assert.equal(db.get("menuCategorie", categoryId).ordine, 3);
+    assert.equal(db.get("menuCategorie", categoryId).stampaCucina, true);
+
+    const updatedCategory = await invoke("PUT", {
+        token: "admin",
+        body: {
+            risorsa: "categorie",
+            id: "pizze",
+            nome: "Pizze",
+            ammetteExtra: true,
+            stampaCucina: false
+        }
+    });
+    assert.equal(updatedCategory.body.versione, 5);
+    assert.equal(db.get("menuCategorie", "pizze").stampaCucina, false);
 
     const createdProduct = await invoke("POST", {
         token: "admin",
@@ -289,7 +309,7 @@ test("menu admin API creates and updates records while incrementing the menu ver
             disponibile: false
         }
     });
-    assert.equal(createdProduct.body.versione, 5);
+    assert.equal(createdProduct.body.versione, 6);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).disponibile, false);
 
     const updatedProduct = await invoke("PUT", {
@@ -303,7 +323,7 @@ test("menu admin API creates and updates records while incrementing the menu ver
             ingredienti: []
         }
     });
-    assert.equal(updatedProduct.body.versione, 6);
+    assert.equal(updatedProduct.body.versione, 7);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).prezzo, 1.5);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).disponibile, false);
 });
