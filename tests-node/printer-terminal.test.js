@@ -194,6 +194,23 @@ test("long product names stay separate from the right-aligned price", () => {
     assert.doesNotMatch(lines[productLine], /EUR|2\.0\s+EUR/);
 });
 
+test("kitchen receipts keep rows whose category is unknown", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        numero: 42,
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{ prodotto: "Fuori Menu", prezzoBase: 8, totale: 8 }],
+        totale: 8
+    }, 80, {
+        profile: "cucina",
+        kitchenCategories: new Set(["pizze"]),
+        productCategories: {}
+    });
+
+    assert.match(receipt, /@@SECTION:ALTRO@@/);
+    assert.match(receipt, /@@ITEM:1X FUORI MENU@@/);
+});
+
 test("kitchen receipts include only kitchen categories and ingredients, while sala keeps prices", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const order = {

@@ -169,7 +169,7 @@ function receiptRowsForProfile(order, options) {
     const productCategories = options.productCategories || {};
     return rows.filter(row => {
         const category = row.categoria || productCategories[row.prodotto];
-        return category !== undefined && allowed.has(category);
+        return category === undefined || allowed.has(category);
     });
 }
 
