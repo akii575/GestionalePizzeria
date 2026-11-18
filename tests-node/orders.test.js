@@ -117,6 +117,31 @@ test("order edits can keep existing unavailable products but cannot add more", (
     }, customCatalog, { existingRows: [{ prodotto: "Margherita" }] }), /e' esaurito/);
 });
 
+test("order edits keep existing archived products but reject new archived rows", () => {
+    const product = testCatalog.menu.find(item => item.nome === "Margherita");
+    const customCatalog = {
+        ...testCatalog,
+        allProducts: [{ ...product, archiviato: true }]
+    };
+    const existingRows = [{ prodotto: "Margherita" }];
+
+    assert.equal(
+        prepareOrder({
+            tavoloOCliente: "Tavolo 1",
+            righe: [{ prodotto: "Margherita" }]
+        }, customCatalog, { existingRows }).righe.length,
+        1
+    );
+    assert.throws(() => prepareOrder({
+        tavoloOCliente: "Tavolo 1",
+        righe: [{ prodotto: "Margherita" }]
+    }, customCatalog), /e' archiviato/);
+    assert.throws(() => prepareOrder({
+        tavoloOCliente: "Tavolo 1",
+        righe: [{ prodotto: "Margherita" }, { prodotto: "Margherita" }]
+    }, customCatalog, { existingRows }), /e' archiviato/);
+});
+
 test("order validation rejects unavailable extras", () => {
     const customCatalog = {
         ...testCatalog,

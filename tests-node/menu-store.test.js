@@ -48,6 +48,9 @@ function createDatabase(seed) {
         },
         reads(name) {
             return readCounts.get(name) || 0;
+        },
+        subscriptions(name) {
+            return listeners.get(name)?.size || 0;
         }
     };
     return db;
@@ -135,7 +138,11 @@ test("menu store orders active categories and products and keeps unavailable ent
 test("menu store caches for 60 seconds and invalidates on menu version changes", async () => {
     const db = createDatabase(seed());
     let now = 100;
-    const store = createMenuStore(db, { now: () => now, onError: () => {} });
+    const store = createMenuStore(db, {
+        now: () => now,
+        onError: () => {},
+        listenForVersionChanges: true
+    });
 
     await store.getMenuData();
     await store.getMenuData();
@@ -148,5 +155,15 @@ test("menu store caches for 60 seconds and invalidates on menu version changes",
     now += 60_001;
     await store.getMenuData();
     assert.equal(db.reads("menuProdotti"), 3);
+    store.stop();
+});
+
+test("menu version listener is disabled by default for serverless stores", async () => {
+    const db = createDatabase(seed());
+    const store = createMenuStore(db);
+
+    await store.getMenuData();
+
+    assert.equal(db.subscriptions("metadata"), 0);
     store.stop();
 });

@@ -4,12 +4,12 @@ const path = require("node:path");
 const { cert, initializeApp } = require("firebase-admin/app");
 const { FieldPath, FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { DEFAULT_RECEIPT_WIDTH, listNetworkPrinters, sendEscPosReceipt } = require("./network-printer");
-const { getMenuData } = require("../lib/menu-store");
 
 const PROJECT_ID = "gestionalecivico7";
 const LEASE_MILLISECONDS = 120_000;
 const POLL_MILLISECONDS = 15_000;
 const LOCK_RENEW_MILLISECONDS = 30_000;
+const RECEIPT_MENU_CACHE_MILLISECONDS = 60_000;
 const RECEIPT_WIDTH_58_MM = 16;
 
 function initializeFirestore() {
@@ -284,6 +284,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     let drainRequested = false;
     let securityPromise = null;
     let lockPromise = null;
+    let receiptMenuCache = null;
+    let receiptMenuCacheExpiresAt = 0;
     let receiptMenuPromise = null;
     let unsubscribeQueue = null;
     let listenerRetryTimer = null;
@@ -332,17 +334,38 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     }
 
     async function getReceiptMenuData() {
+        if (receiptMenuCache && Date.now() < receiptMenuCacheExpiresAt) {
+            return receiptMenuCache;
+        }
         if (!receiptMenuPromise) {
-            receiptMenuPromise = getMenuData(db)
-                .then(data => ({
-                    categoryOrder: data.categories.map(category => category.id),
-                    productCategories: Object.fromEntries(
-                        data.allProducts.map(product => [product.nome, product.categoriaId])
-                    )
-                }))
+            receiptMenuPromise = Promise.all([
+                db.collection("menuCategorie").get(),
+                db.collection("menuProdotti").get()
+            ])
+                .then(([categorySnapshot, productSnapshot]) => {
+                    const categoryOrder = categorySnapshot.docs
+                        .filter(document => document.data().archiviata !== true)
+                        .sort((first, second) => (
+                            Number(first.data().ordine || 0) - Number(second.data().ordine || 0)
+                            || first.id.localeCompare(second.id)
+                        ))
+                        .map(document => document.id);
+                    const productCategories = Object.fromEntries(
+                        productSnapshot.docs
+                            .map(document => document.data())
+                            .filter(product => product.nome && product.categoriaId)
+                            .map(product => [product.nome, product.categoriaId])
+                    );
+                    return { categoryOrder, productCategories };
+                })
                 .catch(error => {
                     console.error("Unable to load menu categories for receipt:", error.code || error.name || "unknown");
                     return { categoryOrder: [], productCategories: {} };
+                })
+                .then(menuData => {
+                    receiptMenuCache = menuData;
+                    receiptMenuCacheExpiresAt = Date.now() + RECEIPT_MENU_CACHE_MILLISECONDS;
+                    return menuData;
                 })
                 .finally(() => {
                     receiptMenuPromise = null;
