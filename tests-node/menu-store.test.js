@@ -193,6 +193,28 @@ test("menu store does not reread collections after cache expiry when version is 
     assert.equal(db.reads("menuExtra"), 1);
 });
 
+test("menu store reloads collection data after a changed version check", async () => {
+    const db = createDatabase(seed());
+    let now = 100;
+    const store = createMenuStore(db, { now: () => now, onError: () => {} });
+
+    await store.getMenuData();
+    db.update("menuProdotti", "margherita", {
+        ...seed().menuProdotti.margherita,
+        nome: "Margherita nuova"
+    });
+    db.update("metadata", "menuVersion", { versione: 2 });
+    now += 30_001;
+
+    const menu = await store.getMenuData();
+
+    assert.ok(menu.menu.some(product => product.nome === "Margherita nuova"));
+    assert.equal(menu.menu.some(product => product.nome === "Margherita"), false);
+    assert.equal(db.reads("menuCategorie"), 2);
+    assert.equal(db.reads("menuProdotti"), 2);
+    assert.equal(db.reads("menuExtra"), 2);
+});
+
 test("menu store invalidation forces a version check", async () => {
     const db = createDatabase(seed());
     let now = 100;
