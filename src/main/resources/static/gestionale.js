@@ -1,4 +1,11 @@
-const stato = { ordini: [], menu: [], timer: null, richiestaCaricamento: 0 };
+const stato = {
+    ordini: [],
+    menu: [],
+    timer: null,
+    richiestaCaricamento: 0,
+    versioni: new Map(),
+    ultimoCaricamentoCompleto: 0
+};
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const lista = document.getElementById("lista-ordini");
 const statoPagina = document.getElementById("stato");
@@ -57,22 +64,46 @@ async function eliminaOrdine(numero) {
         eliminazioniInCorso.delete(id);
     }
 }
-async function caricaOrdini() {
+function chiaveVersioneOrdini() {
+    const dataSelezionata = document.getElementById("data").value;
+    const oggiRoma = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Rome",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+    return `${dataSelezionata || oggiRoma}|${tipoServizio || "tutti"}`;
+}
+async function aggiornaOrdiniAutomaticamente() {
+    const completa = Date.now() - stato.ultimoCaricamentoCompleto >= 120_000;
+    await caricaOrdini({ completa });
+}
+async function caricaOrdini({ completa = true } = {}) {
     const richiesta = ++stato.richiestaCaricamento;
-    mostraStato("Caricamento ordini...", "loading");
+    if (completa) mostraStato("Caricamento ordini...", "loading");
     try {
         const parametri = new URLSearchParams();
         const data = document.getElementById("data").value;
         if (data) parametri.set("data", data);
         if (tipoServizio) parametri.set("tipo", tipoServizio);
+        const chiave = chiaveVersioneOrdini();
+        const versione = stato.versioni.get(chiave);
+        if (!completa && Number.isSafeInteger(versione)) parametri.set("versione", String(versione));
         const query = parametri.toString();
         const urlOrdini = `/api/ordini${query ? `?${query}` : ""}`;
         const risposta = await fetch(urlOrdini, { cache: "no-store" });
         if (richiesta !== stato.richiestaCaricamento) return;
         if (!risposta.ok) throw new Error("Impossibile caricare gli ordini.");
-        const ordini = await risposta.json();
+        const risultato = await risposta.json();
         if (richiesta !== stato.richiestaCaricamento) return;
-        stato.ordini = ordini;
+        stato.versioni.set(chiave, risultato.versione);
+        if (risultato.invariato) {
+            document.getElementById("ultimo-aggiornamento").textContent = new Date().toLocaleTimeString("it-IT");
+            mostraStato("");
+            return;
+        }
+        stato.ordini = risultato.ordini;
+        if (completa) stato.ultimoCaricamentoCompleto = Date.now();
         document.getElementById("ultimo-aggiornamento").textContent = new Date().toLocaleTimeString("it-IT");
         render();
         mostraStato("");
@@ -85,7 +116,7 @@ function configuraAggiornamento() {
     if (stato.timer) clearInterval(stato.timer);
     stato.timer = null;
     if (document.getElementById("autoAggiorna").checked && document.visibilityState === "visible") {
-        stato.timer = setInterval(caricaOrdini, 15000);
+        stato.timer = setInterval(aggiornaOrdiniAutomaticamente, 15000);
     }
 }
 document.getElementById("aggiorna").addEventListener("click", caricaOrdini);
@@ -93,9 +124,7 @@ document.getElementById("filtro").addEventListener("input", render);
 document.getElementById("data").addEventListener("change", caricaOrdini);
 document.getElementById("autoAggiorna").addEventListener("change", configuraAggiornamento);
 document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && document.getElementById("autoAggiorna").checked) {
-        caricaOrdini();
-    }
+    if (document.visibilityState === "visible") caricaOrdini({ completa: true });
     configuraAggiornamento();
 });
 if (window.paymentUI) {

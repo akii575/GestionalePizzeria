@@ -8,6 +8,7 @@ function createDatabase(seed) {
     );
     const listeners = new Map();
     const readCounts = new Map();
+    const documentReads = new Map();
     const getDocuments = name => collections.get(name) || new Map();
     const snapshot = (name, id, value) => ({
         id,
@@ -20,6 +21,7 @@ function createDatabase(seed) {
                 doc(id) {
                     return {
                         async get() {
+                            documentReads.set(name, (documentReads.get(name) || 0) + 1);
                             return snapshot(name, id, getDocuments(name).get(id));
                         },
                         onSnapshot(next) {
@@ -48,6 +50,9 @@ function createDatabase(seed) {
         },
         reads(name) {
             return readCounts.get(name) || 0;
+        },
+        documentReads(name) {
+            return documentReads.get(name) || 0;
         },
         subscriptions(name) {
             return listeners.get(name)?.size || 0;
@@ -137,7 +142,7 @@ test("menu store orders active categories and products and keeps unavailable ent
     assert.equal(menu.extras.some(extra => extra.nome === "Extra archiviato"), false);
 });
 
-test("menu store caches for 60 seconds and invalidates on menu version changes", async () => {
+test("menu store checks versions at most every 30 seconds and reloads collections only on change", async () => {
     const db = createDatabase(seed());
     let now = 100;
     const store = createMenuStore(db, {
@@ -149,15 +154,56 @@ test("menu store caches for 60 seconds and invalidates on menu version changes",
     await store.getMenuData();
     await store.getMenuData();
     assert.equal(db.reads("menuProdotti"), 1);
+    assert.equal(db.documentReads("metadata"), 1);
 
+    now += 20_000;
+    await store.getMenuData();
+    assert.equal(db.documentReads("metadata"), 1);
+    assert.equal(db.reads("menuProdotti"), 1);
+
+    now += 10_000;
     db.update("metadata", "menuVersion", { versione: 2 });
     await store.getMenuData();
+    assert.equal(db.documentReads("metadata"), 2);
     assert.equal(db.reads("menuProdotti"), 2);
 
-    now += 60_001;
+    now += 30_001;
     await store.getMenuData();
-    assert.equal(db.reads("menuProdotti"), 3);
+    assert.equal(db.documentReads("metadata"), 3);
+    assert.equal(db.reads("menuProdotti"), 2);
     store.stop();
+});
+
+test("menu store does not reread collections after cache expiry when version is unchanged", async () => {
+    const db = createDatabase(seed());
+    let now = 100;
+    const store = createMenuStore(db, {
+        now: () => now,
+        onError: () => {}
+    });
+
+    const initial = await store.getMenuData();
+    now += 60_001;
+    const cached = await store.getMenuData();
+
+    assert.equal(cached, initial);
+    assert.equal(db.documentReads("metadata"), 2);
+    assert.equal(db.reads("menuCategorie"), 1);
+    assert.equal(db.reads("menuProdotti"), 1);
+    assert.equal(db.reads("menuExtra"), 1);
+});
+
+test("menu store invalidation forces a version check", async () => {
+    const db = createDatabase(seed());
+    let now = 100;
+    const store = createMenuStore(db, { now: () => now, onError: () => {} });
+
+    await store.getMenuData();
+    store.invalidate();
+    await store.getMenuData();
+
+    assert.equal(db.documentReads("metadata"), 2);
+    assert.equal(db.reads("menuProdotti"), 2);
 });
 
 test("menu version listener is disabled by default for serverless stores", async () => {

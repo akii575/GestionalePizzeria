@@ -3,6 +3,7 @@ const { httpError, requireStaffAccess, requireSameOrigin } = require("../../lib/
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { getMenuData } = require("../../lib/menu-store");
 const { prepareOrder, preparePaymentUpdate, publicOrder } = require("../../lib/orders");
+const { incrementOrdersVersion } = require("../../lib/orders-version");
 const { diffRighe } = require("../../lib/order-diff");
 const {
     hasExpiredPrinterQueuePause,
@@ -28,6 +29,7 @@ module.exports = api(async (req, res) => {
     const order = db.collection("orders").doc(String(numero));
     const printerJobs = db.collection("printerJobs");
     const printerControl = db.collection("metadata").doc("printerControl");
+    const ordersVersion = db.collection("metadata").doc("ordersVersion");
 
     if (req.method === "POST") {
         requireSameOrigin(req);
@@ -60,6 +62,7 @@ module.exports = api(async (req, res) => {
                 stampaInCoda: true,
                 messaggioStampa
             });
+            incrementOrdersVersion(transaction, ordersVersion);
             transaction.set(printerJobs.doc(jobId(numero, progressivo)), {
                 numero,
                 tipoStampa: "ristampa",
@@ -151,6 +154,7 @@ module.exports = api(async (req, res) => {
                 transaction.set(printerControl, { paused: false });
             }
             transaction.set(order, updated);
+            incrementOrdersVersion(transaction, ordersVersion);
             for (const job of jobs.filter(job => ["queued", "failed"].includes(job.status))) {
                 transaction.update(job.ref, {
                     updatedAt: new Date().toISOString(),
@@ -182,6 +186,7 @@ module.exports = api(async (req, res) => {
             const previous = snapshot.data();
             const update = preparePaymentUpdate(previous, req.body);
             transaction.update(order, update);
+            incrementOrdersVersion(transaction, ordersVersion);
             return { ...previous, ...update };
         });
         return res.status(200).json(publicOrder(saved));
@@ -205,6 +210,7 @@ module.exports = api(async (req, res) => {
                 transaction.set(printerControl, { paused: false });
             }
             transaction.delete(order);
+            incrementOrdersVersion(transaction, ordersVersion);
         });
         return res.status(204).end();
     }

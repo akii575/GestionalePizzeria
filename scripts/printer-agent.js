@@ -7,8 +7,8 @@ const { DEFAULT_RECEIPT_WIDTH, listNetworkPrinters, sendEscPosReceipt } = requir
 
 const PROJECT_ID = "gestionalecivico7";
 const LEASE_MILLISECONDS = 120_000;
-const POLL_MILLISECONDS = 15_000;
-const LOCK_RENEW_MILLISECONDS = 30_000;
+const POLL_MILLISECONDS = 60_000;
+const LOCK_RENEW_MILLISECONDS = 60_000;
 const RECEIPT_MENU_CACHE_MILLISECONDS = 60_000;
 const RECEIPT_WIDTH_58_MM = 16;
 
@@ -365,6 +365,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     let receiptMenuCacheExpiresAt = 0;
     let receiptMenuPromise = null;
     let unsubscribeQueue = null;
+    let queueListenerActive = false;
+    let lastQueueSnapshotHadJobs = false;
     let listenerRetryTimer = null;
     let listenerRetryAttempt = 0;
     let securityTimer = null;
@@ -718,6 +720,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     function handleListenerError(error) {
         unsubscribeQueue?.();
         unsubscribeQueue = null;
+        queueListenerActive = false;
+        lastQueueSnapshotHadJobs = false;
         if (!active || listenerRetryTimer) return;
         workerState = "cloud_unavailable";
         lastError = "Connessione alla coda di stampa non disponibile.";
@@ -732,10 +736,12 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     }
 
     function listenForQueuedJobs() {
-        if (!active || unsubscribeQueue) return;
+        if (!active || queueListenerActive) return;
         try {
+            queueListenerActive = true;
             unsubscribeQueue = jobs.where("status", "==", "queued").onSnapshot(snapshot => {
                 listenerRetryAttempt = 0;
+                lastQueueSnapshotHadJobs = !snapshot.empty;
                 if (!snapshot.empty) {
                     void drainQueue().catch(error => {
                         workerState = "cloud_unavailable";
@@ -764,7 +770,9 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             await recoverExpiredJob();
             await refreshPrinters();
             if (lastError === "Connessione alla coda di stampa non disponibile.") lastError = null;
-            await drainQueue();
+            if (!queueListenerActive || lastQueueSnapshotHadJobs) {
+                await drainQueue();
+            }
         })().finally(() => {
             securityPromise = null;
         });
@@ -853,6 +861,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         running = false;
         unsubscribeQueue?.();
         unsubscribeQueue = null;
+        queueListenerActive = false;
+        lastQueueSnapshotHadJobs = false;
         clearInterval(securityTimer);
         clearInterval(lockTimer);
         clearTimeout(listenerRetryTimer);

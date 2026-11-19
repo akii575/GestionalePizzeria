@@ -4,9 +4,22 @@ const auth = require("../lib/auth");
 const firebaseAdmin = require("../lib/firebase-admin");
 const { getRomeDayRange } = require("../lib/rome-day-range");
 
-function makeDb(orders, queryLog) {
+function makeDb(orders, queryLog, { version = 0 } = {}) {
+    let orderReads = 0;
     return {
         collection(name) {
+            if (name === "metadata") {
+                return {
+                    doc(id) {
+                        assert.equal(id, "ordersVersion");
+                        return {
+                            async get() {
+                                return { exists: version !== null, data: () => ({ versione: version }) };
+                            }
+                        };
+                    }
+                };
+            }
             assert.equal(name, "orders");
             const filters = [];
             const orderings = [];
@@ -20,6 +33,7 @@ function makeDb(orders, queryLog) {
                     return query;
                 },
                 async get() {
+                    orderReads++;
                     queryLog.push({ filters, orderings });
                     const docs = orders.filter(order => filters.every(([field, operator, value]) => {
                         if (operator === ">=") return order[field] >= value;
@@ -32,6 +46,9 @@ function makeDb(orders, queryLog) {
                 }
             };
             return query;
+        },
+        get orderReads() {
+            return orderReads;
         }
     };
 }
@@ -79,10 +96,11 @@ test("order and delivery APIs query the selected Rome day and order by number de
         { numero: 11, tipo: "consegna", dataOra: "2026-03-29T10:00:00.000Z" }
     ];
     const queryLog = [];
+    const db = makeDb(orders, queryLog);
     t.mock.method(auth, "requireStaffAccess", async () => ({}));
     t.mock.method(auth, "requireDeliveryAccess", async () => ({}));
     t.mock.method(firebaseAdmin, "getFirebaseServices", () => ({
-        db: makeDb(orders, queryLog)
+        db
     }));
 
     const ordersPath = require.resolve("../api/ordini/index.js");
@@ -98,11 +116,12 @@ test("order and delivery APIs query the selected Rome day and order by number de
 
     const tables = await invoke(ordersHandler, { data: "2026-03-29", tipo: "tavolo" });
     assert.equal(tables.statusCode, 200);
-    assert.deepEqual(tables.body.map(order => order.numero), [8, 7]);
+    assert.deepEqual(tables.body.ordini.map(order => order.numero), [8, 7]);
+    assert.equal(tables.body.versione, 0);
 
     const deliveries = await invoke(deliveriesHandler, { data: "2026-03-29" });
     assert.equal(deliveries.statusCode, 200);
-    assert.deepEqual(deliveries.body.map(order => order.numero), [11, 9]);
+    assert.deepEqual(deliveries.body.ordini.map(order => order.numero), [11, 9]);
 
     const expectedRange = [
         ["dataOra", ">=", "2026-03-28T23:00:00.000Z"],
@@ -120,4 +139,23 @@ test("order and delivery APIs query the selected Rome day and order by number de
 
     const invalidDate = await invoke(ordersHandler, { data: "2026-02-30" });
     assert.equal(invalidDate.statusCode, 400);
+});
+
+test("orders API returns unchanged without reading orders when the version matches", async t => {
+    const queryLog = [];
+    const db = makeDb([], queryLog, { version: 12 });
+    t.mock.method(auth, "requireStaffAccess", async () => ({}));
+    t.mock.method(firebaseAdmin, "getFirebaseServices", () => ({ db }));
+
+    const ordersPath = require.resolve("../api/ordini/index.js");
+    delete require.cache[ordersPath];
+    const ordersHandler = require(ordersPath);
+    t.after(() => delete require.cache[ordersPath]);
+
+    const response = await invoke(ordersHandler, { data: "2026-03-29", versione: "12" });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, { invariato: true, versione: 12 });
+    assert.equal(db.orderReads, 0);
+    assert.deepEqual(queryLog, []);
 });

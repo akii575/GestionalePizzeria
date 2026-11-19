@@ -1,4 +1,11 @@
-const stato = { ordini: [], menu: [], timer: null };
+const stato = {
+    ordini: [],
+    menu: [],
+    timer: null,
+    versioni: new Map(),
+    ultimoCaricamentoCompleto: 0,
+    richiestaCaricamento: 0
+};
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const lista = document.getElementById("lista-consegne");
 const statoPagina = document.getElementById("stato");
@@ -65,14 +72,47 @@ async function eliminaConsegna(numero) {
     }
 }
 
-async function caricaConsegne() {
-    mostraStato("Caricamento consegne...", "loading");
+function chiaveVersioneOrdini() {
+    const dataSelezionata = document.getElementById("data").value;
+    const oggiRoma = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Rome",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+    return `${dataSelezionata || oggiRoma}|consegna`;
+}
+
+async function aggiornaConsegneAutomaticamente() {
+    const completa = Date.now() - stato.ultimoCaricamentoCompleto >= 120_000;
+    await caricaConsegne({ completa });
+}
+
+async function caricaConsegne({ completa = true } = {}) {
+    const richiesta = ++stato.richiestaCaricamento;
+    if (completa) mostraStato("Caricamento consegne...", "loading");
     try {
         const data = document.getElementById("data").value;
-        const url = data ? `/api/consegne?data=${encodeURIComponent(data)}` : "/api/consegne";
+        const parametri = new URLSearchParams();
+        if (data) parametri.set("data", data);
+        const chiave = chiaveVersioneOrdini();
+        const versione = stato.versioni.get(chiave);
+        if (!completa && Number.isSafeInteger(versione)) parametri.set("versione", String(versione));
+        const query = parametri.toString();
+        const url = `/api/consegne${query ? `?${query}` : ""}`;
         const risposta = await fetch(url, { cache: "no-store" });
+        if (richiesta !== stato.richiestaCaricamento) return;
         if (!risposta.ok) throw new Error("Impossibile caricare le consegne.");
-        stato.ordini = await risposta.json();
+        const risultato = await risposta.json();
+        if (richiesta !== stato.richiestaCaricamento) return;
+        stato.versioni.set(chiave, risultato.versione);
+        if (risultato.invariato) {
+            document.getElementById("ultimo-aggiornamento").textContent = new Date().toLocaleTimeString("it-IT");
+            mostraStato("");
+            return;
+        }
+        stato.ordini = risultato.ordini;
+        if (completa) stato.ultimoCaricamentoCompleto = Date.now();
         document.getElementById("ultimo-aggiornamento").textContent = new Date().toLocaleTimeString("it-IT");
         render();
         mostraStato("");
@@ -90,7 +130,9 @@ async function caricaMenu() {
 function configuraAggiornamento() {
     if (stato.timer) clearInterval(stato.timer);
     stato.timer = null;
-    if (document.visibilityState === "visible") stato.timer = setInterval(caricaConsegne, 30_000);
+    if (document.visibilityState === "visible") {
+        stato.timer = setInterval(aggiornaConsegneAutomaticamente, 15_000);
+    }
 }
 
 async function avvia() {
@@ -112,7 +154,7 @@ document.getElementById("aggiorna").addEventListener("click", caricaConsegne);
 document.getElementById("filtro").addEventListener("input", render);
 document.getElementById("data").addEventListener("change", caricaConsegne);
 document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") caricaConsegne();
+    if (document.visibilityState === "visible") caricaConsegne({ completa: true });
     configuraAggiornamento();
 });
 if (window.paymentUI) {

@@ -18,6 +18,7 @@ function createDatabase(seed = {}, { emitInitial = true, failReads = [] } = {}) 
     );
     const failedReads = new Set(failReads);
     const listeners = new Set();
+    const queryReads = new Map();
     let subscriptionCount = 0;
     const documents = name => {
         if (!collections.has(name)) collections.set(name, new Map());
@@ -74,6 +75,8 @@ function createDatabase(seed = {}, { emitInitial = true, failReads = [] } = {}) 
             return makeQuery(name, filters, sortByDocumentId, size);
         },
         async get() {
+            const key = `${name}:${filters.map(filter => `${filter.field}=${filter.value}`).join(",")}`;
+            queryReads.set(key, (queryReads.get(key) || 0) + 1);
             return snapshotFor(this);
         },
         onSnapshot(next, error) {
@@ -113,6 +116,9 @@ function createDatabase(seed = {}, { emitInitial = true, failReads = [] } = {}) 
         },
         get subscriptionCount() {
             return subscriptionCount;
+        },
+        reads(name, status) {
+            return queryReads.get(`${name}:status=${status}`) || 0;
         }
     };
 }
@@ -192,7 +198,21 @@ test("a queued job prints from the snapshot without waiting for the security tim
 
         assert.deepEqual(printed, [7]);
         assert.equal(database.documents("printerJobs").get("000000000007").status, "printed");
-        assert.deepEqual(intervals.map(timer => timer.milliseconds), [15_000, 30_000]);
+        assert.deepEqual(intervals.map(timer => timer.milliseconds), [60_000, 60_000]);
+        await agent.stop();
+    });
+});
+
+test("the security timer skips the queue drain when an active listener last saw no jobs", async () => {
+    await withFakeTimers(async ({ intervals }) => {
+        const database = createDatabase();
+        const agent = createPrinterAgent(database, { getPrinters: async () => readyPrinter() });
+        await agent.run();
+        await new Promise(resolve => setImmediate(resolve));
+
+        assert.equal(database.reads("printerJobs", "queued"), 0);
+        await intervals.find(timer => timer.milliseconds === 60_000).run();
+        assert.equal(database.reads("printerJobs", "queued"), 0);
         await agent.stop();
     });
 });
@@ -323,7 +343,7 @@ test("the security timer drains queued jobs when the listener is stopped", async
         database.failListener(new Error("listener stopped"));
         database.addDocument("printerJobs", "000000000007", queuedJob(7), false);
 
-        const securityPoll = intervals.find(timer => timer.milliseconds === 15_000);
+        const securityPoll = intervals.find(timer => timer.milliseconds === 60_000);
         await securityPoll.run();
 
         assert.equal(printCount, 1);

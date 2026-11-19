@@ -1,5 +1,5 @@
 const { api, methodNotAllowed } = require("../../lib/api");
-const { requireDeliveryAccess } = require("../../lib/auth");
+const { httpError, requireDeliveryAccess } = require("../../lib/auth");
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { publicOrder } = require("../../lib/orders");
 const { getRomeDayRange } = require("../../lib/rome-day-range");
@@ -10,8 +10,31 @@ module.exports = api(async (req, res) => {
     }
     await requireDeliveryAccess(req);
     const { db } = getFirebaseServices();
-    const { start, end } = getRomeDayRange((req.query || {}).data);
+    const queryParams = req.query || {};
+    const requestedVersion = queryParams.versione;
+    if (typeof requestedVersion !== "undefined"
+            && !(typeof requestedVersion === "number" && Number.isSafeInteger(requestedVersion)
+                && requestedVersion >= 0)
+            && !(typeof requestedVersion === "string" && /^\d+$/.test(requestedVersion))) {
+        throw httpError(400, "La versione degli ordini non e' valida.");
+    }
+    const parsedVersion = typeof requestedVersion === "undefined"
+        ? undefined
+        : Number(requestedVersion);
+    if (typeof parsedVersion !== "undefined"
+            && (!Number.isSafeInteger(parsedVersion) || parsedVersion < 0)) {
+        throw httpError(400, "La versione degli ordini non e' valida.");
+    }
+    const { start, end } = getRomeDayRange(queryParams.data);
     res.setHeader("Cache-Control", "private, no-store");
+    const versionSnapshot = await db.collection("metadata").doc("ordersVersion").get();
+    const versione = versionSnapshot.exists ? Number(versionSnapshot.data()?.versione || 0) : 0;
+    if (!Number.isSafeInteger(versione) || versione < 0) {
+        throw httpError(500, "Impossibile leggere la versione degli ordini.");
+    }
+    if (typeof parsedVersion !== "undefined" && parsedVersion === versione) {
+        return res.status(200).json({ invariato: true, versione });
+    }
     const snapshot = await db.collection("orders")
         .where("tipo", "==", "consegna")
         .where("dataOra", ">=", start)
@@ -22,5 +45,5 @@ module.exports = api(async (req, res) => {
     const deliveries = snapshot.docs.map(document => publicOrder(document.data()))
         .filter(order => order.tipo === "consegna")
         .sort((first, second) => second.numero - first.numero);
-    return res.status(200).json(deliveries);
+    return res.status(200).json({ versione, ordini: deliveries });
 });

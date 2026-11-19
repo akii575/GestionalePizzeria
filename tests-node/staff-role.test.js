@@ -243,7 +243,9 @@ test("gestionale skips calculating the daily total for staff", async () => {
         },
         fetch: async url => ({
             ok: true,
-            async json() { return url === "/api/menu" ? [] : [order]; }
+            async json() {
+                return url === "/api/menu" ? [] : { versione: 1, ordini: [order] };
+            }
         }),
         setInterval() { return 1; },
         clearInterval() {},

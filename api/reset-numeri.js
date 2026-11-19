@@ -2,6 +2,7 @@ const { randomUUID } = require("node:crypto");
 const { api, methodNotAllowed } = require("../lib/api");
 const { httpError, requireStaffAccess, requireSameOrigin } = require("../lib/auth");
 const { getFirebaseServices } = require("../lib/firebase-admin");
+const { incrementOrdersVersion } = require("../lib/orders-version");
 const {
     RESET_LOCK_MILLISECONDS,
     isActivePrintingJob,
@@ -37,6 +38,7 @@ module.exports = api(async (req, res) => {
     requireSameOrigin(req);
     const { db } = getFirebaseServices();
     const orders = db.collection("orders");
+    const ordersVersion = db.collection("metadata").doc("ordersVersion");
     const printerJobs = db.collection("printerJobs");
     const control = db.collection("metadata").doc("printerControl");
     const resetId = randomUUID();
@@ -59,6 +61,7 @@ module.exports = api(async (req, res) => {
             throw httpError(409, "Attendi la fine della stampa prima di azzerare i numeri.");
         }
 
+        let ordersVersionIncremented = false;
         for (const collection of [orders, printerJobs]) {
             let snapshot = await collection.limit(450).get();
             while (!snapshot.empty) {
@@ -75,9 +78,18 @@ module.exports = api(async (req, res) => {
                 });
                 const batch = db.batch();
                 snapshot.docs.forEach(document => batch.delete(document.ref));
+                if (collection === orders && !ordersVersionIncremented) {
+                    incrementOrdersVersion(batch, ordersVersion);
+                    ordersVersionIncremented = true;
+                }
                 await batch.commit();
                 snapshot = await collection.limit(450).get();
             }
+        }
+        if (!ordersVersionIncremented) {
+            const batch = db.batch();
+            incrementOrdersVersion(batch, ordersVersion);
+            await batch.commit();
         }
         await db.collection("metadata").doc("orderCounter").set({ value: 0 });
     } finally {

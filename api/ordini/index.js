@@ -3,6 +3,7 @@ const { httpError, requireStaffAccess, requireSameOrigin } = require("../../lib/
 const { getFirebaseServices } = require("../../lib/firebase-admin");
 const { getMenuData } = require("../../lib/menu-store");
 const { filterOrdersByType, prepareOrder, publicOrder } = require("../../lib/orders");
+const { incrementOrdersVersion } = require("../../lib/orders-version");
 const { hasExpiredPrinterQueuePause, isPrinterQueuePaused, jobId } = require("../../lib/printer-jobs");
 const { getRomeDayRange } = require("../../lib/rome-day-range");
 
@@ -14,9 +15,31 @@ module.exports = api(async (req, res) => {
     if (req.method === "GET") {
         res.setHeader("Cache-Control", "no-store");
         const queryParams = req.query || {};
+        const requestedVersion = queryParams.versione;
+        if (typeof requestedVersion !== "undefined"
+                && !(typeof requestedVersion === "number" && Number.isSafeInteger(requestedVersion)
+                    && requestedVersion >= 0)
+                && !(typeof requestedVersion === "string" && /^\d+$/.test(requestedVersion))) {
+            throw httpError(400, "La versione degli ordini non e' valida.");
+        }
+        const parsedVersion = typeof requestedVersion === "undefined"
+            ? undefined
+            : Number(requestedVersion);
+        if (typeof parsedVersion !== "undefined"
+                && (!Number.isSafeInteger(parsedVersion) || parsedVersion < 0)) {
+            throw httpError(400, "La versione degli ordini non e' valida.");
+        }
         const { start, end } = getRomeDayRange(queryParams.data);
         const tipo = queryParams.tipo === "" ? undefined : queryParams.tipo;
         if (typeof tipo !== "undefined") filterOrdersByType([], tipo);
+        const versionSnapshot = await db.collection("metadata").doc("ordersVersion").get();
+        const versione = versionSnapshot.exists ? Number(versionSnapshot.data()?.versione || 0) : 0;
+        if (!Number.isSafeInteger(versione) || versione < 0) {
+            throw httpError(500, "Impossibile leggere la versione degli ordini.");
+        }
+        if (typeof parsedVersion !== "undefined" && parsedVersion === versione) {
+            return res.status(200).json({ invariato: true, versione });
+        }
 
         let query = orders.where("dataOra", ">=", start).where("dataOra", "<", end);
         if (typeof tipo !== "undefined") {
@@ -28,12 +51,13 @@ module.exports = api(async (req, res) => {
         const results = snapshot.docs.map(document => publicOrder(document.data()));
         const filtered = typeof tipo === "undefined" ? results : filterOrdersByType(results, tipo);
         filtered.sort((first, second) => Number(second.numero) - Number(first.numero));
-        return res.status(200).json(filtered);
+        return res.status(200).json({ versione, ordini: filtered });
     }
     if (req.method === "POST") {
         requireSameOrigin(req);
         const prepared = await prepareOrder(req.body, await getMenuData(db));
         const counter = db.collection("metadata").doc("orderCounter");
+        const ordersVersion = db.collection("metadata").doc("ordersVersion");
         const control = db.collection("metadata").doc("printerControl");
         const order = await db.runTransaction(async transaction => {
             const controlSnapshot = await transaction.get(control);
@@ -57,6 +81,7 @@ module.exports = api(async (req, res) => {
             }
             transaction.set(counter, { value: numero });
             transaction.set(orders.doc(String(numero)), saved);
+            incrementOrdersVersion(transaction, ordersVersion);
             transaction.set(db.collection("printerJobs").doc(jobId(numero)), {
                 numero,
                 status: "queued",

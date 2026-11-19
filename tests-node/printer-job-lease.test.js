@@ -51,6 +51,7 @@ function prepareOrder(input) {
     return validateOrder(input, testCatalog);
 }
 const resetHandler = require("../api/reset-numeri");
+const ordersIndexHandler = require("../api/ordini/index");
 const orderHandler = require("../api/ordini/[numero]");
 
 function createDatabase(seed = {}, { failQueueUnpause = 0 } = {}) {
@@ -69,8 +70,18 @@ function createDatabase(seed = {}, { failQueueUnpause = 0 } = {}) {
             const value = documents(name).get(String(id));
             return { exists: value !== undefined, data: () => value };
         },
-        async set(value) {
-            documents(name).set(String(id), value);
+        async set(value, options = {}) {
+            const current = documents(name).get(String(id)) || {};
+            const entries = Object.entries(value).map(([field, nextValue]) => [
+                field,
+                nextValue?.constructor?.name === "NumericIncrementTransform"
+                    ? (Number(current[field]) || 0) + nextValue.operand
+                    : nextValue
+            ]);
+            documents(name).set(String(id), {
+                ...(options.merge ? current : {}),
+                ...Object.fromEntries(entries)
+            });
         },
         async update(value) {
             documents(name).set(String(id), { ...documents(name).get(String(id)), ...value });
@@ -114,20 +125,23 @@ function createDatabase(seed = {}, { failQueueUnpause = 0 } = {}) {
     return {
         collection,
         batch() {
-            const deletions = [];
+            const operations = [];
             return {
                 delete(documentRef) {
-                    deletions.push(documentRef);
+                    operations.push(() => documentRef.delete());
+                },
+                set(documentRef, value, options) {
+                    operations.push(() => documentRef.set(value, options));
                 },
                 async commit() {
-                    await Promise.all(deletions.map(documentRef => documentRef.delete()));
+                    await Promise.all(operations.map(operation => operation()));
                 }
             };
         },
         async runTransaction(callback) {
             return callback({
                 get: documentRef => documentRef.get(),
-                set: (documentRef, value) => {
+                set: (documentRef, value, options) => {
                     if (documentRef.collectionName === "metadata" && documentRef.id === "printerControl"
                             && value.paused === false && remainingUnpauseFailures > 0) {
                         remainingUnpauseFailures--;
@@ -135,7 +149,7 @@ function createDatabase(seed = {}, { failQueueUnpause = 0 } = {}) {
                         error.code = 4;
                         throw error;
                     }
-                    return documentRef.set(value);
+                    return documentRef.set(value, options);
                 },
                 update: (documentRef, value) => documentRef.update(value),
                 delete: documentRef => documentRef.delete()
@@ -191,6 +205,93 @@ function updateOrderBody(input) {
         ...input
     };
 }
+
+test("every order API mutation increments metadata/ordersVersion", async () => {
+    const cases = [
+        {
+            name: "create",
+            handler: ordersIndexHandler,
+            method: "POST",
+            query: {},
+            body: {
+                tipo: "tavolo",
+                tavoloOCliente: "Tavolo 1",
+                righe: [{ prodotto: "Margherita" }]
+            },
+            seed: { metadata: { ordersVersion: { versione: 4 }, orderCounter: { value: 0 } } }
+        },
+        {
+            name: "edit",
+            handler: orderHandler,
+            method: "PUT",
+            query: { numero: "7" },
+            body: updateOrderBody({ righe: [{ prodotto: "Margherita" }] }),
+            seed: {
+                metadata: { ordersVersion: { versione: 4 } },
+                orders: { "7": storedOrder({ righe: [{ prodotto: "Margherita" }] }) }
+            }
+        },
+        {
+            name: "payment",
+            handler: orderHandler,
+            method: "PATCH",
+            query: { numero: "7" },
+            body: { statoPagamento: "pagato" },
+            seed: {
+                metadata: { ordersVersion: { versione: 4 } },
+                orders: { "7": { numero: 7, tipo: "ritiro", statoPagamento: "non_pagato" } }
+            }
+        },
+        {
+            name: "reprint",
+            handler: orderHandler,
+            method: "POST",
+            query: { numero: "7" },
+            body: { azione: "ristampa", stampanti: ["Cucina"] },
+            seed: {
+                metadata: { ordersVersion: { versione: 4 } },
+                orders: { "7": { numero: 7, contatoreStampe: 0 } }
+            }
+        },
+        {
+            name: "delete",
+            handler: orderHandler,
+            method: "DELETE",
+            query: { numero: "7" },
+            body: {},
+            seed: {
+                metadata: { ordersVersion: { versione: 4 } },
+                orders: { "7": { numero: 7 } }
+            }
+        },
+        {
+            name: "reset",
+            handler: resetHandler,
+            method: "POST",
+            query: {},
+            body: {},
+            seed: {
+                metadata: {
+                    ordersVersion: { versione: 4 },
+                    orderCounter: { value: 7 },
+                    printerControl: { paused: false }
+                },
+                orders: { "7": { numero: 7 } }
+            }
+        }
+    ];
+
+    for (const entry of cases) {
+        database = createDatabase(entry.seed);
+        const response = await invoke(entry.handler, entry.method, entry.query, entry.body);
+        assert.ok(response.statusCode < 400, `${entry.name} failed: ${response.body?.errore}`);
+        assert.equal(
+            database.documents("metadata").get("ordersVersion").versione,
+            5,
+            `${entry.name} did not increment ordersVersion`
+        );
+    }
+});
 
 test("print job IDs and printer selection validation use the shared format", () => {
     assert.equal(jobId(7), "000000000007");
@@ -510,6 +611,7 @@ test("reset clears orders and expired print jobs but waits for active leases", a
 
     const secondResponse = await invoke(resetHandler, "POST");
     assert.equal(secondResponse.statusCode, 200);
+    assert.equal(database.documents("metadata").get("ordersVersion").versione, 2);
 });
 
 test("reset waits for an actively leased secondary print job", async () => {

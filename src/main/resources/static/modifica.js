@@ -147,7 +147,8 @@ async function avvia() {
         extra = (await risposte[1].json()).sort((primo, secondo) =>
             primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" })
         );
-        const ordine = (await risposte[2].json()).find(o => String(o.numero) === String(numero));
+        const ordine = (await risposte[2].json()).ordini
+            .find(o => String(o.numero) === String(numero));
         if (!ordine) throw new Error("Ordine non trovato.");
         document.getElementById("numero").textContent = `#${ordine.numero}`;
         document.getElementById("tipo-ordine").value =

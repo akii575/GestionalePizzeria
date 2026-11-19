@@ -44,6 +44,14 @@ test("delivery accounts can read only delivery orders and cannot use admin order
     t.mock.method(firebaseAdmin, "getFirebaseServices", () => ({
         db: {
             collection(name) {
+                if (name === "metadata") {
+                    return {
+                        doc(id) {
+                            assert.equal(id, "ordersVersion");
+                            return { async get() { return { exists: true, data: () => ({ versione: 1 }) }; } };
+                        }
+                    };
+                }
                 assert.equal(name, "orders");
                 return {
                     where(field, operator, value) {
@@ -79,7 +87,8 @@ test("delivery accounts can read only delivery orders and cannot use admin order
 
     const deliveries = await invoke(deliveriesHandler, "delivery");
     assert.equal(deliveries.statusCode, 200);
-    assert.deepEqual(deliveries.body.map(order => order.tipo), ["consegna"]);
+    assert.deepEqual(deliveries.body.ordini.map(order => order.tipo), ["consegna"]);
+    assert.equal(deliveries.body.versione, 1);
     assert.equal(deliveries.headers["Cache-Control"], "private, no-store");
 
     const blockedWrite = await invoke(ordersHandler, "delivery", "POST");
