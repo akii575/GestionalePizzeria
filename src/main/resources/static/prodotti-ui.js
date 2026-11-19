@@ -66,7 +66,7 @@ const prodottiUI = (() => {
         }
         const nuoveRighe = righe.filter((_, posizione) => posizione !== indice);
         if (indice === rigaAttiva) {
-            let prossimoAttivo = -1;
+            let prossimoAttivo = null;
             nuoveRighe.forEach((riga, posizione) => {
                 if (ammetteExtra(riga)) prossimoAttivo = posizione;
             });

@@ -801,8 +801,6 @@ function aggiornaSheetAlCambioViewport() {
 window.addEventListener("resize", aggiornaSheetAlCambioViewport);
 window.addEventListener("orientationchange", aggiornaSheetAlCambioViewport);
 mediaRiepilogoSheet.addEventListener("change", aggiornaSheetAlCambioViewport);
-window.addEventListener("resize", renderGrigliaExtra);
-window.addEventListener("orientationchange", renderGrigliaExtra);
 mediaGrigliaExtra.addEventListener("change", renderGrigliaExtra);
 aggiornaAccessibilitaBarraSheet();
 document.getElementById("btn-annulla").addEventListener("click", () => {

@@ -149,6 +149,17 @@ test("removing active or preceding rows keeps the active pizza correctly selecte
     assert.equal(stato.righe[stato.rigaAttiva].prodotto, "Margherita");
 });
 
+test("removing the only extra-eligible row clears the active row", () => {
+    const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 5, ammetteExtra: true };
+    const bibita = { nome: "Coca Cola", categoria: "bibite", prezzo: 2, ammetteExtra: false };
+    let stato = aggiungiProdotti([], null, pizza);
+    stato = aggiungiProdotti(stato.righe, stato.rigaAttiva, bibita);
+    stato = rimuoviProdotto(stato.righe, stato.rigaAttiva, 0);
+
+    assert.equal(stato.rigaAttiva, null);
+    assert.deepEqual(stato.righe.map(riga => riga.prodotto), ["Coca Cola"]);
+});
+
 test("selecting a previous pizza and disambiguating duplicate names", () => {
     const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 5, ammetteExtra: true };
     let stato = aggiungiProdotti([], null, pizza, 2);
