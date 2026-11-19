@@ -427,7 +427,7 @@ test("portrait order summary sheet opens accessibly and removes rows through sha
     assert.doesNotMatch(styles, /riepilogo-sheet(?:-backdrop)?\.is-dragging|body\.riepilogo-sheet-aperto/);
     assert.match(script, /renderRigheRiepilogo\(riepilogo\);\s*renderRigheRiepilogo\(riepilogoSheetLista\);/);
     assert.match(script, /riepilogoSheetLista\.addEventListener\("click", rimuoviRigaRiepilogo\)/);
-    assert.match(script, /function rimuoviRigaRiepilogo\(evento\)[\s\S]*?stato\.righe\.splice\(Number\(pulsante\.dataset\.indice\), 1\);[\s\S]*?renderRiepilogo\(\);/);
+    assert.match(script, /function rimuoviRigaRiepilogo\(evento\)[\s\S]*?rimuoviProdotto\(stato\.righe, stato\.rigaAttiva, Number\(pulsante\.dataset\.indice\)\)[\s\S]*?renderRiepilogo\(\);/);
     assert.match(script, /if \(!stato\.righe\.length\) contenitore\.innerHTML = "<p>Nessun prodotto selezionato<\/p>";/);
     assert.match(script, /barraConto\.addEventListener\("pointerdown", avviaTrascinamentoRiepilogo\)/);
     assert.match(script, /barraConto\.addEventListener\("pointercancel", terminaTrascinamentoRiepilogo\)/);

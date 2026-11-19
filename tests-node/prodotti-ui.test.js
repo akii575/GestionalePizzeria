@@ -7,6 +7,11 @@ const {
     normalizza,
     filtraProdotti,
     creaRiga,
+    aggiungiProdotti,
+    impostaRigaAttiva,
+    rimuoviProdotto,
+    toggleExtra,
+    intestazioneExtra,
     LIMITE_RIGHE_ORDINE,
     creaStatoMoltiplicatore,
     premiTastoMoltiplicatore,
@@ -82,8 +87,7 @@ test("every typed word must appear in the product name", () => {
     assert.ok(!trovati.includes("Salsiccia e Patatine"));
 });
 
-test("pending extras are applied when the product metadata allows them", () => {
-    const extra = [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }];
+test("new rows always start without extras", () => {
     const pizza = {
         nome: "Margherita",
         categoria: "pizze",
@@ -91,41 +95,66 @@ test("pending extras are applied when the product metadata allows them", () => {
         ingredienti: ["pomodoro"],
         ammetteExtra: true
     };
-    const { riga, extraRimanenti } = creaRiga(pizza, extra);
-
-    assert.deepEqual(riga, {
+    assert.deepEqual(creaRiga(pizza), {
         prodotto: "Margherita",
         prezzo: 5,
         categoria: "pizze",
         ingredienti: ["pomodoro"],
         ammetteExtra: true,
-        extra
+        extra: []
     });
-    assert.deepEqual(extraRimanenti, []);
 });
 
-test("pending extras are kept for the next dish when the product does not allow extras", () => {
-    const extra = [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }];
-    const bibita = { nome: "Coca Cola 33cl", categoria: "bibite", prezzo: 2.5, ammetteExtra: false };
-    const { riga, extraRimanenti } = creaRiga(bibita, extra);
-
-    assert.deepEqual(riga.extra, []);
-    assert.deepEqual(riga.ingredienti, []);
-    assert.deepEqual(extraRimanenti, extra);
+test("active extra row tracks eligible products but not drinks", () => {
+    const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 5, ammetteExtra: true };
+    const bibita = { nome: "Coca Cola", categoria: "bibite", prezzo: 2, ammetteExtra: false };
+    let stato = aggiungiProdotti([], null, pizza);
+    assert.equal(stato.rigaAttiva, 0);
+    stato = aggiungiProdotti(stato.righe, stato.rigaAttiva, bibita);
+    assert.equal(stato.rigaAttiva, 0);
 });
 
-test("missing pending extras and ingredients are treated as empty lists", () => {
-    const { riga, extraRimanenti } = creaRiga({ nome: "Calzone", categoria: "ripieni", prezzo: 7 }, undefined);
-    assert.deepEqual(riga.extra, []);
-    assert.deepEqual(riga.ingredienti, []);
-    assert.deepEqual(extraRimanenti, []);
-    assert.deepEqual(creaRiga({ nome: "Acqua", categoria: "bibite", prezzo: 1 }, null).extraRimanenti, []);
+test("extras toggle on the active row and do nothing without an active row", () => {
+    const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 5, ammetteExtra: true };
+    const extra = { id: "bufala", nome: "Bufala", prezzo: 2 };
+    const righe = [creaRiga(pizza)];
+    assert.deepEqual(toggleExtra(righe, null, extra), { righe, rigaAttiva: null });
+    const selezionato = toggleExtra(righe, 0, extra);
+    assert.deepEqual(nomiExtra(selezionato.righe[0].extra), ["Bufala"]);
+    const rimosso = toggleExtra(selezionato.righe, 0, extra);
+    assert.deepEqual(rimosso.righe[0].extra, []);
 });
 
-test("extra eligibility follows category metadata provided by the menu API", () => {
-    const extra = [{ id: "bocconcino", nome: "Bocconcino", prezzo: 2 }];
-    assert.equal(creaRiga({ nome: "Margherita", categoria: "pizze", ammetteExtra: true }, extra).riga.extra.length, 1);
-    assert.equal(creaRiga({ nome: "Acqua", categoria: "bibite", ammetteExtra: false }, extra).riga.extra.length, 0);
+function nomiExtra(extra) {
+    return extra.map(elemento => elemento.nome);
+}
+
+test("multiplier activates the last added eligible row", () => {
+    const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 5, ammetteExtra: true };
+    const stato = aggiungiProdotti([], null, pizza, 3);
+    assert.equal(stato.righe.length, 3);
+    assert.equal(stato.rigaAttiva, 2);
+});
+
+test("removing active or preceding rows keeps the active pizza correctly selected", () => {
+    const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 5, ammetteExtra: true };
+    const bibita = { nome: "Coca Cola", categoria: "bibite", prezzo: 2, ammetteExtra: false };
+    let stato = aggiungiProdotti([], null, pizza, 2);
+    stato = aggiungiProdotti(stato.righe, stato.rigaAttiva, bibita);
+    stato = rimuoviProdotto(stato.righe, stato.rigaAttiva, 1);
+    assert.equal(stato.rigaAttiva, 0);
+    stato = aggiungiProdotti(stato.righe, stato.rigaAttiva, pizza);
+    stato = rimuoviProdotto(stato.righe, stato.rigaAttiva, 0);
+    assert.equal(stato.rigaAttiva, 1);
+    assert.equal(stato.righe[stato.rigaAttiva].prodotto, "Margherita");
+});
+
+test("selecting a previous pizza and disambiguating duplicate names", () => {
+    const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 5, ammetteExtra: true };
+    let stato = aggiungiProdotti([], null, pizza, 2);
+    stato = impostaRigaAttiva(stato.righe, 0);
+    assert.equal(stato.rigaAttiva, 0);
+    assert.equal(intestazioneExtra(stato.righe, stato.rigaAttiva), "Extra per: Margherita (n° 1)");
 });
 
 test("multiplier keypad composes up to two digits and ignores a leading zero", () => {

@@ -1,4 +1,4 @@
-const stato = { categoria: "pizze", menu: [], extra: [], righe: [], extraSelezionati: [] };
+const stato = { categoria: "pizze", menu: [], extra: [], righe: [], rigaAttiva: null };
 const prodotti = document.getElementById("prodotti");
 const riepilogo = document.getElementById("riepilogo-items");
 const riepilogoConteggio = document.getElementById("riepilogo-conteggio");
@@ -20,6 +20,9 @@ let overflowRadicePrecedente = null;
 const messaggio = document.getElementById("messaggio");
 const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
+const extraLista = document.getElementById("extra-lista");
+const extraIntestazione = document.getElementById("extra-intestazione");
+const mediaGrigliaExtra = window.matchMedia("(max-width: 699px)");
 const tipoOrdine = document.getElementById("tipo-ordine");
 const campoTavolo = document.getElementById("campo-tavolo");
 const numeroPersone = document.getElementById("numero-persone");
@@ -49,7 +52,11 @@ const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR"
 const { escapeHtml } = window.htmlUtils;
 const {
     filtraProdotti,
-    creaRiga,
+    aggiungiProdotti,
+    impostaRigaAttiva,
+    rimuoviProdotto,
+    toggleExtra,
+    intestazioneExtra,
     creaStatoMoltiplicatore,
     premiTastoMoltiplicatore,
     quantitaDaApplicare,
@@ -65,12 +72,9 @@ let costoConsegna = 0;
 let statoMoltiplicatore = creaStatoMoltiplicatore();
 let trascinamentoProdotti = null;
 let ignoraClickDopoTrascinamento = false;
+let trascinamentoExtra = null;
+let ignoraClickDopoTrascinamentoExtra = false;
 
-function categoriaConExtra() {
-    return stato.menu.some(prodotto => (
-        prodotto.categoria === stato.categoria && prodotto.ammetteExtra === true
-    ));
-}
 function mostraMessaggio(testo, classe) {
     messaggio.textContent = testo;
     messaggio.className = classe;
@@ -142,8 +146,49 @@ function renderExtra(container, selezionati, onChange) {
         container.appendChild(bottone);
     });
 }
+function extraSelezionato(extra, riga) {
+    return riga?.extra.some(elemento =>
+        (elemento.id || elemento.nome) === (extra.id || extra.nome)
+    ) || false;
+}
+function renderGrigliaExtra() {
+    const paginaCorrente = extraLista.clientWidth
+        ? Math.round(extraLista.scrollLeft / extraLista.clientWidth)
+        : 0;
+    sezioneExtra.hidden = !stato.extra.length;
+    extraIntestazione.textContent = intestazioneExtra(stato.righe, stato.rigaAttiva);
+    extraLista.replaceChildren();
+    const colonne = mediaGrigliaExtra.matches ? 3 : 4;
+    const righe = mediaGrigliaExtra.matches ? 4 : 3;
+    const elementiPerPagina = colonne * righe;
+    for (let inizio = 0; inizio < stato.extra.length; inizio += elementiPerPagina) {
+        const pagina = document.createElement("div");
+        pagina.className = "pagina-extra";
+        stato.extra.slice(inizio, inizio + elementiPerPagina).forEach(extra => {
+            const bottone = document.createElement("button");
+            const rigaAttiva = stato.righe[stato.rigaAttiva];
+            bottone.type = "button";
+            bottone.className = "extra-card";
+            bottone.classList.toggle("selezionato", extraSelezionato(extra, rigaAttiva));
+            bottone.disabled = !rigaAttiva || extra.disponibile === false;
+            bottone.setAttribute("aria-pressed", String(extraSelezionato(extra, rigaAttiva)));
+            bottone.innerHTML = `<strong>${escapeHtml(extra.nome)}</strong><span>${escapeHtml(euro.format(Number(extra.prezzo)))}</span>${extra.disponibile === false ? '<small>Esaurito</small>' : ""}`;
+            bottone.addEventListener("click", () => {
+                if (bottone.disabled) return;
+                const risultato = toggleExtra(stato.righe, stato.rigaAttiva, extra);
+                stato.righe = risultato.righe;
+                stato.rigaAttiva = risultato.rigaAttiva;
+                renderRiepilogo();
+            });
+            pagina.appendChild(bottone);
+        });
+        extraLista.appendChild(pagina);
+    }
+    if (extraLista.children.length) {
+        extraLista.scrollLeft = Math.min(paginaCorrente, extraLista.children.length - 1) * extraLista.clientWidth;
+    }
+}
 function renderProdotti() {
-    sezioneExtra.hidden = !categoriaConExtra();
     prodotti.innerHTML = "";
     prodotti.scrollLeft = 0;
     const disponibili = stato.menu
@@ -178,14 +223,9 @@ function aggiungiProdotto(prodotto) {
         mostraMessaggio(`Massimo 100 prodotti per comanda: puoi aggiungerne ancora ${limite.disponibili}`, "errore");
         return false;
     }
-    const { riga, extraRimanenti } = creaRiga(prodotto, stato.extraSelezionati);
-    stato.righe.push(riga);
-    stato.extraSelezionati = extraRimanenti;
-    renderExtra(
-        document.getElementById("extra-lista"),
-        stato.extraSelezionati,
-        selezionati => (stato.extraSelezionati = selezionati)
-    );
+    const risultato = aggiungiProdotti(stato.righe, stato.rigaAttiva, prodotto);
+    stato.righe = risultato.righe;
+    stato.rigaAttiva = risultato.rigaAttiva;
     renderRiepilogo();
     return true;
 }
@@ -224,14 +264,10 @@ function renderRisultatiRicerca() {
             statoMoltiplicatore = creaStatoMoltiplicatore();
             aggiornaDisplayMoltiplicatore();
             chiudiRicerca();
-            // Gli extra non applicabili (es. a una bibita) restano in attesa: lo segnaliamo.
-            const extraInAttesa = stato.extraSelezionati.length
-                ? ` (extra in attesa per il prossimo piatto: ${nomiExtra(stato.extraSelezionati).join(", ")})`
-                : "";
             const descrizioneAggiunta = moltiplicatoreArmato
                 ? `Aggiunti ${quantita} × ${prodotto.nome}`
                 : `Aggiunto: ${prodotto.nome}`;
-            mostraMessaggio(`${descrizioneAggiunta}${extraInAttesa}`, "successo");
+            mostraMessaggio(descrizioneAggiunta, "successo");
         });
         ricercaRisultati.appendChild(bottone);
     });
@@ -300,6 +336,7 @@ function aggiornaSelettoreRighe() {
 function renderRiepilogo() {
     renderRigheRiepilogo(riepilogo);
     renderRigheRiepilogo(riepilogoSheetLista);
+    renderGrigliaExtra();
     const testoTotale = `Totale: ${euro.format(totaleOrdine())}`;
     document.getElementById("riepilogo-totale").textContent = testoTotale;
     barraTotale.textContent = testoTotale;
@@ -322,21 +359,34 @@ function renderRigheRiepilogo(contenitore) {
     stato.righe.forEach((riga, indice) => {
         const voce = document.createElement("div");
         voce.className = "riepilogo-item";
+        voce.classList.toggle("riga-attiva", indice === stato.rigaAttiva);
         const descrizione = riga.ingredienti?.length
             ? `<small class="riepilogo-descrizione">${escapeHtml(riga.ingredienti.join(", "))}</small>`
             : "";
         const extra = riga.extra.length
             ? `<span>Extra: ${escapeHtml(nomiExtra(riga.extra).join(", "))}</span>`
             : "";
-        voce.innerHTML = `<div><strong>${escapeHtml(riga.prodotto)}</strong>${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
+        const nomeRiga = riga.ammetteExtra
+            ? `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indice)}">${escapeHtml(riga.prodotto)}</button>`
+            : `<strong>${escapeHtml(riga.prodotto)}</strong>`;
+        voce.innerHTML = `<div>${nomeRiga}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
         contenitore.appendChild(voce);
     });
     if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
 }
 function rimuoviRigaRiepilogo(evento) {
+    const selezione = evento.target.closest(".seleziona-riga");
+    if (selezione && evento.currentTarget.contains(selezione)) {
+        const risultato = impostaRigaAttiva(stato.righe, Number(selezione.dataset.rigaAttiva));
+        stato.rigaAttiva = risultato.rigaAttiva;
+        renderRiepilogo();
+        return;
+    }
     const pulsante = evento.target.closest(".rimuovi");
     if (!pulsante || !evento.currentTarget.contains(pulsante)) return;
-    stato.righe.splice(Number(pulsante.dataset.indice), 1);
+    const risultato = rimuoviProdotto(stato.righe, stato.rigaAttiva, Number(pulsante.dataset.indice));
+    stato.righe = risultato.righe;
+    stato.rigaAttiva = risultato.rigaAttiva;
     renderRiepilogo();
 }
 function riepilogoSheetDisponibile() {
@@ -592,6 +642,7 @@ async function inviaOrdine() {
             dati.stampaCompletata || dati.stampaInCoda ? "successo" : "errore"
         );
         stato.righe = [];
+        stato.rigaAttiva = null;
         costoConsegna = 0;
         aggiornaBottoneCostoConsegna();
         document.getElementById("note").value = "";
@@ -649,6 +700,43 @@ prodotti.addEventListener(
     "click",
     evento => {
         if (!ignoraClickDopoTrascinamento) return;
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
+    },
+    true
+);
+extraLista.addEventListener("pointerdown", evento => {
+    if (evento.pointerType !== "mouse" || evento.button !== 0) return;
+    trascinamentoExtra = {
+        inizioX: evento.clientX,
+        scrollIniziale: extraLista.scrollLeft,
+        iniziato: false
+    };
+});
+document.addEventListener("pointermove", evento => {
+    if (!trascinamentoExtra) return;
+    const spostamento = evento.clientX - trascinamentoExtra.inizioX;
+    if (!trascinamentoExtra.iniziato && Math.abs(spostamento) < 5) return;
+    trascinamentoExtra.iniziato = true;
+    extraLista.classList.add("is-dragging");
+    extraLista.scrollLeft = trascinamentoExtra.scrollIniziale - spostamento;
+    evento.preventDefault();
+});
+function terminaTrascinamentoExtra() {
+    if (!trascinamentoExtra) return;
+    const trascinato = trascinamentoExtra.iniziato;
+    trascinamentoExtra = null;
+    extraLista.classList.remove("is-dragging");
+    if (!trascinato) return;
+    ignoraClickDopoTrascinamentoExtra = true;
+    setTimeout(() => (ignoraClickDopoTrascinamentoExtra = false), 0);
+}
+document.addEventListener("pointerup", terminaTrascinamentoExtra);
+document.addEventListener("pointercancel", terminaTrascinamentoExtra);
+extraLista.addEventListener(
+    "click",
+    evento => {
+        if (!ignoraClickDopoTrascinamentoExtra) return;
         evento.preventDefault();
         evento.stopImmediatePropagation();
     },
@@ -713,9 +801,13 @@ function aggiornaSheetAlCambioViewport() {
 window.addEventListener("resize", aggiornaSheetAlCambioViewport);
 window.addEventListener("orientationchange", aggiornaSheetAlCambioViewport);
 mediaRiepilogoSheet.addEventListener("change", aggiornaSheetAlCambioViewport);
+window.addEventListener("resize", renderGrigliaExtra);
+window.addEventListener("orientationchange", renderGrigliaExtra);
+mediaGrigliaExtra.addEventListener("change", renderGrigliaExtra);
 aggiornaAccessibilitaBarraSheet();
 document.getElementById("btn-annulla").addEventListener("click", () => {
     stato.righe = [];
+    stato.rigaAttiva = null;
     costoConsegna = 0;
     aggiornaBottoneCostoConsegna();
     renderRiepilogo();
@@ -731,9 +823,7 @@ document.addEventListener("keydown", evento => {
 Promise.all([fetch("/api/menu"), fetch("/api/extra")])
     .then(async risposte => {
         stato.menu = await risposte[0].json();
-        stato.extra = (await risposte[1].json()).sort((primo, secondo) =>
-            primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" })
-        );
+        stato.extra = await risposte[1].json();
         const labels = new Map(
             [...tabsCategorie.querySelectorAll(".tab[data-tab]")]
                 .map(tab => [tab.dataset.tab, tab.textContent.trim()])
@@ -761,11 +851,7 @@ Promise.all([fetch("/api/menu"), fetch("/api/extra")])
             tabsCategorie.appendChild(tab);
         }
         stato.categoria = ordinate[0]?.id || "";
-        renderExtra(
-            document.getElementById("extra-lista"),
-            stato.extraSelezionati,
-            selezionati => (stato.extraSelezionati = selezionati)
-        );
+        renderGrigliaExtra();
         renderProdotti();
         // Se la ricerca è stata aperta prima che il menu arrivasse, aggiorna i risultati.
         if (!ricercaModale.hidden) renderRisultatiRicerca();

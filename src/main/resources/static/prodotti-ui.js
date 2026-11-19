@@ -32,21 +32,77 @@ const prodottiUI = (() => {
         return prodotto?.ammetteExtra === true;
     }
 
-    // Crea la riga del conto per un prodotto. Gli extra in attesa ("per il prossimo piatto")
-    // vengono consumati solo se la categoria li ammette; altrimenti restano per il piatto successivo.
-    function creaRiga(prodotto, extraInAttesa) {
+    function creaRiga(prodotto) {
         const conExtra = ammetteExtra(prodotto);
         return {
-            riga: {
-                prodotto: prodotto.nome,
-                prezzo: prodotto.prezzo,
-                categoria: prodotto.categoria,
-                ingredienti: prodotto.ingredienti || [],
-                ammetteExtra: conExtra,
-                extra: conExtra ? extraInAttesa || [] : []
-            },
-            extraRimanenti: conExtra ? [] : extraInAttesa || []
+            prodotto: prodotto.nome,
+            prezzo: prodotto.prezzo,
+            categoria: prodotto.categoria,
+            ingredienti: prodotto.ingredienti || [],
+            ammetteExtra: conExtra,
+            extra: []
         };
+    }
+
+    function aggiungiProdotti(righe, rigaAttiva, prodotto, quantita = 1) {
+        const aggiunte = Array.from({ length: quantita }, () => creaRiga(prodotto));
+        const nuoveRighe = [...righe, ...aggiunte];
+        return {
+            righe: nuoveRighe,
+            rigaAttiva: ammetteExtra(prodotto) ? nuoveRighe.length - 1 : rigaAttiva
+        };
+    }
+
+    function impostaRigaAttiva(righe, indice) {
+        return {
+            righe,
+            rigaAttiva: Number.isInteger(indice) && ammetteExtra(righe[indice]) ? indice : null
+        };
+    }
+
+    function rimuoviProdotto(righe, rigaAttiva, indice) {
+        if (!Number.isInteger(indice) || indice < 0 || indice >= righe.length) {
+            return { righe, rigaAttiva };
+        }
+        const nuoveRighe = righe.filter((_, posizione) => posizione !== indice);
+        if (indice === rigaAttiva) {
+            let prossimoAttivo = -1;
+            nuoveRighe.forEach((riga, posizione) => {
+                if (ammetteExtra(riga)) prossimoAttivo = posizione;
+            });
+            return { righe: nuoveRighe, rigaAttiva: prossimoAttivo };
+        }
+        const prossimoIndice = rigaAttiva === null ? null : rigaAttiva > indice ? rigaAttiva - 1 : rigaAttiva;
+        return {
+            righe: nuoveRighe,
+            rigaAttiva: prossimoIndice !== null && ammetteExtra(nuoveRighe[prossimoIndice]) ? prossimoIndice : null
+        };
+    }
+
+    function toggleExtra(righe, rigaAttiva, extra) {
+        const riga = righe[rigaAttiva];
+        if (!riga || !ammetteExtra(riga)) return { righe, rigaAttiva };
+        const identitaExtra = elemento => elemento.id || elemento.nome;
+        const presente = riga.extra.some(elemento => identitaExtra(elemento) === identitaExtra(extra));
+        const nuoveRighe = righe.map((elemento, indice) => {
+            if (indice !== rigaAttiva) return elemento;
+            return {
+                ...elemento,
+                extra: presente
+                    ? elemento.extra.filter(voce => identitaExtra(voce) !== identitaExtra(extra))
+                    : [...elemento.extra, extra]
+            };
+        });
+        return { righe: nuoveRighe, rigaAttiva };
+    }
+
+    function intestazioneExtra(righe, rigaAttiva) {
+        const riga = righe[rigaAttiva];
+        if (!riga || !ammetteExtra(riga)) return "Extra — aggiungi prima una pizza";
+        const righeConStessoNome = righe.filter(elemento => elemento.prodotto === riga.prodotto);
+        const posizione = righeConStessoNome.indexOf(riga) + 1;
+        const disambiguazione = righeConStessoNome.length > 1 ? ` (n° ${posizione})` : "";
+        return `Extra per: ${riga.prodotto}${disambiguazione}`;
     }
 
     function creaStatoMoltiplicatore() {
@@ -96,6 +152,11 @@ const prodottiUI = (() => {
         filtraProdotti,
         ammetteExtra,
         creaRiga,
+        aggiungiProdotti,
+        impostaRigaAttiva,
+        rimuoviProdotto,
+        toggleExtra,
+        intestazioneExtra,
         creaStatoMoltiplicatore,
         premiTastoMoltiplicatore,
         quantitaDaApplicare,
