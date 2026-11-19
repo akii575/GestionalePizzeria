@@ -32,6 +32,24 @@ const prodottiUI = (() => {
         return prodotto?.ammetteExtra === true;
     }
 
+    function isCoperto(prodotto) {
+        return typeof prodotto?.nome === "string"
+            && prodotto.nome.trim().toLocaleLowerCase("it-IT") === "coperto";
+    }
+
+    function calcolaCoperto(tipo, numeroPersone, prezzoUnitario) {
+        const prezzo = Number(prezzoUnitario);
+        const persone = Number(numeroPersone);
+        if (tipo !== "tavolo" || !Number.isInteger(persone) || persone < 1 || prezzo <= 0 || !Number.isFinite(prezzo)) {
+            return null;
+        }
+        return {
+            persone,
+            prezzoUnitario: prezzo,
+            totale: Math.round((persone * prezzo + Number.EPSILON) * 100) / 100
+        };
+    }
+
     function creaRiga(prodotto) {
         const conExtra = ammetteExtra(prodotto);
         return {
@@ -151,6 +169,8 @@ const prodottiUI = (() => {
         normalizza,
         filtraProdotti,
         ammetteExtra,
+        isCoperto,
+        calcolaCoperto,
         creaRiga,
         aggiungiProdotti,
         impostaRigaAttiva,

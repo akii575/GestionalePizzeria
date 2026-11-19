@@ -156,6 +156,15 @@ textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; fo
     font-weight: 600;
 }
 
+.modifica-footer .riepilogo-coperto {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: var(--theme-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
 .modifica-footer .riepilogo-conteggio {
     margin: 0;
     color: var(--theme-muted);
@@ -203,14 +212,24 @@ textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; fo
         font-size: 18px;
     }
 
-    .modifica-footer .riepilogo-conteggio {
+    .modifica-footer .riepilogo-coperto {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .modifica-footer #totale-modifica {
         grid-column: 1;
         grid-row: 2;
     }
 
+    .modifica-footer .riepilogo-conteggio {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
     .modifica-footer .salva {
         grid-column: 2;
-        grid-row: 1 / span 2;
+        grid-row: 1 / span 3;
     }
 
     .modifica-footer .salva {

@@ -6,6 +6,8 @@ const menu = require("../lib/menu.json");
 const {
     normalizza,
     filtraProdotti,
+    isCoperto,
+    calcolaCoperto,
     creaRiga,
     aggiungiProdotti,
     impostaRigaAttiva,
@@ -54,6 +56,35 @@ test("empty or blank queries return no results", () => {
     assert.deepEqual(filtraProdotti(menu, "   "), []);
     assert.deepEqual(filtraProdotti(menu, "zzzz-nessuno"), []);
     assert.deepEqual(filtraProdotti(undefined, "pizza"), []);
+});
+
+test("cover is matched case-insensitively and calculated only for table service", () => {
+    assert.equal(isCoperto({ nome: "  cOpErTo " }), true);
+    assert.equal(isCoperto({ nome: "Coperto speciale" }), false);
+    assert.deepEqual(calcolaCoperto("tavolo", 4, 2), {
+        persone: 4,
+        prezzoUnitario: 2,
+        totale: 8
+    });
+    assert.deepEqual(calcolaCoperto("tavolo", 3, 1.335), {
+        persone: 3,
+        prezzoUnitario: 1.335,
+        totale: 4.01
+    });
+    assert.equal(calcolaCoperto("banco", 4, 2), null);
+    assert.equal(calcolaCoperto("tavolo", 0, 2), null);
+});
+
+test("order entry and editing keep cover out of selectable product rows", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const orderScript = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+    const editScript = fs.readFileSync(path.join(directory, "modifica.js"), "utf8");
+
+    assert.match(orderScript, /stato\.menu\.filter\(prodotto => !isCoperto\(prodotto\)\)/);
+    assert.match(orderScript, /!isCoperto\(prodotto\) && prodotto\.categoria === stato\.categoria/);
+    assert.match(editScript, /menu = menu\.filter\(prodotto => !isCoperto\(prodotto\)\)/);
+    assert.match(orderScript, /numeroPersone\.addEventListener\("input", renderRiepilogo\)/);
+    assert.match(editScript, /document\.getElementById\("numero-persone"\)\.addEventListener\("input", aggiornaTotale\)/);
 });
 
 test("count label updates to plural after adding three products", () => {

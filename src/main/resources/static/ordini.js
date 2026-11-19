@@ -23,6 +23,7 @@ const sezioneExtra = document.getElementById("extra-section");
 const extraLista = document.getElementById("extra-lista");
 const extraIntestazione = document.getElementById("extra-intestazione");
 const mediaGrigliaExtra = window.matchMedia("(max-width: 699px)");
+let prodottoCoperto = null;
 const tipoOrdine = document.getElementById("tipo-ordine");
 const campoTavolo = document.getElementById("campo-tavolo");
 const numeroPersone = document.getElementById("numero-persone");
@@ -52,6 +53,8 @@ const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR"
 const { escapeHtml } = window.htmlUtils;
 const {
     filtraProdotti,
+    isCoperto,
+    calcolaCoperto,
     aggiungiProdotti,
     impostaRigaAttiva,
     rimuoviProdotto,
@@ -124,7 +127,21 @@ function prezzoRiga(riga) {
     );
 }
 function totaleOrdine() {
-    return stato.righe.reduce((totale, riga) => totale + prezzoRiga(riga), 0) + costoConsegna;
+    return stato.righe.reduce((totale, riga) => totale + prezzoRiga(riga), 0)
+        + costoConsegna
+        + (copertoCorrente()?.totale || 0);
+}
+function copertoCorrente() {
+    return calcolaCoperto(
+        tipoOrdine.value,
+        Number(numeroPersone.value),
+        prodottoCoperto?.disponibile === false || prodottoCoperto?.archiviato === true
+            ? 0
+            : prodottoCoperto?.prezzo
+    );
+}
+function testoCoperto(coperto) {
+    return `Coperto ${coperto.persone} × ${euro.format(coperto.prezzoUnitario)} = ${euro.format(coperto.totale)}`;
 }
 function renderExtra(container, selezionati, onChange) {
     container.innerHTML = "";
@@ -192,7 +209,7 @@ function renderProdotti() {
     prodotti.innerHTML = "";
     prodotti.scrollLeft = 0;
     const disponibili = stato.menu
-        .filter(prodotto => prodotto.categoria === stato.categoria)
+        .filter(prodotto => !isCoperto(prodotto) && prodotto.categoria === stato.categoria)
         .sort((a, b) => a.ordine - b.ordine || a.nome.localeCompare(b.nome, "it"));
     for (let inizio = 0; inizio < disponibili.length; inizio += 9) {
         const pagina = document.createElement("div");
@@ -235,7 +252,7 @@ function aggiornaDisplayMoltiplicatore() {
 }
 function renderRisultatiRicerca() {
     const testo = ricercaInput.value;
-    const trovati = filtraProdotti(stato.menu, testo);
+    const trovati = filtraProdotti(stato.menu.filter(prodotto => !isCoperto(prodotto)), testo);
     ricercaRisultati.innerHTML = "";
     ricercaMessaggio.textContent = "";
     if (!testo.trim()) return;
@@ -373,6 +390,13 @@ function renderRigheRiepilogo(contenitore) {
         contenitore.appendChild(voce);
     });
     if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
+    const coperto = copertoCorrente();
+    if (coperto) {
+        const voceCoperto = document.createElement("div");
+        voceCoperto.className = "riepilogo-coperto";
+        voceCoperto.textContent = testoCoperto(coperto);
+        contenitore.appendChild(voceCoperto);
+    }
 }
 function rimuoviRigaRiepilogo(evento) {
     const selezione = evento.target.closest(".seleziona-riga");
@@ -580,10 +604,15 @@ function apriConferma() {
         consegna && costoConsegna
             ? `<div class="conferma-consegna"><span>Costo consegna</span><strong>${escapeHtml(euro.format(costoConsegna))}</strong></div>`
             : "";
+    const coperto = copertoCorrente();
+    const dettaglioCoperto = coperto
+        ? `<div class="conferma-coperto">${escapeHtml(testoCoperto(coperto))}</div>`
+        : "";
     confermaRiepilogo.innerHTML =
         dettagliServizio +
         dettaglioOrario +
         dettaglioCostoConsegna +
+        dettaglioCoperto +
         stato.righe
             .map(riga => {
                 const extra = nomiExtra(riga.extra)
@@ -758,6 +787,7 @@ tipoOrdine.addEventListener("change", () => {
     aggiornaTipoOrdine();
     renderRiepilogo();
 });
+numeroPersone.addEventListener("input", renderRiepilogo);
 bottoneCostoConsegna.addEventListener("click", () => {
     costoConsegna = costoConsegna === 2 ? 0 : 2;
     aggiornaBottoneCostoConsegna();
@@ -821,6 +851,8 @@ document.addEventListener("keydown", evento => {
 Promise.all([fetch("/api/menu"), fetch("/api/extra")])
     .then(async risposte => {
         stato.menu = await risposte[0].json();
+        prodottoCoperto = stato.menu.find(prodotto => isCoperto(prodotto)) || null;
+        stato.menu = stato.menu.filter(prodotto => !isCoperto(prodotto));
         stato.extra = await risposte[1].json();
         const labels = new Map(
             [...tabsCategorie.querySelectorAll(".tab[data-tab]")]
@@ -828,6 +860,7 @@ Promise.all([fetch("/api/menu"), fetch("/api/extra")])
         );
         const categorie = new Map();
         for (const prodotto of stato.menu) {
+            if (isCoperto(prodotto)) continue;
             if (!categorie.has(prodotto.categoria)) {
                 categorie.set(prodotto.categoria, {
                     id: prodotto.categoria,
@@ -851,6 +884,7 @@ Promise.all([fetch("/api/menu"), fetch("/api/extra")])
         stato.categoria = ordinate[0]?.id || "";
         renderGrigliaExtra();
         renderProdotti();
+        renderRiepilogo();
         // Se la ricerca è stata aperta prima che il menu arrivasse, aggiorna i risultati.
         if (!ricercaModale.hidden) renderRisultatiRicerca();
     })

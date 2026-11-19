@@ -293,8 +293,13 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         const totalAdded = Math.round(receiptRows.reduce((sum, row) => sum + receiptUnitPrice(row), 0) * 100) / 100;
         lines.push(...wrapReceiptItem("TOTALE AGGIUNTA", totalAdded, receiptWidth));
         lines.push(...wrapReceiptItem("NUOVO TOTALE", Number(order.totale || 0), receiptWidth));
-    } else if (receiptOptions.profile === "sala" && tipo === "consegna" && Number(order.costoConsegna) > 0) {
-        lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
+    } else if (receiptOptions.profile === "sala") {
+        if (Number(order.coperto?.totale) > 0) {
+            lines.push(...wrapReceiptItem(`COPERTO ${Number(order.coperto.persone) || 0}X`, Number(order.coperto.totale), receiptWidth));
+        }
+        if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
+            lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
+        }
     }
     if (receiptOptions.profile === "sala" && options.tipoStampa !== "aggiunta") {
         const amount = receiptAmount(Number(order.totale || 0));

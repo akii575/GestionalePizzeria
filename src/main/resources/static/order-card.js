@@ -188,6 +188,9 @@ const orderCard = (() => {
         const deliveryFee = type === "consegna" && Number(order.costoConsegna) > 0
             ? `<p class="order-card__delivery-fee">Costo consegna: ${euro.format(Number(order.costoConsegna))}</p>`
             : "";
+        const coverCharge = type === "tavolo" && Number(order.coperto?.totale) > 0
+            ? `<p class="order-card__cover-charge">Coperto ${Number(order.coperto.persone)} × ${euro.format(Number(order.coperto.prezzoUnitario))}</p>`
+            : "";
         const printStatus = renderPrintStatus(order);
 
         return `
@@ -207,6 +210,7 @@ const orderCard = (() => {
                 <details class="order-card__details">
                     <summary>Apri il dettaglio dell'ordine</summary>
                     <ul class="order-card__products">${renderProducts(order.righe, menu)}</ul>
+                    ${coverCharge}
                     ${deliveryFee}
                     ${note}
                 </details>

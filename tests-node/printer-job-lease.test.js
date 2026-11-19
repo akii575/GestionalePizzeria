@@ -5,7 +5,7 @@ const menu = require("../lib/menu.json");
 const extras = require("../lib/extras.json");
 const extraCategories = new Set(["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"]);
 const testCatalog = {
-    menu: menu.map(product => ({
+    menu: menu.filter(product => product.nome.trim().toLocaleLowerCase("it-IT") !== "coperto").map(product => ({
         ...product,
         categoriaId: product.categoria,
         ammetteExtra: extraCategories.has(product.categoria),
@@ -13,6 +13,7 @@ const testCatalog = {
     })),
     extras: extras.map(extra => ({ ...extra, disponibile: true }))
 };
+let catalogForApi = testCatalog;
 
 const authPath = require.resolve("../lib/auth");
 const firebasePath = require.resolve("../lib/firebase-admin");
@@ -43,7 +44,7 @@ require.cache[menuStorePath] = {
     id: menuStorePath,
     filename: menuStorePath,
     loaded: true,
-    exports: { getMenuData: async () => testCatalog }
+    exports: { getMenuData: async () => catalogForApi }
 };
 
 const { prepareOrder: validateOrder } = require("../lib/orders");
@@ -205,6 +206,41 @@ function updateOrderBody(input) {
         ...input
     };
 }
+
+test("order update recalculates the automatic cover from the new guest count", async () => {
+    const previousCatalog = catalogForApi;
+    catalogForApi = {
+        ...testCatalog,
+        allProducts: [
+            ...testCatalog.menu,
+            { nome: "Coperto", prezzo: 2, disponibile: true, archiviato: false }
+        ]
+    };
+    database = createDatabase({
+        orders: {
+            "7": storedOrder({
+                numeroPersone: 4,
+                righe: [{ prodotto: "Margherita" }]
+            }, {
+                coperto: { persone: 4, prezzoUnitario: 2, totale: 8 },
+                totale: 13
+            })
+        }
+    });
+
+    try {
+        const response = await invoke(orderHandler, "PUT", { numero: "7" }, updateOrderBody({
+            numeroPersone: 6,
+            righe: [{ prodotto: "Margherita" }]
+        }));
+
+        assert.equal(response.statusCode, 200);
+        assert.deepEqual(response.body.coperto, { persone: 6, prezzoUnitario: 2, totale: 12 });
+        assert.equal(response.body.totale, 17);
+    } finally {
+        catalogForApi = previousCatalog;
+    }
+});
 
 test("every order API mutation increments metadata/ordersVersion", async () => {
     const cases = [

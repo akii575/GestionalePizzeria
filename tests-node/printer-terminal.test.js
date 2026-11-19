@@ -163,6 +163,38 @@ test("delivery surcharge is printed separately before the total within the paper
     assert.equal(lines[surcharge].length, 24);
 });
 
+test("sala prints cover before the unchanged order total, while cucina and additions omit its line", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const order = {
+        numero: 42,
+        tipo: "tavolo",
+        numeroPersone: 4,
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{ prodotto: "Margherita", prezzoBase: 5, totale: 5 }],
+        coperto: { persone: 4, prezzoUnitario: 2, totale: 8 },
+        totale: 13
+    };
+    const sala = formatReceipt(order);
+    const lineeSala = sala.split(/\r?\n/);
+    const coperto = lineeSala.findIndex(linea => linea.includes("COPERTO 4X"));
+    const totale = lineeSala.find(linea => linea.startsWith("TOTALE"));
+
+    assert.ok(coperto >= 0);
+    assert.ok(coperto < lineeSala.findIndex(linea => linea.startsWith("TOTALE")));
+    assert.match(lineeSala[coperto], /COPERTO 4X\s+EUR 8,00/);
+    assert.match(totale, /EUR 13,00/);
+
+    const cucina = formatReceipt(order, 80, { profile: "cucina" });
+    assert.doesNotMatch(cucina, /COPERTO|EUR|TOTALE/);
+
+    const aggiunta = formatReceipt(order, 80, {
+        tipoStampa: "aggiunta",
+        righe: [{ prodotto: "Margherita", prezzoBase: 1, totale: 1 }]
+    });
+    assert.doesNotMatch(aggiunta, /COPERTO 4X/);
+    assert.match(aggiunta, /NUOVO TOTALE\s+EUR 13,00/);
+});
+
 test("receipt number is first and requested time is the final large line", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const lines = formatReceipt({

@@ -72,6 +72,22 @@ test("reprint controls are available only on editable order cards", () => {
     assert.doesNotMatch(render({ tipo: "tavolo" }, { canEdit: false }), /data-ristampa=/);
 });
 
+test("order detail shows the automatic cover charge for table service", () => {
+    const table = render({
+        tipo: "tavolo",
+        coperto: { persone: 4, prezzoUnitario: 2, totale: 8 },
+        totale: 13
+    });
+    const counter = render({
+        tipo: "banco",
+        coperto: { persone: 4, prezzoUnitario: 2, totale: 8 }
+    });
+
+    assert.match(table, /Coperto 4 × 2,00\s*€<\/p>/);
+    assert.match(table, /order-card__total">13,00/);
+    assert.doesNotMatch(counter, /order-card__cover-charge/);
+});
+
 test("all order types share two-column fields and counter names span the row", () => {
     const delivery = render({
         tipo: "consegna",

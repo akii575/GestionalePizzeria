@@ -5,7 +5,7 @@ const menu = require("../lib/menu.json");
 const extras = require("../lib/extras.json");
 const extraCategories = new Set(["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"]);
 const testCatalog = {
-    menu: menu.map(product => ({
+    menu: menu.filter(product => product.nome.trim().toLocaleLowerCase("it-IT") !== "coperto").map(product => ({
         ...product,
         categoriaId: product.categoria,
         ammetteExtra: extraCategories.has(product.categoria),
@@ -16,6 +16,138 @@ const testCatalog = {
 function prepareOrder(input, catalog = testCatalog, options) {
     return validateOrder(input, catalog, options);
 }
+
+function catalogWithCoperto(coperto) {
+    return {
+        ...testCatalog,
+        allProducts: [...testCatalog.menu, ...(coperto ? [coperto] : [])]
+    };
+}
+
+test("table orders add the available catalog cover charge and ignore client prices", () => {
+    const order = prepareOrder({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 4",
+        numeroPersone: 4,
+        coperto: { persone: 99, prezzoUnitario: 0.01, totale: 0.99 },
+        righe: [{ prodotto: "Margherita" }]
+    }, catalogWithCoperto({ nome: " cOpErTo ", prezzo: 2, disponibile: true }));
+
+    assert.deepEqual(order.coperto, { persone: 4, prezzoUnitario: 2, totale: 8 });
+    assert.equal(order.totale, 13);
+    assert.deepEqual(publicOrder(order).coperto, order.coperto);
+});
+
+test("only table orders include a cover charge", () => {
+    const catalog = catalogWithCoperto({ nome: "Coperto", prezzo: 2, disponibile: true });
+    const common = { righe: [{ prodotto: "Margherita" }] };
+    const orders = [
+        prepareOrder({ ...common, tipo: "banco", cognomeBanco: "Rossi" }, catalog),
+        prepareOrder({ ...common, tipo: "ritiro", tavoloOCliente: "Anna", telefonoRitiro: "3331234567" }, catalog),
+        prepareOrder({
+            ...common,
+            tipo: "consegna",
+            indirizzoConsegna: "Via Roma 12",
+            telefonoConsegna: "3331234567"
+        }, catalog)
+    ];
+
+    assert.ok(orders.every(order => order.coperto === null));
+    assert.ok(orders.every(order => order.totale === 5));
+});
+
+test("missing, archived or unavailable cover products add no charge", () => {
+    const orderInput = {
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        numeroPersone: 4,
+        righe: [{ prodotto: "Margherita" }]
+    };
+    const catalogs = [
+        testCatalog,
+        catalogWithCoperto({ nome: "Coperto", prezzo: 2, disponibile: true, archiviato: true }),
+        catalogWithCoperto({ nome: "Coperto", prezzo: 2, disponibile: false })
+    ];
+
+    for (const catalog of catalogs) {
+        const order = prepareOrder(orderInput, catalog);
+        assert.equal(order.coperto, null);
+        assert.equal(order.totale, 5);
+    }
+});
+
+test("editing recalculates covers for changed guests and preserves unchanged historical prices", () => {
+    const oldOrder = {
+        tipo: "tavolo",
+        numeroPersone: 4,
+        coperto: { persone: 4, prezzoUnitario: 2, totale: 8 }
+    };
+    const catalog = catalogWithCoperto({ nome: "Coperto", prezzo: 3, disponibile: true });
+    const input = {
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        numeroPersone: 6,
+        righe: [{ prodotto: "Margherita" }]
+    };
+
+    const changed = prepareOrder(input, catalog, { existingRows: [], existingOrder: oldOrder });
+    const unchanged = prepareOrder({
+        ...input,
+        numeroPersone: 4
+    }, catalog, { existingRows: [], existingOrder: oldOrder });
+    assert.deepEqual(changed.coperto, { persone: 6, prezzoUnitario: 3, totale: 18 });
+    assert.equal(changed.totale, 23);
+    assert.deepEqual(unchanged.coperto, { persone: 4, prezzoUnitario: 2, totale: 8 });
+});
+
+test("editing unchanged table orders preserves covers when the menu entry is unavailable", () => {
+    const previous = {
+        tipo: "tavolo",
+        numeroPersone: 4,
+        coperto: { persone: 4, prezzoUnitario: 2, totale: 8 }
+    };
+    const order = prepareOrder({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        numeroPersone: 4,
+        righe: [{ prodotto: "Margherita" }]
+    }, catalogWithCoperto({ nome: "Coperto", prezzo: 3, disponibile: false }), {
+        existingOrder: previous
+    });
+
+    assert.deepEqual(order.coperto, previous.coperto);
+    assert.equal(order.totale, 13);
+});
+
+test("editing a legacy table order migrates its Coperto rows into the automatic cover", () => {
+    const previous = {
+        tipo: "tavolo",
+        numeroPersone: 4,
+        righe: [
+            { prodotto: "Coperto", prezzoBase: 2, totale: 2 },
+            { prodotto: "Coperto", prezzoBase: 2, totale: 2 },
+            { prodotto: "Coperto", prezzoBase: 2, totale: 2 },
+            { prodotto: "Coperto", prezzoBase: 2, totale: 2 }
+        ]
+    };
+    const order = prepareOrder({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        numeroPersone: 4,
+        righe: [{ prodotto: "Margherita" }]
+    }, testCatalog, { existingOrder: previous });
+
+    assert.deepEqual(order.coperto, { persone: 4, prezzoUnitario: 2, totale: 8 });
+    assert.equal(order.totale, 13);
+});
+
+test("a cover product cannot be submitted as an order row", () => {
+    assert.throws(() => prepareOrder({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        righe: [{ prodotto: " cOPERTO " }]
+    }), error => error.statusCode === 400 && error.message === "Il coperto viene aggiunto automaticamente.");
+});
 
 test("validates an order and calculates product and extra totals", () => {
     const order = prepareOrder({

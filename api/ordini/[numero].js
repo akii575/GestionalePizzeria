@@ -92,7 +92,10 @@ module.exports = api(async (req, res) => {
             if (!snapshot.exists) throw httpError(404, `Ordine non trovato: ${numero}`);
             const jobSnapshot = await transaction.get(printerJobs.where("numero", "==", numero));
             const previous = snapshot.data();
-            const prepared = prepareOrder(req.body, catalog, { existingRows: previous.righe || [] });
+            const prepared = prepareOrder(req.body, catalog, {
+                existingRows: previous.righe || [],
+                existingOrder: previous
+            });
             const jobs = jobSnapshot.docs.map(document => ({ ref: document.ref, ...document.data() }));
             if (jobs.some(job => job.status === "printing")) {
                 throw httpError(409, "La comanda e' gia' in fase di stampa e non puo' essere modificata.");

@@ -6,8 +6,13 @@ const { escapeHtml } = window.htmlUtils;
 let menu = [];
 let extra = [];
 let costoConsegna = 0;
+let prodottoCoperto = null;
+let copertoOrdine = null;
+let tipoOrdineOriginale = null;
+let numeroPersoneOriginale = null;
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+const { isCoperto, calcolaCoperto } = window.prodottiUI;
 const stato = testo => (document.getElementById("stato").textContent = testo);
 function oraLocale() {
     const adesso = new Date();
@@ -22,6 +27,17 @@ function aggiornaBottoneCostoConsegna() {
 function riferimentoExtra(elemento) {
     return typeof elemento === "string" ? extra.find(item => item.nome === elemento) : elemento;
 }
+function copertoCorrente() {
+    const tipo = document.getElementById("tipo-ordine").value;
+    const numeroPersone = Number(document.getElementById("numero-persone").value);
+    const invariato = tipo === tipoOrdineOriginale && numeroPersone === numeroPersoneOriginale;
+    if (invariato && Number(copertoOrdine?.prezzoUnitario) > 0) {
+        return calcolaCoperto(tipo, numeroPersone, copertoOrdine.prezzoUnitario);
+    }
+    if (!prodottoCoperto || prodottoCoperto.disponibile === false || prodottoCoperto.archiviato === true) return null;
+    const prezzo = prodottoCoperto.prezzo;
+    return calcolaCoperto(tipo, numeroPersone, prezzo);
+}
 function aggiornaTotale() {
     const righeOrdine = Array.from(document.querySelectorAll(".riga-edit"));
     const totaleRighe = righeOrdine.reduce((somma, riga) => {
@@ -33,7 +49,19 @@ function aggiornaTotale() {
             selezionati.reduce((extraTotale, item) => extraTotale + Number(item.prezzo || 0), 0)
         );
     }, 0);
-    const totale = totaleRighe + (document.getElementById("tipo-ordine").value === "consegna" ? costoConsegna : 0);
+    const coperto = copertoCorrente();
+    const totale = totaleRighe
+        + (document.getElementById("tipo-ordine").value === "consegna" ? costoConsegna : 0)
+        + (coperto?.totale || 0);
+    const riepilogoCoperto = document.getElementById("coperto-modifica");
+    const copertoVisibile = coperto
+        && prodottoCoperto
+        && prodottoCoperto.disponibile !== false
+        && prodottoCoperto.archiviato !== true;
+    riepilogoCoperto.hidden = !copertoVisibile;
+    riepilogoCoperto.textContent = copertoVisibile
+        ? `Coperto ${coperto.persone} × ${euro.format(coperto.prezzoUnitario)} = ${euro.format(coperto.totale)}`
+        : "";
     document.getElementById("totale-modifica").textContent = `Totale: ${euro.format(totale)}`;
     aggiornaConteggioProdotti(conteggioModifica, righeOrdine.length);
 }
@@ -144,6 +172,8 @@ async function avvia() {
     try {
         const risposte = await Promise.all([fetch("/api/menu"), fetch("/api/extra"), fetch("/api/ordini")]);
         menu = await risposte[0].json();
+        prodottoCoperto = menu.find(prodotto => isCoperto(prodotto)) || null;
+        menu = menu.filter(prodotto => !isCoperto(prodotto));
         extra = (await risposte[1].json()).sort((primo, secondo) =>
             primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" })
         );
@@ -159,10 +189,22 @@ async function avvia() {
                   : ordine.tipo === "ritiro"
                     ? "ritiro"
                     : "tavolo";
+        tipoOrdineOriginale = ordine.tipo === "sala" ? "tavolo" : ordine.tipo || "tavolo";
         document.getElementById("tavolo").value =
             ordine.tipo === "consegna" || ordine.tipo === "banco" ? "" : ordine.tavoloOCliente || "";
         document.getElementById("numero-persone").value =
             Number.isInteger(ordine.numeroPersone) && ordine.numeroPersone > 0 ? ordine.numeroPersone : 1;
+        numeroPersoneOriginale = Number(document.getElementById("numero-persone").value);
+        copertoOrdine = ordine.coperto || null;
+        const righeCopertoLegacy = ordine.righe.filter(riga => isCoperto({ nome: riga.prodotto }));
+        if (!copertoOrdine && tipoOrdineOriginale === "tavolo" && righeCopertoLegacy.length) {
+            const totaleCopertoLegacy = righeCopertoLegacy.reduce(
+                (totale, riga) => totale + Number(riga.totale ?? riga.prezzoBase ?? 0),
+                0
+            );
+            const prezzoLegacy = totaleCopertoLegacy / numeroPersoneOriginale;
+            copertoOrdine = calcolaCoperto("tavolo", numeroPersoneOriginale, prezzoLegacy);
+        }
         document.getElementById("indirizzo-consegna").value = ordine.indirizzoConsegna || "";
         document.getElementById("telefono-consegna").value = ordine.telefonoConsegna || "";
         document.getElementById("telefono-ritiro").value = ordine.telefonoRitiro || "";
@@ -172,7 +214,8 @@ async function avvia() {
         document.getElementById("stato-pagamento").value = ordine.statoPagamento || "";
         costoConsegna = Number(ordine.costoConsegna) === 2 ? 2 : 0;
         aggiornaCampiConsegna();
-        ordine.righe.forEach(rigaEdit);
+        ordine.righe.filter(riga => !isCoperto({ nome: riga.prodotto })).forEach(rigaEdit);
+        aggiornaTotale();
     } catch (errore) {
         stato(errore.message);
     }
@@ -191,6 +234,7 @@ document.getElementById("tipo-ordine").addEventListener("change", () => {
     aggiornaCampiConsegna();
     aggiornaTotale();
 });
+document.getElementById("numero-persone").addEventListener("input", aggiornaTotale);
 bottoneCostoConsegna.addEventListener("click", () => {
     costoConsegna = costoConsegna === 2 ? 0 : 2;
     aggiornaBottoneCostoConsegna();
