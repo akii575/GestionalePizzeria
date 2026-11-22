@@ -6,8 +6,10 @@ const menuStore = require("../lib/menu-store");
 const { apiRoute } = require("./api-router-helper");
 const {
     normalizeCustomerPhone,
+    normalizeCustomerAddress,
     customerProfileForOrder
 } = require("../lib/customers");
+const { backfillCustomerAddresses } = require("../scripts/backfill-clienti");
 
 function createResponse() {
     return {
@@ -99,6 +101,11 @@ test("customer phone normalization strips Italian prefixes and rejects short num
     assert.equal(normalizeCustomerPhone("12345"), null);
 });
 
+test("customer address normalization removes accents and extra whitespace", () => {
+    assert.equal(normalizeCustomerAddress("  VIA   DE Sànctis 7/F  "), "via de sanctis 7/f");
+    assert.equal(normalizeCustomerAddress(null), null);
+});
+
 test("customer profiles group order rows by product and extras and omit table cover", () => {
     const profile = customerProfileForOrder({
         tipo: "consegna",
@@ -115,6 +122,7 @@ test("customer profiles group order rows by product and extras and omit table co
 
     assert.equal(profile.telefono, "3331234567");
     assert.equal(profile.indirizzo, "Via Roma 1");
+    assert.equal(profile.indirizzoRicerca, "via roma 1");
     assert.equal("nome" in profile, false);
     assert.deepEqual(profile.ultimoOrdine, {
         data: "2026-11-22T18:00:00.000Z",
@@ -147,6 +155,129 @@ test("customer profiles keep at most 30 distinct product and extra combinations"
 
     assert.equal(profile.nome, "Anna Rossi");
     assert.equal(profile.ultimoOrdine.righe.length, 30);
+});
+
+test("customer address lookup normalizes a prefix, limits results and rejects riders", async t => {
+    const whereCalls = [];
+    let resultLimit = 0;
+    let readCount = 0;
+    t.mock.method(auth, "requireStaffAccess", async req => {
+        if (req.headers.role === "delivery") {
+            const error = new Error("Accesso negato.");
+            error.statusCode = 403;
+            throw error;
+        }
+    });
+    t.mock.method(firebaseAdmin, "getFirebaseServices", () => ({
+        db: {
+            collection(name) {
+                assert.equal(name, "clienti");
+                return {
+                    where(field, operator, value) {
+                        whereCalls.push([field, operator, value]);
+                        return this;
+                    },
+                    limit(value) {
+                        resultLimit = value;
+                        return this;
+                    },
+                    async get() {
+                        readCount++;
+                        return {
+                            docs: [{
+                                id: "3331234567",
+                                data: () => ({
+                                    indirizzo: "Via De Sanctis 7/F",
+                                    ordiniTotali: 3,
+                                    ultimoOrdine: { tipo: "consegna", righe: [] }
+                                })
+                            }]
+                        };
+                    }
+                };
+            }
+        }
+    }));
+
+    const handler = apiRoute("clienti");
+    const response = await invoke(handler, {
+        method: "GET",
+        headers: { role: "staff" },
+        query: { indirizzo: "  VIA   DE Sànctis " }
+    });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers["Cache-Control"], "no-store");
+    assert.deepEqual(whereCalls, [
+        ["indirizzoRicerca", ">=", "via de sanctis"],
+        ["indirizzoRicerca", "<=", "via de sanctis\uf8ff"]
+    ]);
+    assert.equal(resultLimit, 5);
+    assert.deepEqual(response.body, {
+        risultati: [{
+            telefono: "3331234567",
+            indirizzo: "Via De Sanctis 7/F",
+            ordiniTotali: 3,
+            ultimoOrdine: { tipo: "consegna", righe: [] }
+        }]
+    });
+
+    const invalid = await invoke(handler, {
+        method: "GET",
+        headers: { role: "staff" },
+        query: { indirizzo: " à " }
+    });
+    assert.equal(invalid.statusCode, 400);
+    assert.equal(readCount, 1);
+
+    const blocked = await invoke(handler, {
+        method: "GET",
+        headers: { role: "delivery" },
+        query: { indirizzo: "Via" }
+    });
+    assert.equal(blocked.statusCode, 403);
+    assert.equal(readCount, 1);
+});
+
+test("customer address backfill dry run calculates missing keys without writing", async () => {
+    const updates = [];
+    let commits = 0;
+    const docs = [
+        { id: "3331234567", ref: "one", data: () => ({ indirizzo: "Via   Roma 1" }) },
+        { id: "3337654321", ref: "two", data: () => ({ indirizzo: "Città Alta 2" }) },
+        { id: "3331111111", ref: "three", data: () => ({ nome: "Anna" }) }
+    ];
+    const db = {
+        collection(name) {
+            assert.equal(name, "clienti");
+            return {
+                orderBy() {
+                    return {
+                        limit() {
+                            return this;
+                        },
+                        async get() {
+                            return { docs };
+                        }
+                    };
+                }
+            };
+        },
+        batch() {
+            return {
+                update(...args) {
+                    updates.push(args);
+                },
+                async commit() {
+                    commits++;
+                }
+            };
+        }
+    };
+
+    const summary = await backfillCustomerAddresses({ db, dryRun: true, log() {} });
+    assert.deepEqual(summary, { processed: 3, updated: 2 });
+    assert.deepEqual(updates, []);
+    assert.equal(commits, 0);
 });
 
 test("customer lookup is staff-only, normalizes the phone and reads one document", async t => {
@@ -282,6 +413,7 @@ test("creating a delivery order updates the customer inside its order transactio
     assert.ok(customerWrite);
     assert.equal(customerWrite.reference.id, "3331234567");
     assert.equal(customerWrite.value.indirizzo, "Via Roma 1");
+    assert.equal(customerWrite.value.indirizzoRicerca, "via roma 1");
     assert.equal("nome" in customerWrite.value, false);
     assert.equal(customerWrite.value.ordiniTotali.operand, 1);
     assert.deepEqual(customerWrite.value.ultimoOrdine.righe, [{

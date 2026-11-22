@@ -95,6 +95,40 @@ select,
 .campo-indirizzo {
     grid-column: 1 / -1;
 }
+.clienti-indirizzo-risultati {
+    display: grid;
+    max-height: 192px;
+    margin-top: 6px;
+    overflow-y: auto;
+    border: 1px solid #E4B034;
+    border-radius: 8px;
+    background: #fffdf6;
+}
+.clienti-indirizzo-risultati[hidden] {
+    display: none;
+}
+.clienti-indirizzo-risultati button {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 0;
+    border-bottom: 1px solid #eee4c8;
+    background: transparent;
+    color: #333;
+    font-size: 14px;
+    text-align: left;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.clienti-indirizzo-risultati button:last-child {
+    border-bottom: 0;
+}
+.clienti-indirizzo-risultati button:active {
+    background: #FFF8E6;
+}
+.clienti-indirizzo-risultati button:focus:not(:focus-visible) {
+    outline: none;
+}
 .campo-consegna input {
     width: 100%;
     min-height: 48px;

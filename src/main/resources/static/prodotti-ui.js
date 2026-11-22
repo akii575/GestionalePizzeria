@@ -78,6 +78,12 @@ const prodottiUI = (() => {
         return `${totale} ${totale === 1 ? "ordine" : "ordini"}`;
     }
 
+    function applicaClienteIndirizzo(cliente, campi, mostra) {
+        campi.telefono.value = cliente.telefono;
+        campi.indirizzo.value = cliente.indirizzo;
+        mostra(cliente);
+    }
+
     // Minuscolo e senza accenti: "Caffè" -> "caffe", "Crocché" -> "crocche".
     function normalizza(testo) {
         return String(testo ?? "")
@@ -283,6 +289,7 @@ const prodottiUI = (() => {
         caricaMenuConCache,
         creaGestoreSuggerimentiClienti,
         etichettaOrdiniCliente,
+        applicaClienteIndirizzo,
         normalizza,
         filtraProdotti,
         ammetteExtra,

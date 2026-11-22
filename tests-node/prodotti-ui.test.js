@@ -6,6 +6,7 @@ const menu = require("../lib/menu.json");
 const {
     normalizza,
     filtraProdotti,
+    applicaClienteIndirizzo,
     isCoperto,
     calcolaCoperto,
     creaRiga,
@@ -29,6 +30,22 @@ test("normalizes text ignoring case, accents and extra spaces", () => {
     assert.equal(normalizza("  Caffè  "), "caffe");
     assert.equal(normalizza("CROCCHÉ di   Patate"), "crocche di patate");
     assert.equal(normalizza(null), "");
+});
+
+test("selecting a delivery address fills customer fields and displays its profile", () => {
+    const cliente = {
+        telefono: "3331234567",
+        indirizzo: "Via De Sanctis 7/F",
+        ordiniTotali: 3
+    };
+    const campi = { telefono: { value: "" }, indirizzo: { value: "" } };
+    let profiloMostrato = null;
+
+    applicaClienteIndirizzo(cliente, campi, valore => { profiloMostrato = valore; });
+
+    assert.equal(campi.telefono.value, cliente.telefono);
+    assert.equal(campi.indirizzo.value, cliente.indirizzo);
+    assert.equal(profiloMostrato, cliente);
 });
 
 test("search ignores case and accents on the real menu", () => {

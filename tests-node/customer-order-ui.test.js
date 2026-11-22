@@ -87,3 +87,17 @@ test("the customer suggestion close button is accessible and delegates dismissal
     assert.match(ordersStyles, /\.cliente-abituale-chiudi\s*\{[\s\S]*?width:\s*32px;[\s\S]*?height:\s*32px;[\s\S]*?border:\s*0;[\s\S]*?color:\s*#6B5A2A;/);
     assert.match(ordersStyles, /\.cliente-abituale-chiudi:focus:not\(:focus-visible\)\s*\{\s*outline:\s*none;/);
 });
+
+test("address results use the selected customer without a phone lookup", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const ordersPage = fs.readFileSync(
+        path.join(__dirname, "../src/main/resources/static/ordini.js"),
+        "utf8"
+    );
+
+    assert.match(ordersPage, /fetch\(`\/api\/clienti\?indirizzo=/);
+    assert.match(ordersPage, /cacheClienti\.set\(telefono, Promise\.resolve\(clienteTrovato\)\)/);
+    assert.match(ordersPage, /applicaClienteIndirizzo\([\s\S]*?mostraClienteAbituale\([\s\S]*?telefono,\s*true/);
+    assert.match(ordersPage, /timerRicercaClientiIndirizzo = window\.setTimeout\([\s\S]*?300/);
+});

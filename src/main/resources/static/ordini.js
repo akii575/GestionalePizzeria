@@ -29,6 +29,9 @@ const campoTavolo = document.getElementById("campo-tavolo");
 const numeroPersone = document.getElementById("numero-persone");
 const campoRitiro = document.getElementById("campo-ritiro");
 const campiConsegna = document.getElementById("campi-consegna");
+const inputIndirizzoConsegna = document.getElementById("indirizzo-consegna");
+const inputTelefonoConsegna = document.getElementById("telefono-consegna");
+const clientiIndirizzoRisultati = document.getElementById("clienti-indirizzo-risultati");
 const campoOrario = document.getElementById("campo-orario");
 const orario = document.getElementById("orario");
 const campoPagamentoRitiro = document.getElementById("campo-pagamento-ritiro");
@@ -82,6 +85,9 @@ let ignoraClickDopoTrascinamentoExtra = false;
 const cacheClienti = new Map();
 let timerRicercaCliente = 0;
 let tokenRicercaCliente = 0;
+const cacheRicercaClientiIndirizzo = new Map();
+let timerRicercaClientiIndirizzo = 0;
+let tokenRicercaClientiIndirizzo = 0;
 
 function normalizzaTelefonoCliente(valore) {
     if (typeof valore !== "string") return null;
@@ -108,9 +114,10 @@ function formatoUltimoOrdine(ultimoOrdine) {
     return `Ultimo ordine${dataBreve ? ` (${dataBreve})` : ""}: ${righe.join(", ")}`;
 }
 
-function mostraClienteAbituale(container, cliente, tipo, numero) {
+function mostraClienteAbituale(container, cliente, tipo, numero, forzaVisibilita = false) {
     container.replaceChildren();
-    container.hidden = !clientiAbituali.visibile(numero, cliente?.trovato);
+    container.hidden = !cliente?.trovato
+        || (!forzaVisibilita && !clientiAbituali.visibile(numero, cliente?.trovato));
     if (container.hidden) return;
 
     const chiudi = document.createElement("button");
@@ -164,6 +171,92 @@ function mostraClienteAbituale(container, cliente, tipo, numero) {
     ripeti.textContent = "Ripeti ultimo ordine";
     ripeti.addEventListener("click", () => ripetiUltimoOrdine(cliente.ultimoOrdine));
     container.appendChild(ripeti);
+}
+
+function chiudiRisultatiClientiIndirizzo() {
+    window.clearTimeout(timerRicercaClientiIndirizzo);
+    tokenRicercaClientiIndirizzo++;
+    clientiIndirizzoRisultati.hidden = true;
+    clientiIndirizzoRisultati.replaceChildren();
+}
+
+function mostraRisultatiClientiIndirizzo(clienti) {
+    clientiIndirizzoRisultati.replaceChildren();
+    for (const cliente of clienti.slice(0, 5)) {
+        const risultato = document.createElement("button");
+        risultato.type = "button";
+        risultato.setAttribute("role", "option");
+        const telefono = String(cliente.telefono || "").replace(/\D/g, "");
+        const telefonoFormattato = telefono.length > 3
+            ? `${telefono.slice(0, 3)} ${telefono.slice(3)}`
+            : telefono;
+        risultato.textContent = `${cliente.indirizzo} · ${telefonoFormattato} · ${window.prodottiUI.etichettaOrdiniCliente(cliente.ordiniTotali)}`;
+        risultato.addEventListener("pointerdown", evento => evento.preventDefault());
+        risultato.addEventListener("click", () => selezionaClienteDaIndirizzo(cliente));
+        clientiIndirizzoRisultati.appendChild(risultato);
+    }
+    clientiIndirizzoRisultati.hidden = clientiIndirizzoRisultati.childElementCount === 0;
+}
+
+function selezionaClienteDaIndirizzo(cliente) {
+    chiudiRisultatiClientiIndirizzo();
+    if (tipoOrdine.value !== "consegna") return;
+
+    const telefono = String(cliente.telefono || "");
+    if (!telefono) return;
+    const clienteTrovato = { ...cliente, trovato: true };
+    window.clearTimeout(timerRicercaCliente);
+    tokenRicercaCliente++;
+    cacheClienti.set(telefono, Promise.resolve(clienteTrovato));
+    window.prodottiUI.applicaClienteIndirizzo(
+        clienteTrovato,
+        { telefono: inputTelefonoConsegna, indirizzo: inputIndirizzoConsegna },
+        dati => mostraClienteAbituale(
+            document.getElementById("cliente-abituale-consegna"),
+            dati,
+            "consegna",
+            telefono,
+            true
+        )
+    );
+}
+
+async function cercaClientiPerIndirizzo(indirizzo, token) {
+    let richiesta = cacheRicercaClientiIndirizzo.get(indirizzo);
+    if (!richiesta) {
+        richiesta = fetch(`/api/clienti?indirizzo=${encodeURIComponent(indirizzo)}`)
+            .then(async risposta => {
+                const dati = await risposta.json();
+                if (!risposta.ok) throw new Error(dati.errore || "Ricerca cliente non riuscita.");
+                return Array.isArray(dati.risultati) ? dati.risultati : [];
+            })
+            .catch(errore => {
+                cacheRicercaClientiIndirizzo.delete(indirizzo);
+                throw errore;
+            });
+        cacheRicercaClientiIndirizzo.set(indirizzo, richiesta);
+    }
+    try {
+        const clienti = await richiesta;
+        if (token !== tokenRicercaClientiIndirizzo
+                || tipoOrdine.value !== "consegna"
+                || window.prodottiUI.normalizza(inputIndirizzoConsegna.value) !== indirizzo) return;
+        mostraRisultatiClientiIndirizzo(clienti);
+    } catch {
+        // La ricerca dell'indirizzo non deve interrompere l'inserimento dell'ordine.
+    }
+}
+
+function aggiornaRicercaClientiIndirizzo() {
+    chiudiRisultatiClientiIndirizzo();
+    if (tipoOrdine.value !== "consegna") return;
+    const indirizzo = window.prodottiUI.normalizza(inputIndirizzoConsegna.value);
+    if (indirizzo.length < 3) return;
+    const token = tokenRicercaClientiIndirizzo;
+    timerRicercaClientiIndirizzo = window.setTimeout(
+        () => cercaClientiPerIndirizzo(indirizzo, token),
+        300
+    );
 }
 
 async function cercaClienteAbituale(tipo, numero, token) {
@@ -879,6 +972,7 @@ async function inviaOrdine() {
         document.getElementById("cognome-banco").value = "";
         document.getElementById("indirizzo-consegna").value = "";
         document.getElementById("telefono-consegna").value = "";
+        chiudiRisultatiClientiIndirizzo();
         clientiAbituali.reset();
         aggiornaRicercaClienteAbituale();
         orario.value = oraLocale();
@@ -987,11 +1081,31 @@ tipoOrdine.addEventListener("change", () => {
     if (tipoOrdine.value !== "consegna") costoConsegna = 0;
     aggiornaTipoOrdine();
     aggiornaRicercaClienteAbituale();
+    aggiornaRicercaClientiIndirizzo();
     renderRiepilogo();
 });
 for (const id of ["telefono-consegna", "telefono-ritiro"]) {
     document.getElementById(id).addEventListener("input", aggiornaRicercaClienteAbituale);
 }
+inputIndirizzoConsegna.addEventListener("input", aggiornaRicercaClientiIndirizzo);
+inputIndirizzoConsegna.addEventListener("blur", evento => {
+    if (!clientiIndirizzoRisultati.contains(evento.relatedTarget)) {
+        chiudiRisultatiClientiIndirizzo();
+    }
+});
+clientiIndirizzoRisultati.addEventListener("focusout", evento => {
+    if (!clientiIndirizzoRisultati.contains(evento.relatedTarget)
+            && evento.relatedTarget !== inputIndirizzoConsegna) {
+        chiudiRisultatiClientiIndirizzo();
+    }
+});
+document.addEventListener("pointerdown", evento => {
+    if (!clientiIndirizzoRisultati.hidden
+            && !clientiIndirizzoRisultati.contains(evento.target)
+            && evento.target !== inputIndirizzoConsegna) {
+        chiudiRisultatiClientiIndirizzo();
+    }
+});
 numeroPersone.addEventListener("input", renderRiepilogo);
 bottoneCostoConsegna.addEventListener("click", () => {
     costoConsegna = costoConsegna === 2 ? 0 : 2;
@@ -1041,6 +1155,7 @@ aggiornaAccessibilitaBarraSheet();
 document.getElementById("btn-annulla").addEventListener("click", () => {
     stato.righe = [];
     stato.rigaAttiva = null;
+    chiudiRisultatiClientiIndirizzo();
     clientiAbituali.reset();
     costoConsegna = 0;
     aggiornaBottoneCostoConsegna();
@@ -1050,6 +1165,11 @@ document.getElementById("btn-annulla").addEventListener("click", () => {
 document.addEventListener("keydown", evento => {
     intrappolaFocusNelRiepilogoSheet(evento);
     if (evento.key !== "Escape") return;
+    if (!clientiIndirizzoRisultati.hidden) {
+        chiudiRisultatiClientiIndirizzo();
+        evento.preventDefault();
+        return;
+    }
     if (riepilogoSheetAperto) chiudiRiepilogoSheet();
     else if (!ricercaModale.hidden) chiudiRicerca();
     else if (!confermaModale.hidden) chiudiConferma();
