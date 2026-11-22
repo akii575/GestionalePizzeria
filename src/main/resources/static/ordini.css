@@ -96,38 +96,87 @@ select,
     grid-column: 1 / -1;
 }
 .clienti-indirizzo-risultati {
-    display: grid;
-    max-height: 192px;
     margin-top: 6px;
-    overflow-y: auto;
-    border: 1px solid #E4B034;
-    border-radius: 8px;
-    background: #fffdf6;
+    overflow: hidden;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
 }
 .clienti-indirizzo-risultati[hidden] {
     display: none;
 }
-.clienti-indirizzo-risultati button {
+.clienti-indirizzo-intestazione {
+    padding: 8px 12px 4px;
+    color: #6B7280;
+    font-size: 12px;
+}
+.clienti-indirizzo-lista {
+    display: grid;
+}
+.clienti-indirizzo-risultato {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 10px;
     width: 100%;
-    min-height: 44px;
-    padding: 8px 10px;
+    min-height: 56px;
+    padding: 10px 12px;
     border: 0;
-    border-bottom: 1px solid #eee4c8;
-    background: transparent;
-    color: #333;
-    font-size: 14px;
+    border-bottom: 1px solid #F1F1F1;
+    background: #fff;
+    color: #1F2937;
     text-align: left;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
-.clienti-indirizzo-risultati button:last-child {
+.clienti-indirizzo-risultato:last-child {
     border-bottom: 0;
 }
-.clienti-indirizzo-risultati button:active {
-    background: #FFF8E6;
+.clienti-indirizzo-risultato:active {
+    background: #FFF6DF;
 }
-.clienti-indirizzo-risultati button:focus:not(:focus-visible) {
+.clienti-indirizzo-risultato:focus:not(:focus-visible) {
     outline: none;
+}
+.clienti-indirizzo-pin,
+.cliente-abituale-distintivo {
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: #FFF6DF;
+    color: #6B4E00;
+}
+.clienti-indirizzo-pin {
+    width: 32px;
+    height: 32px;
+}
+.clienti-indirizzo-testo {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+}
+.clienti-indirizzo-via {
+    overflow: hidden;
+    color: #1F2937;
+    font-size: 15px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.clienti-indirizzo-dettagli {
+    overflow: hidden;
+    color: #6B7280;
+    font-size: 13px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.clienti-indirizzo-chevron {
+    display: grid;
+    place-items: center;
+    color: #9CA3AF;
 }
 .campo-consegna input {
     width: 100%;
@@ -155,26 +204,53 @@ select,
 .cliente-abituale {
     position: relative;
     display: grid;
-    gap: 7px;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
     margin-top: 8px;
-    padding: 10px 52px 10px 12px;
-    border: 1px solid #E4B034;
-    border-radius: 8px;
-    background: #fffdf6;
-    color: #333;
-    font-size: 13px;
+    padding: 12px 12px 12px 14px;
+    border: 1px solid #E5E7EB;
+    border-left: 4px solid #E4B034;
+    border-radius: 0 8px 8px 0;
+    background: #fff;
+    color: #1F2937;
 }
 .cliente-abituale[hidden] {
     display: none;
 }
+.cliente-abituale-intestazione {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    padding-right: 32px;
+}
+.cliente-abituale-distintivo {
+    width: 36px;
+    height: 36px;
+}
 .cliente-abituale-titolo {
-    color: #795800;
-    font-size: 14px;
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+    color: #1F2937;
+    font-size: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cliente-abituale-conteggio {
+    flex: 0 0 auto;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #FFF6DF;
+    color: #6B4E00;
+    font-size: 12px;
+    line-height: 1.4;
 }
 .cliente-abituale-chiudi {
     position: absolute;
     top: 5px;
-    right: 6px;
+    right: 5px;
     display: grid;
     width: 32px;
     min-width: 32px;
@@ -184,8 +260,7 @@ select,
     place-items: center;
     border: 0;
     background: transparent;
-    color: #6B5A2A;
-    font-size: 24px;
+    color: #6B7280;
     line-height: 1;
     cursor: pointer;
     touch-action: manipulation;
@@ -195,24 +270,95 @@ select,
     outline: none;
 }
 .cliente-abituale-dettaglio {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 6px 10px;
+    gap: 8px;
 }
-.cliente-abituale-dettaglio button,
-.cliente-abituale-ripeti {
-    min-height: 36px;
-    padding: 6px 10px;
-    border: 1px solid var(--bordo);
+.cliente-abituale-valore {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 8px;
+    color: #1F2937;
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.cliente-abituale-valore svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: #6B7280;
+}
+.cliente-abituale-usa {
+    min-height: 32px;
+    padding: 5px 9px;
+    border: 1px solid #E5E7EB;
     border-radius: 6px;
     background: #fff;
-    color: var(--verde);
-    font-weight: 600;
+    color: #1A5EA9;
+    font-size: 13px;
+    white-space: nowrap;
 }
 .cliente-abituale-stato {
-    color: var(--verde);
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #15803D;
+    font-size: 13px;
+    white-space: nowrap;
+}
+.cliente-abituale-ultimo-ordine {
+    display: grid;
+    gap: 7px;
+}
+.cliente-abituale-ultimo-titolo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #6B7280;
+    font-size: 13px;
+}
+.cliente-abituale-ultimo-titolo svg,
+.cliente-abituale-ripeti svg {
+    flex: 0 0 auto;
+}
+.cliente-abituale-righe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.cliente-abituale-riga {
+    max-width: 100%;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #F3F4F6;
+    color: #1F2937;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.cliente-abituale-ripeti {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: #1A5EA9;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+}
+.cliente-abituale-ripeti:active {
+    background: #0F3F75;
+}
+.cliente-abituale-ripeti:focus:not(:focus-visible),
+.cliente-abituale-usa:focus:not(:focus-visible) {
+    outline: none;
 }
 .campo-telefono {
     grid-column: 1 / -1;

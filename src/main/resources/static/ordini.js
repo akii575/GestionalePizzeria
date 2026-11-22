@@ -32,6 +32,7 @@ const campiConsegna = document.getElementById("campi-consegna");
 const inputIndirizzoConsegna = document.getElementById("indirizzo-consegna");
 const inputTelefonoConsegna = document.getElementById("telefono-consegna");
 const clientiIndirizzoRisultati = document.getElementById("clienti-indirizzo-risultati");
+const clientiIndirizzoLista = document.getElementById("clienti-indirizzo-lista");
 const campoOrario = document.getElementById("campo-orario");
 const orario = document.getElementById("orario");
 const campoPagamentoRitiro = document.getElementById("campo-pagamento-ritiro");
@@ -88,6 +89,15 @@ let tokenRicercaCliente = 0;
 const cacheRicercaClientiIndirizzo = new Map();
 let timerRicercaClientiIndirizzo = 0;
 let tokenRicercaClientiIndirizzo = 0;
+const iconeCliente = {
+    pin: '<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
+    stella: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9L12 3Z" fill="currentColor" stroke="none"/>',
+    check: '<path d="m5 12 4 4L19 6"/>',
+    orologio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    refresh: '<path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.5 9A7 7 0 0 1 18 6l2 2M4 16l2 2a7 7 0 0 0 12.5-3"/>',
+    chiudi: '<path d="m6 6 12 12M18 6 6 18"/>',
+    chevron: '<path d="m9 18 6-6-6-6"/>'
+};
 
 function normalizzaTelefonoCliente(valore) {
     if (typeof valore !== "string") return null;
@@ -95,8 +105,24 @@ function normalizzaTelefonoCliente(valore) {
     return cifre.length >= 9 ? cifre : null;
 }
 
-function formatoUltimoOrdine(ultimoOrdine) {
-    if (!ultimoOrdine || !Array.isArray(ultimoOrdine.righe)) return "";
+function creaIconaCliente(nome, dimensione = 18) {
+    const icona = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icona.setAttribute("viewBox", "0 0 24 24");
+    icona.setAttribute("width", String(dimensione));
+    icona.setAttribute("height", String(dimensione));
+    icona.setAttribute("aria-hidden", "true");
+    icona.setAttribute("focusable", "false");
+    icona.setAttribute("fill", "none");
+    icona.setAttribute("stroke", "currentColor");
+    icona.setAttribute("stroke-width", "1.8");
+    icona.setAttribute("stroke-linecap", "round");
+    icona.setAttribute("stroke-linejoin", "round");
+    icona.innerHTML = iconeCliente[nome];
+    return icona;
+}
+
+function datiUltimoOrdine(ultimoOrdine) {
+    if (!ultimoOrdine || !Array.isArray(ultimoOrdine.righe)) return null;
     const data = new Date(ultimoOrdine.data);
     const dataBreve = Number.isNaN(data.getTime())
         ? ""
@@ -111,7 +137,7 @@ function formatoUltimoOrdine(ultimoOrdine) {
             : "";
         return `${riga.quantita}× ${riga.prodotto}${extra}`;
     });
-    return `Ultimo ordine${dataBreve ? ` (${dataBreve})` : ""}: ${righe.join(", ")}`;
+    return { dataBreve, righe };
 }
 
 function mostraClienteAbituale(container, cliente, tipo, numero, forzaVisibilita = false) {
@@ -120,55 +146,97 @@ function mostraClienteAbituale(container, cliente, tipo, numero, forzaVisibilita
         || (!forzaVisibilita && !clientiAbituali.visibile(numero, cliente?.trovato));
     if (container.hidden) return;
 
+    const intestazione = document.createElement("div");
+    intestazione.className = "cliente-abituale-intestazione";
+    const distintivo = document.createElement("span");
+    distintivo.className = "cliente-abituale-distintivo";
+    distintivo.appendChild(creaIconaCliente("stella"));
+    intestazione.appendChild(distintivo);
+
+    const titolo = document.createElement("strong");
+    titolo.className = "cliente-abituale-titolo";
+    titolo.textContent = "Cliente abituale";
+    intestazione.appendChild(titolo);
+
+    const conteggio = document.createElement("span");
+    conteggio.className = "cliente-abituale-conteggio";
+    conteggio.textContent = window.prodottiUI.etichettaOrdiniCliente(cliente.ordiniTotali);
+    intestazione.appendChild(conteggio);
+    container.appendChild(intestazione);
+
     const chiudi = document.createElement("button");
     chiudi.type = "button";
     chiudi.className = "cliente-abituale-chiudi";
     chiudi.setAttribute("aria-label", "Chiudi suggerimento cliente");
-    chiudi.textContent = "×";
+    chiudi.appendChild(creaIconaCliente("chiudi"));
     chiudi.addEventListener("click", () => clientiAbituali.chiudi(container, numero));
     container.appendChild(chiudi);
 
-    const titolo = document.createElement("strong");
-    titolo.className = "cliente-abituale-titolo";
-    titolo.textContent = `Cliente abituale · ${window.prodottiUI.etichettaOrdiniCliente(cliente.ordiniTotali)}`;
-    container.appendChild(titolo);
-
     const valore = tipo === "consegna" ? cliente.indirizzo : cliente.nome;
-    const label = tipo === "consegna" ? "Ultimo indirizzo:" : "Ultimo nome:";
     const campo = document.getElementById(tipo === "consegna" ? "indirizzo-consegna" : "cliente-ritiro");
-    const statoInserimento = document.createElement("span");
-    statoInserimento.className = "cliente-abituale-stato";
     if (valore) {
         const dettaglio = document.createElement("div");
         dettaglio.className = "cliente-abituale-dettaglio";
         const testo = document.createElement("span");
-        testo.textContent = `${label} ${valore}`;
+        testo.className = "cliente-abituale-valore";
+        testo.appendChild(creaIconaCliente("pin"));
+        const testoValore = document.createElement("span");
+        testoValore.textContent = valore;
+        testo.appendChild(testoValore);
         dettaglio.appendChild(testo);
-        const usa = document.createElement("button");
-        usa.type = "button";
-        usa.textContent = tipo === "consegna" ? "Usa indirizzo" : "Usa nome";
-        usa.addEventListener("click", () => {
-            campo.value = valore;
-            statoInserimento.textContent = tipo === "consegna" ? "Indirizzo inserito" : "Nome inserito";
-        });
-        dettaglio.appendChild(usa);
         if (!campo.value.trim()) {
             campo.value = valore;
-            statoInserimento.textContent = tipo === "consegna" ? "Indirizzo inserito" : "Nome inserito";
         }
-        dettaglio.appendChild(statoInserimento);
+        if (campo.value.trim() === valore.trim()) {
+            const statoInserimento = document.createElement("span");
+            statoInserimento.className = "cliente-abituale-stato";
+            statoInserimento.appendChild(creaIconaCliente("check", 16));
+            statoInserimento.append("Inserito");
+            dettaglio.appendChild(statoInserimento);
+        } else {
+            const usa = document.createElement("button");
+            usa.type = "button";
+            usa.className = "cliente-abituale-usa";
+            usa.textContent = tipo === "consegna" ? "Usa indirizzo" : "Usa nome";
+            usa.addEventListener("click", () => {
+                campo.value = valore;
+                const statoInserimento = document.createElement("span");
+                statoInserimento.className = "cliente-abituale-stato";
+                statoInserimento.appendChild(creaIconaCliente("check", 16));
+                statoInserimento.append("Inserito");
+                usa.replaceWith(statoInserimento);
+            });
+            dettaglio.appendChild(usa);
+        }
         container.appendChild(dettaglio);
     }
 
-    const descrizioneOrdine = formatoUltimoOrdine(cliente.ultimoOrdine);
-    if (!descrizioneOrdine) return;
+    const ultimoOrdine = datiUltimoOrdine(cliente.ultimoOrdine);
+    if (!ultimoOrdine || !ultimoOrdine.righe.length) return;
     const riepilogoOrdine = document.createElement("div");
-    riepilogoOrdine.textContent = descrizioneOrdine;
+    riepilogoOrdine.className = "cliente-abituale-ultimo-ordine";
+    const intestazioneOrdine = document.createElement("div");
+    intestazioneOrdine.className = "cliente-abituale-ultimo-titolo";
+    intestazioneOrdine.appendChild(creaIconaCliente("orologio", 16));
+    intestazioneOrdine.append(
+        `Ultimo ordine${ultimoOrdine.dataBreve ? ` · ${ultimoOrdine.dataBreve}` : ""}`
+    );
+    riepilogoOrdine.appendChild(intestazioneOrdine);
+    const righeOrdine = document.createElement("div");
+    righeOrdine.className = "cliente-abituale-righe";
+    for (const riga of ultimoOrdine.righe) {
+        const chip = document.createElement("span");
+        chip.className = "cliente-abituale-riga";
+        chip.textContent = riga;
+        righeOrdine.appendChild(chip);
+    }
+    riepilogoOrdine.appendChild(righeOrdine);
     container.appendChild(riepilogoOrdine);
     const ripeti = document.createElement("button");
     ripeti.type = "button";
     ripeti.className = "cliente-abituale-ripeti";
-    ripeti.textContent = "Ripeti ultimo ordine";
+    ripeti.appendChild(creaIconaCliente("refresh"));
+    ripeti.append("Ripeti ultimo ordine");
     ripeti.addEventListener("click", () => ripetiUltimoOrdine(cliente.ultimoOrdine));
     container.appendChild(ripeti);
 }
@@ -177,25 +245,75 @@ function chiudiRisultatiClientiIndirizzo() {
     window.clearTimeout(timerRicercaClientiIndirizzo);
     tokenRicercaClientiIndirizzo++;
     clientiIndirizzoRisultati.hidden = true;
-    clientiIndirizzoRisultati.replaceChildren();
+    clientiIndirizzoLista.replaceChildren();
+}
+
+function aggiungiIndirizzoEvidenziato(elemento, indirizzo) {
+    const query = window.prodottiUI.normalizza(inputIndirizzoConsegna.value);
+    if (!query || !window.prodottiUI.normalizza(indirizzo).startsWith(query)) {
+        elemento.textContent = indirizzo;
+        return;
+    }
+
+    let fine = 0;
+    for (let indice = 0; indice < indirizzo.length;) {
+        indice += String.fromCodePoint(indirizzo.codePointAt(indice)).length;
+        const prefisso = window.prodottiUI.normalizza(indirizzo.slice(0, indice));
+        if (prefisso === query) {
+            fine = indice;
+            break;
+        }
+        if (!query.startsWith(prefisso)) break;
+    }
+    if (!fine) {
+        elemento.textContent = indirizzo;
+        return;
+    }
+
+    const evidenziato = document.createElement("strong");
+    evidenziato.textContent = indirizzo.slice(0, fine);
+    elemento.append(evidenziato, document.createTextNode(indirizzo.slice(fine)));
+}
+
+function formattaTelefonoCliente(telefono) {
+    const cifre = String(telefono || "").replace(/\D/g, "");
+    if (cifre.length === 10) return `${cifre.slice(0, 3)} ${cifre.slice(3, 6)} ${cifre.slice(6)}`;
+    return cifre.replace(/(\d{3})(?=\d)/g, "$1 ");
 }
 
 function mostraRisultatiClientiIndirizzo(clienti) {
-    clientiIndirizzoRisultati.replaceChildren();
+    clientiIndirizzoLista.replaceChildren();
     for (const cliente of clienti.slice(0, 5)) {
         const risultato = document.createElement("button");
         risultato.type = "button";
         risultato.setAttribute("role", "option");
-        const telefono = String(cliente.telefono || "").replace(/\D/g, "");
-        const telefonoFormattato = telefono.length > 3
-            ? `${telefono.slice(0, 3)} ${telefono.slice(3)}`
-            : telefono;
-        risultato.textContent = `${cliente.indirizzo} · ${telefonoFormattato} · ${window.prodottiUI.etichettaOrdiniCliente(cliente.ordiniTotali)}`;
+        risultato.className = "clienti-indirizzo-risultato";
+        const iconaIndirizzo = document.createElement("span");
+        iconaIndirizzo.className = "clienti-indirizzo-pin";
+        iconaIndirizzo.appendChild(creaIconaCliente("pin"));
+        risultato.appendChild(iconaIndirizzo);
+
+        const testo = document.createElement("span");
+        testo.className = "clienti-indirizzo-testo";
+        const indirizzo = document.createElement("span");
+        indirizzo.className = "clienti-indirizzo-via";
+        aggiungiIndirizzoEvidenziato(indirizzo, cliente.indirizzo);
+        testo.appendChild(indirizzo);
+        const dettagli = document.createElement("span");
+        dettagli.className = "clienti-indirizzo-dettagli";
+        dettagli.textContent = `${formattaTelefonoCliente(cliente.telefono)} · ${window.prodottiUI.etichettaOrdiniCliente(cliente.ordiniTotali)}`;
+        testo.appendChild(dettagli);
+        risultato.appendChild(testo);
+
+        const chevron = document.createElement("span");
+        chevron.className = "clienti-indirizzo-chevron";
+        chevron.appendChild(creaIconaCliente("chevron"));
+        risultato.appendChild(chevron);
         risultato.addEventListener("pointerdown", evento => evento.preventDefault());
         risultato.addEventListener("click", () => selezionaClienteDaIndirizzo(cliente));
-        clientiIndirizzoRisultati.appendChild(risultato);
+        clientiIndirizzoLista.appendChild(risultato);
     }
-    clientiIndirizzoRisultati.hidden = clientiIndirizzoRisultati.childElementCount === 0;
+    clientiIndirizzoRisultati.hidden = clientiIndirizzoLista.childElementCount === 0;
 }
 
 function selezionaClienteDaIndirizzo(cliente) {

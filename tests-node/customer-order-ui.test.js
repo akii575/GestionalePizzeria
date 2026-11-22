@@ -79,13 +79,22 @@ test("the customer suggestion close button is accessible and delegates dismissal
         path.join(__dirname, "../src/main/resources/static/ordini.css"),
         "utf8"
     );
+    const ordersHtml = fs.readFileSync(
+        path.join(__dirname, "../src/main/resources/static/ordini.html"),
+        "utf8"
+    );
 
     assert.match(ordersPage, /setAttribute\("aria-label", "Chiudi suggerimento cliente"\)/);
+    assert.match(ordersPage, /setAttribute\("aria-hidden", "true"\)/);
     assert.match(ordersPage, /addEventListener\("click", \(\) => clientiAbituali\.chiudi\(container, numero\)\)/);
     assert.match(ordersPage, /if \(!clientiAbituali\.visibile\(numero, true\)\) return;/);
     assert.ok((ordersPage.match(/clientiAbituali\.reset\(\)/g) || []).length >= 2);
-    assert.match(ordersStyles, /\.cliente-abituale-chiudi\s*\{[\s\S]*?width:\s*32px;[\s\S]*?height:\s*32px;[\s\S]*?border:\s*0;[\s\S]*?color:\s*#6B5A2A;/);
+    assert.match(ordersStyles, /\.cliente-abituale-chiudi\s*\{[\s\S]*?width:\s*32px;[\s\S]*?height:\s*32px;[\s\S]*?border:\s*0;[\s\S]*?color:\s*#6B7280;/);
     assert.match(ordersStyles, /\.cliente-abituale-chiudi:focus:not\(:focus-visible\)\s*\{\s*outline:\s*none;/);
+    assert.match(ordersStyles, /\.cliente-abituale\s*\{[\s\S]*?border-left:\s*4px solid #E4B034;[\s\S]*?background:\s*#fff;/);
+    assert.match(ordersStyles, /\.cliente-abituale-ripeti\s*\{[\s\S]*?min-height:\s*44px;[\s\S]*?background:\s*#1A5EA9;/);
+    assert.match(ordersHtml, /class="clienti-indirizzo-intestazione">Clienti salvati<\/div>/);
+    assert.match(ordersHtml, /id="clienti-indirizzo-lista"[\s\S]*?role="listbox"/);
 });
 
 test("address results use the selected customer without a phone lookup", () => {
