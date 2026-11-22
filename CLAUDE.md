@@ -2,7 +2,7 @@
 
 Gestionale web degli ordini di una pizzeria (tavolo, banco, ritiro, consegna) con stampa delle comande su stampanti Epson di rete.
 
-- **Produzione**: Vercel con API serverless Node.js 22 (CommonJS) in `api/`, Firebase Auth (cookie di sessione) e Firestore. Il menu operativo e' in Firestore.
+- **Produzione**: Vercel con una funzione API serverless Node.js 22 (`api/router.js`) e handler condivisi in `lib/handlers/`, Firebase Auth (cookie di sessione) e Firestore. Il menu operativo e' in Firestore.
 - **Pagine**: HTML/CSS/JS vanilla in `src/main/resources/static/`, servite dopo la verifica server-side della sessione.
 - **Stampa**: agente Windows locale (`scripts/printer-agent*.js`) che legge una coda Firestore e invia ESC/POS via TCP 9100.
 - **Legacy**: backend Spring Boot 4 / Java 25 / SQLite in `src/main/java` (avvio locale, `mvn`). Non è usato dal deploy Vercel.
@@ -39,12 +39,9 @@ Per modifiche non banali usa il subagente `code-reviewer` sul diff.
 ## Struttura
 
 ```
-api/                      endpoint Vercel (un file = una route)
-  auth/                   login, sessione, logout
-  ordini/                 index.js (lista/crea), [numero].js (leggi/modifica/elimina)
-  consegne/               lettura consegne (claim delivery)
-  pages/[page].js         serve le pagine HTML protette da lib/generated-pages.js
+api/router.js             funzione Vercel unica, instrada tutti gli endpoint
 lib/
+  handlers/               handler API (clienti, ordini, menu, auth, pagine, ...)
   api.js                  wrapper api(handler) + methodNotAllowed
   auth.js                 httpError, requireAdmin, requireDeliveryAccess, requireSameOrigin
   firebase-admin.js       getFirebaseServices()

@@ -2,6 +2,7 @@ const { api } = require("../lib/api");
 
 const routeLoaders = {
     config: () => require("../lib/handlers/config"),
+    clienti: () => require("../lib/handlers/clienti"),
     extra: () => require("../lib/handlers/extra"),
     menu: () => require("../lib/handlers/menu"),
     "menu-admin": () => require("../lib/handlers/menu-admin"),

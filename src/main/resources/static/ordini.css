@@ -118,6 +118,47 @@ select,
     background: #fff;
     font: inherit;
 }
+.cliente-abituale {
+    display: grid;
+    gap: 7px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid #E4B034;
+    border-radius: 8px;
+    background: #fffdf6;
+    color: #333;
+    font-size: 13px;
+}
+.cliente-abituale[hidden] {
+    display: none;
+}
+.cliente-abituale-titolo {
+    color: #795800;
+    font-size: 14px;
+}
+.cliente-abituale-dettaglio {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+}
+.cliente-abituale-dettaglio button,
+.cliente-abituale-ripeti {
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 1px solid var(--bordo);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--verde);
+    font-weight: 600;
+}
+.cliente-abituale-stato {
+    color: var(--verde);
+    font-weight: 600;
+}
+.campo-telefono {
+    grid-column: 1 / -1;
+}
 .campo-consegna label {
     margin: 12px 0 6px;
 }

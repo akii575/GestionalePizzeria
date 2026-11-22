@@ -56,6 +56,7 @@ const {
     isCoperto,
     calcolaCoperto,
     aggiungiProdotti,
+    preparaRipetizione,
     impostaRigaAttiva,
     rimuoviProdotto,
     toggleExtra,
@@ -77,6 +78,191 @@ let trascinamentoProdotti = null;
 let ignoraClickDopoTrascinamento = false;
 let trascinamentoExtra = null;
 let ignoraClickDopoTrascinamentoExtra = false;
+const cacheClienti = new Map();
+let timerRicercaCliente = 0;
+let tokenRicercaCliente = 0;
+
+function normalizzaTelefonoCliente(valore) {
+    if (typeof valore !== "string") return null;
+    const cifre = valore.trim().replace(/^(?:\+39|0039)/, "").replace(/\D/g, "");
+    return cifre.length >= 9 ? cifre : null;
+}
+
+function formatoUltimoOrdine(ultimoOrdine) {
+    if (!ultimoOrdine || !Array.isArray(ultimoOrdine.righe)) return "";
+    const data = new Date(ultimoOrdine.data);
+    const dataBreve = Number.isNaN(data.getTime())
+        ? ""
+        : new Intl.DateTimeFormat("it-IT", {
+            day: "2-digit",
+            month: "2-digit",
+            timeZone: "Europe/Rome"
+        }).format(data);
+    const righe = ultimoOrdine.righe.map(riga => {
+        const extra = Array.isArray(riga.extra) && riga.extra.length
+            ? ` + ${riga.extra.join(", ")}`
+            : "";
+        return `${riga.quantita}× ${riga.prodotto}${extra}`;
+    });
+    return `Ultimo ordine${dataBreve ? ` (${dataBreve})` : ""}: ${righe.join(", ")}`;
+}
+
+function mostraClienteAbituale(container, cliente, tipo) {
+    container.replaceChildren();
+    container.hidden = !cliente?.trovato;
+    if (!cliente?.trovato) return;
+
+    const titolo = document.createElement("strong");
+    titolo.className = "cliente-abituale-titolo";
+    titolo.textContent = `Cliente abituale · ${cliente.ordiniTotali || 0} ordini`;
+    container.appendChild(titolo);
+
+    const valore = tipo === "consegna" ? cliente.indirizzo : cliente.nome;
+    const label = tipo === "consegna" ? "Ultimo indirizzo:" : "Ultimo nome:";
+    const campo = document.getElementById(tipo === "consegna" ? "indirizzo-consegna" : "cliente-ritiro");
+    const statoInserimento = document.createElement("span");
+    statoInserimento.className = "cliente-abituale-stato";
+    if (valore) {
+        const dettaglio = document.createElement("div");
+        dettaglio.className = "cliente-abituale-dettaglio";
+        const testo = document.createElement("span");
+        testo.textContent = `${label} ${valore}`;
+        dettaglio.appendChild(testo);
+        const usa = document.createElement("button");
+        usa.type = "button";
+        usa.textContent = tipo === "consegna" ? "Usa indirizzo" : "Usa nome";
+        usa.addEventListener("click", () => {
+            campo.value = valore;
+            statoInserimento.textContent = tipo === "consegna" ? "Indirizzo inserito" : "Nome inserito";
+        });
+        dettaglio.appendChild(usa);
+        if (!campo.value.trim()) {
+            campo.value = valore;
+            statoInserimento.textContent = tipo === "consegna" ? "Indirizzo inserito" : "Nome inserito";
+        }
+        dettaglio.appendChild(statoInserimento);
+        container.appendChild(dettaglio);
+    }
+
+    const descrizioneOrdine = formatoUltimoOrdine(cliente.ultimoOrdine);
+    if (!descrizioneOrdine) return;
+    const riepilogoOrdine = document.createElement("div");
+    riepilogoOrdine.textContent = descrizioneOrdine;
+    container.appendChild(riepilogoOrdine);
+    const ripeti = document.createElement("button");
+    ripeti.type = "button";
+    ripeti.className = "cliente-abituale-ripeti";
+    ripeti.textContent = "Ripeti ultimo ordine";
+    ripeti.addEventListener("click", () => ripetiUltimoOrdine(cliente.ultimoOrdine));
+    container.appendChild(ripeti);
+}
+
+async function cercaClienteAbituale(tipo, numero, token) {
+    let richiesta = cacheClienti.get(numero);
+    if (!richiesta) {
+        richiesta = fetch(`/api/clienti?telefono=${encodeURIComponent(numero)}`)
+            .then(async risposta => {
+                const dati = await risposta.json();
+                if (!risposta.ok) throw new Error(dati.errore || "Ricerca cliente non riuscita.");
+                return dati;
+            })
+            .catch(errore => {
+                cacheClienti.delete(numero);
+                throw errore;
+            });
+        cacheClienti.set(numero, richiesta);
+    }
+    try {
+        const cliente = await richiesta;
+        const input = document.getElementById(tipo === "consegna" ? "telefono-consegna" : "telefono-ritiro");
+        if (token !== tokenRicercaCliente
+                || tipoOrdine.value !== tipo
+                || normalizzaTelefonoCliente(input.value) !== numero) return;
+        mostraClienteAbituale(
+            document.getElementById(tipo === "consegna" ? "cliente-abituale-consegna" : "cliente-abituale-ritiro"),
+            cliente,
+            tipo
+        );
+    } catch {
+        // La ricerca del cliente non deve interrompere l'inserimento dell'ordine.
+    }
+}
+
+async function aggiornaCacheClienteDopoInvio(ordine, rispostaOrdine) {
+    const tipo = ordine.tipo;
+    const telefono = normalizzaTelefonoCliente(
+        tipo === "consegna" ? ordine.telefonoConsegna : ordine.telefonoRitiro
+    );
+    if (!telefono || !cacheClienti.has(telefono)) return;
+    try {
+        const precedente = await cacheClienti.get(telefono);
+        const raggruppate = new Map();
+        for (const riga of ordine.righe) {
+            const extra = nomiExtra(riga.extra);
+            const chiave = JSON.stringify([riga.prodotto, [...extra].sort((a, b) => a.localeCompare(b, "it-IT"))]);
+            const corrente = raggruppate.get(chiave);
+            if (corrente) corrente.quantita++;
+            else if (raggruppate.size < 30) {
+                raggruppate.set(chiave, { prodotto: riga.prodotto, quantita: 1, extra });
+            }
+        }
+        cacheClienti.set(telefono, Promise.resolve({
+            trovato: true,
+            indirizzo: tipo === "consegna" ? ordine.indirizzoConsegna : precedente.indirizzo || "",
+            nome: tipo === "ritiro" ? ordine.tavoloOCliente : precedente.nome || "",
+            ultimoOrdine: {
+                data: rispostaOrdine.dataOra,
+                tipo,
+                righe: [...raggruppate.values()]
+            },
+            ordiniTotali: precedente.trovato
+                ? (Number.isSafeInteger(precedente.ordiniTotali) ? precedente.ordiniTotali : 0) + 1
+                : 1
+        }));
+    } catch {
+        cacheClienti.delete(telefono);
+    }
+}
+
+function aggiornaRicercaClienteAbituale() {
+    window.clearTimeout(timerRicercaCliente);
+    for (const id of ["cliente-abituale-consegna", "cliente-abituale-ritiro"]) {
+        const container = document.getElementById(id);
+        container.hidden = true;
+        container.replaceChildren();
+    }
+    tokenRicercaCliente++;
+    const tipo = tipoOrdine.value;
+    if (!["consegna", "ritiro"].includes(tipo)) return;
+    const input = document.getElementById(tipo === "consegna" ? "telefono-consegna" : "telefono-ritiro");
+    const numero = normalizzaTelefonoCliente(input.value);
+    if (!numero) return;
+    const token = tokenRicercaCliente;
+    timerRicercaCliente = window.setTimeout(() => cercaClienteAbituale(tipo, numero, token), 400);
+}
+
+function ripetiUltimoOrdine(ultimoOrdine) {
+    const risultato = preparaRipetizione(
+        ultimoOrdine,
+        stato.menu,
+        stato.extra,
+        Math.max(0, 100 - stato.righe.length)
+    );
+    for (const voce of risultato.righe) {
+        const aggiunta = aggiungiProdotti(stato.righe, stato.rigaAttiva, voce.prodotto);
+        stato.righe = aggiunta.righe;
+        stato.rigaAttiva = aggiunta.rigaAttiva;
+        stato.righe[stato.righe.length - 1].extra = voce.extra;
+    }
+    renderRiepilogo();
+    const messaggi = [];
+    if (risultato.nonDisponibili.length) {
+        messaggi.push(`Non disponibili: ${risultato.nonDisponibili.join(", ")}`);
+    }
+    if (risultato.limiteRaggiunto) messaggi.push("Limite di 100 prodotti raggiunto.");
+    if (messaggi.length) mostraMessaggio(messaggi.join(" · "), "errore");
+    else if (risultato.righe.length) mostraMessaggio("Ultimo ordine aggiunto al riepilogo.", "successo");
+}
 
 function mostraMessaggio(testo, classe) {
     messaggio.textContent = testo;
@@ -641,31 +827,33 @@ async function inviaOrdine() {
     const consegna = tipo === "consegna";
     const ritiro = tipo === "ritiro";
     const tavolo = tipo === "tavolo";
+    const ordine = {
+        tipo,
+        orario: tavolo ? "" : orario.value,
+        statoPagamento: ritiro ? pagamentoRitiro.value : consegna ? pagamentoConsegna.value : null,
+        cognomeBanco: tipo === "banco" ? document.getElementById("cognome-banco").value : "",
+        tavoloOCliente: tavolo
+            ? document.getElementById("tavolo").value
+            : ritiro
+                ? document.getElementById("cliente-ritiro").value
+                : "",
+        numeroPersone: tavolo ? Number(numeroPersone.value) : null,
+        indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
+        telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",
+        costoConsegna: consegna ? costoConsegna : 0,
+        telefonoRitiro: ritiro ? document.getElementById("telefono-ritiro").value : "",
+        note: document.getElementById("note").value,
+        righe: stato.righe.map(riga => ({ prodotto: riga.prodotto, extra: riga.extra }))
+    };
     try {
         const risposta = await fetch("/api/ordini", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                tipo,
-                orario: tavolo ? "" : orario.value,
-                statoPagamento: ritiro ? pagamentoRitiro.value : consegna ? pagamentoConsegna.value : null,
-                cognomeBanco: tipo === "banco" ? document.getElementById("cognome-banco").value : "",
-                tavoloOCliente: tavolo
-                    ? document.getElementById("tavolo").value
-                    : ritiro
-                      ? document.getElementById("cliente-ritiro").value
-                      : "",
-                numeroPersone: tavolo ? Number(numeroPersone.value) : null,
-                indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
-                telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",
-                costoConsegna: consegna ? costoConsegna : 0,
-                telefonoRitiro: ritiro ? document.getElementById("telefono-ritiro").value : "",
-                note: document.getElementById("note").value,
-                righe: stato.righe.map(riga => ({ prodotto: riga.prodotto, extra: riga.extra }))
-            })
+            body: JSON.stringify(ordine)
         });
         const dati = await risposta.json();
         if (!risposta.ok) throw new Error(dati.errore || "Invio non riuscito.");
+        aggiornaCacheClienteDopoInvio(ordine, dati);
         mostraMessaggio(
             `Ordine #${dati.numero} salvato. ${dati.messaggioStampa}`,
             dati.stampaCompletata || dati.stampaInCoda ? "successo" : "errore"
@@ -680,6 +868,7 @@ async function inviaOrdine() {
         document.getElementById("cognome-banco").value = "";
         document.getElementById("indirizzo-consegna").value = "";
         document.getElementById("telefono-consegna").value = "";
+        aggiornaRicercaClienteAbituale();
         orario.value = oraLocale();
         pagamentoRitiro.value = "non_pagato";
         pagamentoConsegna.value = "non_pagato";
@@ -785,8 +974,12 @@ ricercaModale.addEventListener("click", evento => {
 tipoOrdine.addEventListener("change", () => {
     if (tipoOrdine.value !== "consegna") costoConsegna = 0;
     aggiornaTipoOrdine();
+    aggiornaRicercaClienteAbituale();
     renderRiepilogo();
 });
+for (const id of ["telefono-consegna", "telefono-ritiro"]) {
+    document.getElementById(id).addEventListener("input", aggiornaRicercaClienteAbituale);
+}
 numeroPersone.addEventListener("input", renderRiepilogo);
 bottoneCostoConsegna.addEventListener("click", () => {
     costoConsegna = costoConsegna === 2 ? 0 : 2;

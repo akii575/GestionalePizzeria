@@ -126,6 +126,41 @@ const prodottiUI = (() => {
         };
     }
 
+    function preparaRipetizione(ultimoOrdine, menu, extraMenu, postiDisponibili) {
+        const disponibili = new Map((menu || []).map(prodotto => [prodotto.nome, prodotto]));
+        const extraDisponibili = new Map((extraMenu || []).map(extra => [extra.nome, extra]));
+        const righe = [];
+        const nonDisponibili = new Set();
+        let limiteRaggiunto = false;
+
+        for (const voce of ultimoOrdine?.righe || []) {
+            const prodotto = disponibili.get(voce.prodotto);
+            const nomiExtra = Array.isArray(voce.extra) ? voce.extra : [];
+            const extra = nomiExtra.map(nome => extraDisponibili.get(nome));
+            const prodottoValido = prodotto
+                && prodotto.disponibile !== false
+                && prodotto.archiviato !== true
+                && (!nomiExtra.length || prodotto.ammetteExtra === true)
+                && extra.every(elemento => elemento && elemento.disponibile !== false && elemento.archiviato !== true);
+            if (!prodottoValido) {
+                nonDisponibili.add(voce.prodotto);
+                continue;
+            }
+
+            const quantita = Number.isSafeInteger(voce.quantita) && voce.quantita > 0
+                ? voce.quantita
+                : 1;
+            for (let indice = 0; indice < quantita; indice++) {
+                if (righe.length >= postiDisponibili) {
+                    limiteRaggiunto = true;
+                    break;
+                }
+                righe.push({ prodotto, extra });
+            }
+        }
+        return { righe, nonDisponibili: [...nonDisponibili], limiteRaggiunto };
+    }
+
     function impostaRigaAttiva(righe, indice) {
         return {
             righe,
@@ -231,6 +266,7 @@ const prodottiUI = (() => {
         calcolaCoperto,
         creaRiga,
         aggiungiProdotti,
+        preparaRipetizione,
         impostaRigaAttiva,
         rimuoviProdotto,
         toggleExtra,

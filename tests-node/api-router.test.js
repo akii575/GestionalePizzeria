@@ -5,6 +5,7 @@ const { loadApiRouter } = require("./api-router-helper");
 
 const routeModules = {
     config: "../lib/handlers/config",
+    clienti: "../lib/handlers/clienti",
     extra: "../lib/handlers/extra",
     menu: "../lib/handlers/menu",
     "menu-admin": "../lib/handlers/menu-admin",
@@ -50,6 +51,7 @@ test("catch-all dispatches every existing route and preserves route parameters",
     for (const [route, path] of Object.entries(routeModules)) installHandler(path, route);
     const cases = [
         ["config", "config", {}],
+        ["clienti", "clienti", { telefono: "3331234567" }],
         ["extra", "extra", {}],
         ["menu", "menu", {}],
         ["menu-admin", "menu-admin", {}],
@@ -64,7 +66,10 @@ test("catch-all dispatches every existing route and preserves route parameters",
     ];
 
     for (const [path, expectedRoute, expectedParameters] of cases) {
-        const response = await responseFor(router, path, { filtro: "oggi" });
+        const response = await responseFor(router, path, {
+            filtro: "oggi",
+            ...(expectedParameters.telefono ? { telefono: expectedParameters.telefono } : {})
+        });
         assert.equal(response.statusCode, 200, path);
         assert.equal(response.body.route, expectedRoute, path);
         assert.deepEqual(response.body.query, { filtro: "oggi", ...expectedParameters }, path);

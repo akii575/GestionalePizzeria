@@ -1,5 +1,6 @@
 const handlerPaths = [
     "../lib/handlers/config",
+    "../lib/handlers/clienti",
     "../lib/handlers/extra",
     "../lib/handlers/menu",
     "../lib/handlers/menu-admin",
