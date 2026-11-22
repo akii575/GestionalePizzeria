@@ -10,9 +10,9 @@ require.cache[firebasePath].exports = {
 };
 const auth = require("../lib/auth");
 
-function requestWithClaims() {
+function requestWithClaims(cookie = "valid") {
     return {
-        headers: { cookie: "__Host-session=valid" }
+        headers: { cookie: `__Host-session=${cookie}` }
     };
 }
 
@@ -53,27 +53,36 @@ function invoke(handler, { method = "GET", headers = {}, body, query = {} } = {}
 }
 
 test("staff access accepts admins and staff but rejects delivery and accounts without claims", async t => {
-    let claims = {};
     services = {
-        auth: { verifySessionCookie: async () => claims }
+        auth: {
+            verifySessionCookie: async token => ({
+                "admin-session": { admin: true },
+                "staff-session": { staff: true },
+                "delivery-session": { delivery: true },
+                "empty-session": {}
+            })[token]
+        }
     };
     t.after(() => { services = null; });
 
-    for (const accepted of [{ admin: true }, { staff: true }]) {
-        claims = accepted;
-        assert.deepEqual(await auth.requireStaffAccess(requestWithClaims()), accepted);
+    for (const [cookie, accepted] of [
+        ["admin-session", { admin: true }],
+        ["staff-session", { staff: true }]
+    ]) {
+        assert.deepEqual(await auth.requireStaffAccess(requestWithClaims(cookie)), accepted);
     }
-    for (const rejected of [{ delivery: true }, {}]) {
-        claims = rejected;
-        await assert.rejects(auth.requireStaffAccess(requestWithClaims()), error => {
+    for (const cookie of ["delivery-session", "empty-session"]) {
+        await assert.rejects(auth.requireStaffAccess(requestWithClaims(cookie)), error => {
             assert.equal(error.statusCode, 403);
             assert.equal(error.message, "Accesso negato.");
             return true;
         });
     }
 
-    claims = { staff: true };
-    assert.deepEqual(await auth.requireDeliveryAccess(requestWithClaims()), claims);
+    assert.deepEqual(
+        await auth.requireDeliveryAccess(requestWithClaims("delivery-session")),
+        { delivery: true }
+    );
 });
 
 test("staff can create a Firebase session", async t => {
@@ -108,14 +117,17 @@ test("staff can create a Firebase session", async t => {
 });
 
 test("verify reports staff and gives admin precedence when both claims are present", async t => {
-    let claims = { staff: true, email: "staff@example.com" };
+    const claims = {
+        "staff-session": { staff: true, email: "staff@example.com" },
+        "admin-session": { admin: true, staff: true, delivery: true }
+    };
     services = {
-        auth: { verifySessionCookie: async () => claims }
+        auth: { verifySessionCookie: async token => claims[token] }
     };
     t.after(() => { services = null; });
     const handler = require("../api/auth/verify");
 
-    let response = await invoke(handler, { headers: { cookie: "__Host-session=valid" } });
+    let response = await invoke(handler, { headers: { cookie: "__Host-session=staff-session" } });
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.body, {
         admin: false,
@@ -124,8 +136,7 @@ test("verify reports staff and gives admin precedence when both claims are prese
         email: "staff@example.com"
     });
 
-    claims = { admin: true, staff: true, delivery: true };
-    response = await invoke(handler, { headers: { cookie: "__Host-session=valid" } });
+    response = await invoke(handler, { headers: { cookie: "__Host-session=admin-session" } });
     assert.deepEqual(response.body, {
         admin: true,
         staff: false,
