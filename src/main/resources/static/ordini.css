@@ -119,10 +119,11 @@ select,
     font: inherit;
 }
 .cliente-abituale {
+    position: relative;
     display: grid;
     gap: 7px;
     margin-top: 8px;
-    padding: 10px 12px;
+    padding: 10px 52px 10px 12px;
     border: 1px solid #E4B034;
     border-radius: 8px;
     background: #fffdf6;
@@ -135,6 +136,29 @@ select,
 .cliente-abituale-titolo {
     color: #795800;
     font-size: 14px;
+}
+.cliente-abituale-chiudi {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    display: grid;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: #6B5A2A;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.cliente-abituale-chiudi:focus:not(:focus-visible) {
+    outline: none;
 }
 .cliente-abituale-dettaglio {
     display: flex;

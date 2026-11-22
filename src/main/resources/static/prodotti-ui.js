@@ -56,6 +56,28 @@ const prodottiUI = (() => {
         return { cache, aggiornamento };
     }
 
+    function creaGestoreSuggerimentiClienti() {
+        const telefoniChiusi = new Set();
+        return {
+            chiudi(container, telefono) {
+                telefoniChiusi.add(telefono);
+                container.hidden = true;
+                container.replaceChildren();
+            },
+            visibile(telefono, trovato) {
+                return Boolean(trovato) && !telefoniChiusi.has(telefono);
+            },
+            reset() {
+                telefoniChiusi.clear();
+            }
+        };
+    }
+
+    function etichettaOrdiniCliente(numero) {
+        const totale = Number.isSafeInteger(numero) && numero >= 0 ? numero : 0;
+        return `${totale} ${totale === 1 ? "ordine" : "ordini"}`;
+    }
+
     // Minuscolo e senza accenti: "Caffè" -> "caffe", "Crocché" -> "crocche".
     function normalizza(testo) {
         return String(testo ?? "")
@@ -259,6 +281,8 @@ const prodottiUI = (() => {
         leggiCacheMenu,
         salvaCacheMenu,
         caricaMenuConCache,
+        creaGestoreSuggerimentiClienti,
+        etichettaOrdiniCliente,
         normalizza,
         filtraProdotti,
         ammetteExtra,

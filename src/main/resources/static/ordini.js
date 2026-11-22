@@ -68,6 +68,7 @@ const {
     aggiornaConteggioProdotti,
     controllaLimiteRighe
 } = window.prodottiUI;
+const clientiAbituali = window.prodottiUI.creaGestoreSuggerimentiClienti();
 let etichetteCategorie = Object.fromEntries(
     [...document.querySelectorAll(".tab[data-tab]")].map(tab => [tab.dataset.tab, tab.textContent.trim()])
 );
@@ -107,14 +108,22 @@ function formatoUltimoOrdine(ultimoOrdine) {
     return `Ultimo ordine${dataBreve ? ` (${dataBreve})` : ""}: ${righe.join(", ")}`;
 }
 
-function mostraClienteAbituale(container, cliente, tipo) {
+function mostraClienteAbituale(container, cliente, tipo, numero) {
     container.replaceChildren();
-    container.hidden = !cliente?.trovato;
-    if (!cliente?.trovato) return;
+    container.hidden = !clientiAbituali.visibile(numero, cliente?.trovato);
+    if (container.hidden) return;
+
+    const chiudi = document.createElement("button");
+    chiudi.type = "button";
+    chiudi.className = "cliente-abituale-chiudi";
+    chiudi.setAttribute("aria-label", "Chiudi suggerimento cliente");
+    chiudi.textContent = "×";
+    chiudi.addEventListener("click", () => clientiAbituali.chiudi(container, numero));
+    container.appendChild(chiudi);
 
     const titolo = document.createElement("strong");
     titolo.className = "cliente-abituale-titolo";
-    titolo.textContent = `Cliente abituale · ${cliente.ordiniTotali || 0} ordini`;
+    titolo.textContent = `Cliente abituale · ${window.prodottiUI.etichettaOrdiniCliente(cliente.ordiniTotali)}`;
     container.appendChild(titolo);
 
     const valore = tipo === "consegna" ? cliente.indirizzo : cliente.nome;
@@ -158,6 +167,7 @@ function mostraClienteAbituale(container, cliente, tipo) {
 }
 
 async function cercaClienteAbituale(tipo, numero, token) {
+    if (!clientiAbituali.visibile(numero, true)) return;
     let richiesta = cacheClienti.get(numero);
     if (!richiesta) {
         richiesta = fetch(`/api/clienti?telefono=${encodeURIComponent(numero)}`)
@@ -181,7 +191,8 @@ async function cercaClienteAbituale(tipo, numero, token) {
         mostraClienteAbituale(
             document.getElementById(tipo === "consegna" ? "cliente-abituale-consegna" : "cliente-abituale-ritiro"),
             cliente,
-            tipo
+            tipo,
+            numero
         );
     } catch {
         // La ricerca del cliente non deve interrompere l'inserimento dell'ordine.
@@ -236,7 +247,7 @@ function aggiornaRicercaClienteAbituale() {
     if (!["consegna", "ritiro"].includes(tipo)) return;
     const input = document.getElementById(tipo === "consegna" ? "telefono-consegna" : "telefono-ritiro");
     const numero = normalizzaTelefonoCliente(input.value);
-    if (!numero) return;
+    if (!numero || !clientiAbituali.visibile(numero, true)) return;
     const token = tokenRicercaCliente;
     timerRicercaCliente = window.setTimeout(() => cercaClienteAbituale(tipo, numero, token), 400);
 }
@@ -868,6 +879,7 @@ async function inviaOrdine() {
         document.getElementById("cognome-banco").value = "";
         document.getElementById("indirizzo-consegna").value = "";
         document.getElementById("telefono-consegna").value = "";
+        clientiAbituali.reset();
         aggiornaRicercaClienteAbituale();
         orario.value = oraLocale();
         pagamentoRitiro.value = "non_pagato";
@@ -1029,6 +1041,7 @@ aggiornaAccessibilitaBarraSheet();
 document.getElementById("btn-annulla").addEventListener("click", () => {
     stato.righe = [];
     stato.rigaAttiva = null;
+    clientiAbituali.reset();
     costoConsegna = 0;
     aggiornaBottoneCostoConsegna();
     renderRiepilogo();
