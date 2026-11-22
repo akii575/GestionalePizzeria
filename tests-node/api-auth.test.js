@@ -1,14 +1,15 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { apiRoute } = require("./api-router-helper");
 
 const protectedHandlers = [
-    ["menu", require("../api/menu"), "GET"],
-    ["extras", require("../api/extra"), "GET"],
-    ["orders", require("../api/ordini"), "GET"],
-    ["deliveries", require("../api/consegne"), "GET"],
-    ["order update", require("../api/ordini/[numero]"), "PUT"],
-    ["payment update", require("../api/ordini/[numero]"), "PATCH"],
-    ["order reset", require("../api/reset-numeri"), "POST"]
+    ["menu", apiRoute("menu"), "GET"],
+    ["extras", apiRoute("extra"), "GET"],
+    ["orders", apiRoute("ordini"), "GET"],
+    ["deliveries", apiRoute("consegne"), "GET"],
+    ["order update", apiRoute("ordini/1"), "PUT"],
+    ["payment update", apiRoute("ordini/1"), "PATCH"],
+    ["order reset", apiRoute("reset-numeri"), "POST"]
 ];
 
 function invoke(handler, method) {
@@ -48,7 +49,7 @@ function invoke(handler, method) {
 }
 
 test("protected HTML pages redirect unauthenticated visitors to login", async () => {
-    const handler = require("../api/pages/[page]");
+    const handler = apiRoute("pages/index.html");
     const response = await invoke(handler, "GET");
     assert.equal(response.statusCode, 302);
     assert.equal(response.location, "/login.html");

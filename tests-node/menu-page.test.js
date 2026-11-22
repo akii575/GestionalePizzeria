@@ -42,7 +42,7 @@ test("product row metadata omits the repeated category name", () => {
 test("menu page is protected by the server rewrite and included in protected-page generation", () => {
     const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, "../vercel.json"), "utf8"));
     const copyScript = fs.readFileSync(path.join(__dirname, "../scripts/copy-static.js"), "utf8");
-    const pageRoute = fs.readFileSync(path.join(__dirname, "../api/pages/[page].js"), "utf8");
+    const pageRoute = fs.readFileSync(path.join(__dirname, "../lib/handlers/pages/[page].js"), "utf8");
 
     assert.ok(vercel.rewrites.some(rule => (
         rule.source === "/menu.html" && rule.destination === "/api/pages/menu.html"

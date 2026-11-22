@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { apiRoute } = require("./api-router-helper");
 
 function createDatabase(seed) {
     const data = Object.fromEntries(
@@ -127,7 +128,7 @@ require.cache[firebasePath] = {
     loaded: true,
     exports: { getFirebaseServices: () => services }
 };
-const handler = require("../api/menu-admin");
+const handler = apiRoute("menu-admin");
 
 function invoke(method = "GET", { token, body, origin = "https://example.test" } = {}) {
     return new Promise(resolve => {

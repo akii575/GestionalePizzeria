@@ -1,5 +1,60 @@
 const prodottiUI = (() => {
     const LIMITE_RIGHE_ORDINE = 100;
+    const menuCacheKey = "civico7-menu-v1";
+
+    function leggiCacheMenu(storage) {
+        try {
+            const archivio = storage || globalThis.localStorage;
+            const cache = JSON.parse(archivio.getItem(menuCacheKey));
+            const versione = Number(cache?.versione);
+            if (!Number.isSafeInteger(versione) || versione < 0
+                    || !Array.isArray(cache.menu) || !Array.isArray(cache.extra)) {
+                return null;
+            }
+            return { versione, menu: cache.menu, extra: cache.extra };
+        } catch {
+            return null;
+        }
+    }
+
+    function salvaCacheMenu(cache, storage) {
+        try {
+            const archivio = storage || globalThis.localStorage;
+            archivio.setItem(menuCacheKey, JSON.stringify(cache));
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function caricaMenuConCache(fetchMenu, disegna, storage) {
+        const cache = leggiCacheMenu(storage);
+        if (cache) disegna(cache.menu, cache.extra);
+
+        let richiesta;
+        try {
+            richiesta = fetchMenu();
+        } catch (errore) {
+            richiesta = Promise.reject(errore);
+        }
+        const aggiornamento = Promise.resolve(richiesta).then(dati => {
+            if (!dati || !Array.isArray(dati.menu) || !Array.isArray(dati.extra)) {
+                throw new Error("La risposta del menu non e' valida.");
+            }
+            const versioneRicevuta = typeof dati.versione === "number"
+                || (typeof dati.versione === "string" && dati.versione.trim() !== "");
+            const versione = versioneRicevuta ? Number(dati.versione) : NaN;
+            const versioneValida = Number.isSafeInteger(versione) && versione >= 0;
+            if (!cache || !versioneValida || versione !== cache.versione) {
+                disegna(dati.menu, dati.extra);
+            }
+            if (versioneValida) {
+                salvaCacheMenu({ versione, menu: dati.menu, extra: dati.extra }, storage);
+            }
+            return dati;
+        });
+        return { cache, aggiornamento };
+    }
 
     // Minuscolo e senza accenti: "Caffè" -> "caffe", "Crocché" -> "crocche".
     function normalizza(testo) {
@@ -166,6 +221,9 @@ const prodottiUI = (() => {
 
     return {
         LIMITE_RIGHE_ORDINE,
+        leggiCacheMenu,
+        salvaCacheMenu,
+        caricaMenuConCache,
         normalizza,
         filtraProdotti,
         ammetteExtra,

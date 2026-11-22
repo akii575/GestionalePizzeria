@@ -59,7 +59,7 @@ firestore.rules           regole Firestore    vercel.json   rewrites + header di
 
 ### Menu Firestore e sorgenti legacy
 - Le API e il printer agent leggono il menu operativo da `menuCategorie`, `menuProdotti` e `menuExtra`; `metadata/menuVersion.versione` invalida la cache.
-- Gli amministratori gestiscono il menu dalla pagina protetta `menu.html`; l'API `api/menu-admin.js` autorizza solo `admin: true` e incrementa la versione in transazione per ogni modifica.
+- Gli amministratori gestiscono il menu dalla pagina protetta `menu.html`; l'handler `lib/handlers/menu-admin.js`, instradato dal catch-all API, autorizza solo `admin: true` e incrementa la versione in transazione per ogni modifica.
 - `scripts/seed-menu.js --dry-run` mostra l'import senza scrivere. Per importare realmente: `node scripts/seed-menu.js` con le credenziali Firebase configurate. Non eseguire il seed automaticamente durante build o test.
 - Ogni modifica al menu deve incrementare `metadata/menuVersion.versione` nella stessa scrittura Firestore.
 - `scripts/export-menu.js` estrae prodotti ed extra dal backend Java legacy e genera `lib/menu.json` e `lib/extras.json`; questi file restano solo per il backend legacy, i test di compatibilita' e il seed iniziale, non sono il menu operativo.

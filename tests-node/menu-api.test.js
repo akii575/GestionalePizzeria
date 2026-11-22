@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { apiRoute } = require("./api-router-helper");
 
 function createDatabase() {
     const data = {
@@ -69,8 +70,8 @@ require.cache[firebasePath] = {
     exports: { getFirebaseServices: () => ({ db }) }
 };
 
-const menuHandler = require("../api/menu");
-const extraHandler = require("../api/extra");
+const menuHandler = apiRoute("menu");
+const extraHandler = apiRoute("extra");
 
 async function invoke(handler) {
     const response = {
@@ -87,7 +88,7 @@ async function invoke(handler) {
             this.headers[name] = value;
         }
     };
-    await handler({ method: "GET", headers: {} }, response);
+    await handler({ method: "GET", headers: {}, query: {} }, response);
     return response;
 }
 
@@ -118,4 +119,6 @@ test("menu and extra APIs expose Firestore records with availability metadata", 
     }]);
     assert.equal(menuResponse.headers["Cache-Control"], "no-store");
     assert.equal(extraResponse.headers["Cache-Control"], "no-store");
+    assert.equal(menuResponse.headers["X-Menu-Version"], "4");
+    assert.equal(extraResponse.headers["X-Menu-Version"], "4");
 });

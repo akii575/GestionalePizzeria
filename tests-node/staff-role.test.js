@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { apiRoute } = require("./api-router-helper");
 const firebasePath = require.resolve("../lib/firebase-admin");
 const originalFirebaseAdmin = require(firebasePath);
 let services;
@@ -101,7 +102,7 @@ test("staff can create a Firebase session", async t => {
         }
     };
     t.after(() => { services = null; });
-    const handler = require("../api/auth/session");
+    const handler = apiRoute("auth/session");
     const response = await invoke(handler, {
         method: "POST",
         headers: { origin: "https://example.test", host: "example.test" },
@@ -125,7 +126,7 @@ test("verify reports staff and gives admin precedence when both claims are prese
         auth: { verifySessionCookie: async token => claims[token] }
     };
     t.after(() => { services = null; });
-    const handler = require("../api/auth/verify");
+    const handler = apiRoute("auth/verify");
 
     let response = await invoke(handler, { headers: { cookie: "__Host-session=staff-session" } });
     assert.equal(response.statusCode, 200);
@@ -147,24 +148,18 @@ test("verify reports staff and gives admin precedence when both claims are prese
 
 test("staff can access protected pages", async t => {
     t.mock.method(auth, "requireStaffAccess", async () => ({ staff: true, email: "staff@example.com" }));
-    const handlerPath = require.resolve("../api/pages/[page]");
-    delete require.cache[handlerPath];
-    const handler = require(handlerPath);
-    t.after(() => delete require.cache[handlerPath]);
+    const handler = apiRoute("pages/gestionale.html");
 
-    const response = await invoke(handler, { query: { page: "gestionale.html" } });
+    const response = await invoke(handler);
     assert.equal(response.statusCode, 200);
     assert.match(response.body, /Tutti gli ordini/);
 });
 
 test("the server protects the menu page with the admin-only role", async t => {
     t.mock.method(auth, "requireAdmin", async () => ({ admin: true, email: "admin@example.com" }));
-    const handlerPath = require.resolve("../api/pages/[page]");
-    delete require.cache[handlerPath];
-    const handler = require(handlerPath);
-    t.after(() => delete require.cache[handlerPath]);
+    const handler = apiRoute("pages/menu.html");
 
-    const response = await invoke(handler, { query: { page: "menu.html" } });
+    const response = await invoke(handler);
     assert.equal(response.statusCode, 200);
     assert.match(response.body, /menu-editor\.js/);
 });
@@ -176,14 +171,12 @@ test("delivery accounts can access only the delivery page on the server", async 
         error.statusCode = 403;
         throw error;
     });
-    const handlerPath = require.resolve("../api/pages/[page]");
-    delete require.cache[handlerPath];
-    const handler = require(handlerPath);
-    t.after(() => delete require.cache[handlerPath]);
+    const deliveryHandler = apiRoute("pages/consegne.html");
+    const adminHandler = apiRoute("pages/gestionale.html");
 
-    const deliveryPage = await invoke(handler, { query: { page: "consegne.html" } });
+    const deliveryPage = await invoke(deliveryHandler);
     assert.equal(deliveryPage.statusCode, 200);
-    const adminPage = await invoke(handler, { query: { page: "gestionale.html" } });
+    const adminPage = await invoke(adminHandler);
     assert.equal(adminPage.statusCode, 403);
 });
 
@@ -193,12 +186,9 @@ test("staff and delivery roles cannot access the menu page on the server", async
         error.statusCode = 403;
         throw error;
     });
-    const handlerPath = require.resolve("../api/pages/[page]");
-    delete require.cache[handlerPath];
-    const handler = require(handlerPath);
-    t.after(() => delete require.cache[handlerPath]);
+    const handler = apiRoute("pages/menu.html");
 
-    const response = await invoke(handler, { query: { page: "menu.html" } });
+    const response = await invoke(handler);
     assert.equal(response.statusCode, 403);
 });
 

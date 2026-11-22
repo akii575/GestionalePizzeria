@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { isValidPrinterSelection, jobId } = require("../lib/printer-jobs");
+const { apiRoute } = require("./api-router-helper");
 const menu = require("../lib/menu.json");
 const extras = require("../lib/extras.json");
 const extraCategories = new Set(["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"]);
@@ -51,9 +52,9 @@ const { prepareOrder: validateOrder } = require("../lib/orders");
 function prepareOrder(input) {
     return validateOrder(input, testCatalog);
 }
-const resetHandler = require("../api/reset-numeri");
-const ordersIndexHandler = require("../api/ordini/index");
-const orderHandler = require("../api/ordini/[numero]");
+const resetHandler = apiRoute("reset-numeri");
+const ordersIndexHandler = apiRoute("ordini");
+const orderHandler = apiRoute("ordini/7");
 
 function createDatabase(seed = {}, { failQueueUnpause = 0 } = {}) {
     let remainingUnpauseFailures = failQueueUnpause;

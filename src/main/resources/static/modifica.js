@@ -10,6 +10,7 @@ let prodottoCoperto = null;
 let copertoOrdine = null;
 let tipoOrdineOriginale = null;
 let numeroPersoneOriginale = null;
+let ordineCaricato = null;
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const { isCoperto, calcolaCoperto } = window.prodottiUI;
@@ -25,7 +26,10 @@ function aggiornaBottoneCostoConsegna() {
     bottoneCostoConsegna.textContent = attivo ? "Rimuovi costo consegna (2,00 €)" : "Aggiungi costo consegna (+2,00 €)";
 }
 function riferimentoExtra(elemento) {
-    return typeof elemento === "string" ? extra.find(item => item.nome === elemento) : elemento;
+    const nome = typeof elemento === "string" ? elemento : elemento?.nome;
+    const id = typeof elemento === "string" ? "" : elemento?.id;
+    return extra.find(item => (id && item.id === id) || item.nome === nome)
+        || (typeof elemento === "string" ? undefined : elemento);
 }
 function copertoCorrente() {
     const tipo = document.getElementById("tipo-ordine").value;
@@ -168,54 +172,92 @@ function rigaEdit(riga = { prodotto: menu[0]?.nome || "", extra: [] }) {
     righe.appendChild(div);
     aggiornaTotale();
 }
-async function avvia() {
-    try {
-        const risposte = await Promise.all([fetch("/api/menu"), fetch("/api/extra"), fetch("/api/ordini")]);
-        menu = await risposte[0].json();
-        prodottoCoperto = menu.find(prodotto => isCoperto(prodotto)) || null;
-        menu = menu.filter(prodotto => !isCoperto(prodotto));
-        extra = (await risposte[1].json()).sort((primo, secondo) =>
-            primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" })
-        );
-        const ordine = (await risposte[2].json()).ordini
-            .find(o => String(o.numero) === String(numero));
-        if (!ordine) throw new Error("Ordine non trovato.");
-        document.getElementById("numero").textContent = `#${ordine.numero}`;
-        document.getElementById("tipo-ordine").value =
-            ordine.tipo === "consegna"
-                ? "consegna"
-                : ordine.tipo === "banco"
-                  ? "banco"
-                  : ordine.tipo === "ritiro"
-                    ? "ritiro"
-                    : "tavolo";
-        tipoOrdineOriginale = ordine.tipo === "sala" ? "tavolo" : ordine.tipo || "tavolo";
-        document.getElementById("tavolo").value =
-            ordine.tipo === "consegna" || ordine.tipo === "banco" ? "" : ordine.tavoloOCliente || "";
-        document.getElementById("numero-persone").value =
-            Number.isInteger(ordine.numeroPersone) && ordine.numeroPersone > 0 ? ordine.numeroPersone : 1;
-        numeroPersoneOriginale = Number(document.getElementById("numero-persone").value);
-        copertoOrdine = ordine.coperto || null;
-        const righeCopertoLegacy = ordine.righe.filter(riga => isCoperto({ nome: riga.prodotto }));
-        if (!copertoOrdine && tipoOrdineOriginale === "tavolo" && righeCopertoLegacy.length) {
-            const totaleCopertoLegacy = righeCopertoLegacy.reduce(
-                (totale, riga) => totale + Number(riga.totale ?? riga.prezzoBase ?? 0),
-                0
-            );
-            const prezzoLegacy = totaleCopertoLegacy / numeroPersoneOriginale;
-            copertoOrdine = calcolaCoperto("tavolo", numeroPersoneOriginale, prezzoLegacy);
-        }
-        document.getElementById("indirizzo-consegna").value = ordine.indirizzoConsegna || "";
-        document.getElementById("telefono-consegna").value = ordine.telefonoConsegna || "";
-        document.getElementById("telefono-ritiro").value = ordine.telefonoRitiro || "";
-        document.getElementById("cognome-banco").value = ordine.cognomeBanco || "";
-        document.getElementById("note").value = ordine.note || "";
-        document.getElementById("orario").value = ordine.tipo === "tavolo" ? "" : ordine.orario || oraLocale();
-        document.getElementById("stato-pagamento").value = ordine.statoPagamento || "";
-        costoConsegna = Number(ordine.costoConsegna) === 2 ? 2 : 0;
-        aggiornaCampiConsegna();
-        ordine.righe.filter(riga => !isCoperto({ nome: riga.prodotto })).forEach(rigaEdit);
+function applicaMenu(menuNuovo, extraNuovi) {
+    menu = menuNuovo;
+    prodottoCoperto = menu.find(prodotto => isCoperto(prodotto)) || null;
+    menu = menu.filter(prodotto => !isCoperto(prodotto));
+    extra = extraNuovi.sort((primo, secondo) =>
+        primo.nome.localeCompare(secondo.nome, "it", { sensitivity: "base" })
+    );
+    if (ordineCaricato) {
+        const righeCorrenti = Array.from(righe.querySelectorAll(".riga-edit")).map(div => ({
+            prodotto: div.querySelector(".prodotto").value,
+            extra: JSON.parse(div.querySelector(".extra-selezionati")?.dataset.extra || "[]")
+        }));
+        righe.replaceChildren();
+        righeCorrenti.forEach(rigaEdit);
         aggiornaTotale();
+    }
+}
+async function recuperaMenu() {
+    const risposte = await Promise.all([fetch("/api/menu"), fetch("/api/extra")]);
+    if (risposte.some(risposta => !risposta.ok)) throw new Error("Menu non disponibile.");
+    const [menuRisposta, extraRisposta] = await Promise.all(risposte.map(risposta => risposta.json()));
+    const versioneMenu = risposte[0].headers.get("X-Menu-Version");
+    const versioneExtra = risposte[1].headers.get("X-Menu-Version");
+    return {
+        menu: menuRisposta,
+        extra: extraRisposta,
+        versione: versioneMenu !== null && versioneMenu === versioneExtra ? Number(versioneMenu) : null
+    };
+}
+function mostraOrdine(ordine) {
+    ordineCaricato = ordine;
+    document.getElementById("numero").textContent = `#${ordine.numero}`;
+    document.getElementById("tipo-ordine").value =
+        ordine.tipo === "consegna"
+            ? "consegna"
+            : ordine.tipo === "banco"
+              ? "banco"
+              : ordine.tipo === "ritiro"
+                ? "ritiro"
+                : "tavolo";
+    tipoOrdineOriginale = ordine.tipo === "sala" ? "tavolo" : ordine.tipo || "tavolo";
+    document.getElementById("tavolo").value =
+        ordine.tipo === "consegna" || ordine.tipo === "banco" ? "" : ordine.tavoloOCliente || "";
+    document.getElementById("numero-persone").value =
+        Number.isInteger(ordine.numeroPersone) && ordine.numeroPersone > 0 ? ordine.numeroPersone : 1;
+    numeroPersoneOriginale = Number(document.getElementById("numero-persone").value);
+    copertoOrdine = ordine.coperto || null;
+    const righeCopertoLegacy = ordine.righe.filter(riga => isCoperto({ nome: riga.prodotto }));
+    if (!copertoOrdine && tipoOrdineOriginale === "tavolo" && righeCopertoLegacy.length) {
+        const totaleCopertoLegacy = righeCopertoLegacy.reduce(
+            (totale, riga) => totale + Number(riga.totale ?? riga.prezzoBase ?? 0),
+            0
+        );
+        const prezzoLegacy = totaleCopertoLegacy / numeroPersoneOriginale;
+        copertoOrdine = calcolaCoperto("tavolo", numeroPersoneOriginale, prezzoLegacy);
+    }
+    document.getElementById("indirizzo-consegna").value = ordine.indirizzoConsegna || "";
+    document.getElementById("telefono-consegna").value = ordine.telefonoConsegna || "";
+    document.getElementById("telefono-ritiro").value = ordine.telefonoRitiro || "";
+    document.getElementById("cognome-banco").value = ordine.cognomeBanco || "";
+    document.getElementById("note").value = ordine.note || "";
+    document.getElementById("orario").value = ordine.tipo === "tavolo" ? "" : ordine.orario || oraLocale();
+    document.getElementById("stato-pagamento").value = ordine.statoPagamento || "";
+    costoConsegna = Number(ordine.costoConsegna) === 2 ? 2 : 0;
+    aggiornaCampiConsegna();
+    ordine.righe.filter(riga => !isCoperto({ nome: riga.prodotto })).forEach(rigaEdit);
+    aggiornaTotale();
+}
+async function recuperaOrdine() {
+    const risposta = await fetch("/api/ordini");
+    const dati = await risposta.json();
+    if (!risposta.ok) throw new Error(dati.errore || "Impossibile caricare l'ordine.");
+    const ordine = dati.ordini.find(o => String(o.numero) === String(numero));
+    if (!ordine) throw new Error("Ordine non trovato.");
+    return ordine;
+}
+async function avvia() {
+    const caricamentoMenu = window.prodottiUI.caricaMenuConCache(recuperaMenu, applicaMenu);
+    caricamentoMenu.aggiornamento.catch(errore => {
+        if (!caricamentoMenu.cache) stato(errore.message);
+    });
+    try {
+        const ordine = caricamentoMenu.cache
+            ? await recuperaOrdine()
+            : (await Promise.all([caricamentoMenu.aggiornamento, recuperaOrdine()]))[1];
+        mostraOrdine(ordine);
     } catch (errore) {
         stato(errore.message);
     }

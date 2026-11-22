@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const auth = require("../lib/auth");
 const firebaseAdmin = require("../lib/firebase-admin");
 const { getRomeDayRange } = require("../lib/rome-day-range");
+const { apiRoute } = require("./api-router-helper");
 
 function makeDb(orders, queryLog, { version = 0 } = {}) {
     let orderReads = 0;
@@ -103,16 +104,8 @@ test("order and delivery APIs query the selected Rome day and order by number de
         db
     }));
 
-    const ordersPath = require.resolve("../api/ordini/index.js");
-    const deliveriesPath = require.resolve("../api/consegne/index.js");
-    delete require.cache[ordersPath];
-    delete require.cache[deliveriesPath];
-    const ordersHandler = require(ordersPath);
-    const deliveriesHandler = require(deliveriesPath);
-    t.after(() => {
-        delete require.cache[ordersPath];
-        delete require.cache[deliveriesPath];
-    });
+    const ordersHandler = apiRoute("ordini");
+    const deliveriesHandler = apiRoute("consegne");
 
     const tables = await invoke(ordersHandler, { data: "2026-03-29", tipo: "tavolo" });
     assert.equal(tables.statusCode, 200);
@@ -147,10 +140,7 @@ test("orders API returns unchanged without reading orders when the version match
     t.mock.method(auth, "requireStaffAccess", async () => ({}));
     t.mock.method(firebaseAdmin, "getFirebaseServices", () => ({ db }));
 
-    const ordersPath = require.resolve("../api/ordini/index.js");
-    delete require.cache[ordersPath];
-    const ordersHandler = require(ordersPath);
-    t.after(() => delete require.cache[ordersPath]);
+    const ordersHandler = apiRoute("ordini");
 
     const response = await invoke(ordersHandler, { data: "2026-03-29", versione: "12" });
 

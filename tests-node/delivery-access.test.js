@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const auth = require("../lib/auth");
 const firebaseAdmin = require("../lib/firebase-admin");
+const { apiRoute } = require("./api-router-helper");
 
 function invoke(handler, role, method = "GET") {
     return new Promise(resolve => {
@@ -74,16 +75,8 @@ test("delivery accounts can read only delivery orders and cannot use admin order
         }
     }));
 
-    const deliveriesPath = require.resolve("../api/consegne");
-    const ordersPath = require.resolve("../api/ordini/index.js");
-    delete require.cache[deliveriesPath];
-    delete require.cache[ordersPath];
-    const deliveriesHandler = require(deliveriesPath);
-    const ordersHandler = require(ordersPath);
-    t.after(() => {
-        delete require.cache[deliveriesPath];
-        delete require.cache[ordersPath];
-    });
+    const deliveriesHandler = apiRoute("consegne");
+    const ordersHandler = apiRoute("ordini");
 
     const deliveries = await invoke(deliveriesHandler, "delivery");
     assert.equal(deliveries.statusCode, 200);

@@ -848,44 +848,62 @@ document.addEventListener("keydown", evento => {
     else if (!ricercaModale.hidden) chiudiRicerca();
     else if (!confermaModale.hidden) chiudiConferma();
 });
-Promise.all([fetch("/api/menu"), fetch("/api/extra")])
-    .then(async risposte => {
-        stato.menu = await risposte[0].json();
-        prodottoCoperto = stato.menu.find(prodotto => isCoperto(prodotto)) || null;
-        stato.menu = stato.menu.filter(prodotto => !isCoperto(prodotto));
-        stato.extra = await risposte[1].json();
-        const labels = new Map(
-            [...tabsCategorie.querySelectorAll(".tab[data-tab]")]
-                .map(tab => [tab.dataset.tab, tab.textContent.trim()])
-        );
-        const categorie = new Map();
-        for (const prodotto of stato.menu) {
-            if (isCoperto(prodotto)) continue;
-            if (!categorie.has(prodotto.categoria)) {
-                categorie.set(prodotto.categoria, {
-                    id: prodotto.categoria,
-                    nome: prodotto.categoriaNome || labels.get(prodotto.categoria) || prodotto.categoria,
-                    ordine: Number(prodotto.categoriaOrdine || 0)
-                });
-            }
+function applicaMenu(menu, extra) {
+    const categoriaPrecedente = stato.categoria;
+    stato.menu = menu;
+    prodottoCoperto = stato.menu.find(prodotto => isCoperto(prodotto)) || null;
+    stato.menu = stato.menu.filter(prodotto => !isCoperto(prodotto));
+    stato.extra = extra;
+    const labels = new Map(
+        [...tabsCategorie.querySelectorAll(".tab[data-tab]")]
+            .map(tab => [tab.dataset.tab, tab.textContent.trim()])
+    );
+    const categorie = new Map();
+    for (const prodotto of stato.menu) {
+        if (isCoperto(prodotto)) continue;
+        if (!categorie.has(prodotto.categoria)) {
+            categorie.set(prodotto.categoria, {
+                id: prodotto.categoria,
+                nome: prodotto.categoriaNome || labels.get(prodotto.categoria) || prodotto.categoria,
+                ordine: Number(prodotto.categoriaOrdine || 0)
+            });
         }
-        tabsCategorie.querySelectorAll(".tab[data-tab]").forEach(tab => tab.remove());
-        const ordinate = [...categorie.values()].sort((first, second) => first.ordine - second.ordine);
-        etichetteCategorie = {};
-        for (const [index, categoria] of ordinate.entries()) {
-            const tab = document.createElement("button");
-            tab.type = "button";
-            tab.className = `tab${index === 0 ? " active" : ""}`;
-            tab.dataset.tab = categoria.id;
-            tab.textContent = categoria.nome || labels.get(categoria.id) || categoria.id;
-            etichetteCategorie[categoria.id] = tab.textContent;
-            tabsCategorie.appendChild(tab);
-        }
-        stato.categoria = ordinate[0]?.id || "";
-        renderGrigliaExtra();
-        renderProdotti();
-        renderRiepilogo();
-        // Se la ricerca è stata aperta prima che il menu arrivasse, aggiorna i risultati.
-        if (!ricercaModale.hidden) renderRisultatiRicerca();
-    })
-    .catch(errore => mostraMessaggio(errore.message, "errore"));
+    }
+    tabsCategorie.querySelectorAll(".tab[data-tab]").forEach(tab => tab.remove());
+    const ordinate = [...categorie.values()].sort((first, second) => first.ordine - second.ordine);
+    etichetteCategorie = {};
+    for (const categoria of ordinate) {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "tab";
+        tab.dataset.tab = categoria.id;
+        tab.textContent = categoria.nome || labels.get(categoria.id) || categoria.id;
+        etichetteCategorie[categoria.id] = tab.textContent;
+        tabsCategorie.appendChild(tab);
+    }
+    stato.categoria = categorie.has(categoriaPrecedente) ? categoriaPrecedente : ordinate[0]?.id || "";
+    tabsCategorie.querySelectorAll(".tab[data-tab]").forEach(tab => {
+        tab.classList.toggle("active", tab.dataset.tab === stato.categoria);
+    });
+    renderGrigliaExtra();
+    renderProdotti();
+    renderRiepilogo();
+    if (!ricercaModale.hidden) renderRisultatiRicerca();
+}
+
+const caricamentoMenu = window.prodottiUI.caricaMenuConCache(async () => {
+    const risposte = await Promise.all([fetch("/api/menu"), fetch("/api/extra")]);
+    if (risposte.some(risposta => !risposta.ok)) throw new Error("Menu non disponibile.");
+    const [menu, extra] = await Promise.all(risposte.map(risposta => risposta.json()));
+    const versioneMenu = risposte[0].headers.get("X-Menu-Version");
+    const versioneExtra = risposte[1].headers.get("X-Menu-Version");
+    return {
+        menu,
+        extra,
+        versione: versioneMenu !== null && versioneMenu === versioneExtra ? Number(versioneMenu) : null
+    };
+}, applicaMenu);
+
+caricamentoMenu.aggiornamento.catch(errore => {
+    if (!caricamentoMenu.cache) mostraMessaggio(errore.message, "errore");
+});
