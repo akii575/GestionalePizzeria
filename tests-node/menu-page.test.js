@@ -45,7 +45,7 @@ test("menu page is protected by the server rewrite and included in protected-pag
     const pageRoute = fs.readFileSync(path.join(__dirname, "../lib/handlers/pages/[page].js"), "utf8");
 
     assert.ok(vercel.rewrites.some(rule => (
-        rule.source === "/menu.html" && rule.destination === "/api/pages/menu.html"
+        rule.source === "/menu.html" && rule.destination === "/api/router?percorso=pages/menu.html"
     )));
     assert.match(copyScript, /"menu\.html"/);
     assert.match(pageRoute, /pageName === "menu\.html"[\s\S]*?requireAdmin\(req\)/);

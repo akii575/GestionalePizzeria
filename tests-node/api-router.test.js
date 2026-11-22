@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const vercel = require("../vercel.json");
 const { loadApiRouter } = require("./api-router-helper");
 
 const routeModules = {
@@ -40,7 +41,7 @@ function responseFor(router, path, query = {}) {
                 return this;
             }
         };
-        void router({ method: "GET", query: { ...query, percorso: path.split("/") } }, response);
+        void router({ method: "GET", query: { ...query, percorso: path } }, response);
     });
 }
 
@@ -58,8 +59,8 @@ test("catch-all dispatches every existing route and preserves route parameters",
         ["auth/verify", "auth/verify", {}],
         ["consegne", "consegne", {}],
         ["ordini", "ordini", {}],
-        ["ordini/000000000012", "ordini/[numero]", { numero: "000000000012" }],
-        ["pages/menu.html", "pages/[page]", { page: "menu.html" }]
+        ["ordini/123", "ordini/[numero]", { numero: "123" }],
+        ["pages/tavoli.html", "pages/[page]", { page: "tavoli.html" }]
     ];
 
     for (const [path, expectedRoute, expectedParameters] of cases) {
@@ -72,4 +73,30 @@ test("catch-all dispatches every existing route and preserves route parameters",
     const notFound = await responseFor(router, "missing");
     assert.equal(notFound.statusCode, 404);
     assert.deepEqual(notFound.body, { errore: "Endpoint API non trovato." });
+});
+
+test("Vercel rewrites every protected page and API path to the router", () => {
+    const pages = [
+        ["/", "index.html"],
+        ["/index.html", "index.html"],
+        ["/ordini.html", "ordini.html"],
+        ["/gestionale.html", "gestionale.html"],
+        ["/modifica.html", "modifica.html"],
+        ["/consegne.html", "consegne.html"],
+        ["/ritiri.html", "ritiri.html"],
+        ["/banco.html", "banco.html"],
+        ["/tavoli.html", "tavoli.html"],
+        ["/menu.html", "menu.html"]
+    ];
+
+    for (const [source, page] of pages) {
+        assert.ok(vercel.rewrites.some(rule => (
+            rule.source === source && rule.destination === `/api/router?percorso=pages/${page}`
+        )), `Missing router rewrite for ${source}`);
+    }
+
+    assert.deepEqual(vercel.rewrites.at(-1), {
+        source: "/api/:path*",
+        destination: "/api/router?percorso=:path*"
+    });
 });

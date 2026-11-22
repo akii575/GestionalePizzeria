@@ -15,7 +15,7 @@ const handlerPaths = [
 
 function loadApiRouter() {
     for (const path of handlerPaths) delete require.cache[require.resolve(path)];
-    const routerPath = require.resolve("../api/[...percorso]");
+    const routerPath = require.resolve("../api/router");
     delete require.cache[routerPath];
     return require(routerPath);
 }

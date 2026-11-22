@@ -18,7 +18,7 @@ const routeLoaders = {
 function routeParts(req) {
     const raw = req.query?.percorso;
     if (Array.isArray(raw)) return raw.map(String);
-    if (typeof raw === "string" && raw) return raw.split("/");
+    if (typeof raw === "string" && raw) return raw.split("/").filter(Boolean);
     const pathname = typeof req.url === "string" ? req.url.split("?")[0] : "";
     return pathname.startsWith("/api/")
         ? pathname.slice(5).split("/").filter(Boolean).map(part => decodeURIComponent(part))
