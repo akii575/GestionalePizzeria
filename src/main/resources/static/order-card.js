@@ -228,7 +228,9 @@ const orderCard = (() => {
     function renderActions(order, canEdit) {
         if (!canEdit) return "";
         const number = Number(order.numero);
-        return `<div class="order-card__actions"><button type="button" data-modifica="${number}">Modifica ordine</button><button type="button" data-ristampa="${number}" aria-haspopup="dialog">Ristampa</button><button type="button" data-elimina="${number}" class="pericolo">Elimina</button></div>`;
+        const path = typeof window === "undefined" || !window.location ? "" : window.location.pathname;
+        const origine = /^\/(gestionale|consegne|tavoli|ritiri|banco)(?:\.html)?$/.exec(path)?.[1] || "gestionale";
+        return `<div class="order-card__actions"><a href="/ordini.html?modifica=${number}&amp;da=${origine}" data-modifica="${number}">Modifica ordine</a><button type="button" data-ristampa="${number}" aria-haspopup="dialog">Ristampa</button><button type="button" data-elimina="${number}" class="pericolo">Elimina</button></div>`;
     }
 
     function deliveryStatus(order) {

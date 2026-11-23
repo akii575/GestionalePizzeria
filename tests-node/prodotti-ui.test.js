@@ -10,6 +10,9 @@ const {
     isCoperto,
     calcolaCoperto,
     creaRiga,
+    preparaRigheModifica,
+    creaPayloadComanda,
+    puoSalvareModifica,
     aggiungiProdotti,
     preparaRipetizione,
     impostaRigaAttiva,
@@ -38,6 +41,114 @@ const {
     togliNotaRapida,
     notaContiene
 } = require("../src/main/resources/static/prodotti-ui");
+
+test("edit save is blocked until the original order has loaded", () => {
+    const script = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.js"),
+        "utf8"
+    );
+    const guard = script.indexOf("if (numeroModifica && !puoSalvareModifica(payloadOriginaleModifica)) return;");
+    const put = script.indexOf("fetch(`/api/ordini/${numeroModifica}`, {");
+
+    assert.equal(puoSalvareModifica(null), false);
+    assert.equal(puoSalvareModifica("{}"), true);
+    assert.ok(guard >= 0 && put > guard, "the null-payload guard must run before the edit PUT");
+});
+
+test("editing an order preserves its rows, extras, exclusions, and one-row-per-product payload", () => {
+    const menu = [{
+        nome: "Margherita",
+        categoria: "pizze",
+        prezzo: 6.5,
+        ingredienti: ["Pomodoro", "Mozzarella", "Basilico"],
+        ammetteExtra: true
+    }];
+    const extraMenu = [{ id: "mozzarella", nome: "Mozzarella", prezzo: 1.5 }];
+    const order = {
+        tipo: "tavolo",
+        orario: "",
+        statoPagamento: null,
+        cognomeBanco: "",
+        tavoloOCliente: "Tavolo 4",
+        numeroPersone: 2,
+        indirizzoConsegna: "",
+        telefonoConsegna: "",
+        costoConsegna: 0,
+        telefonoRitiro: "",
+        note: "Ben cotta",
+        righe: [
+            {
+                prodotto: "Coperto",
+                prezzoBase: 2,
+                extra: [],
+                senza: []
+            },
+            {
+                prodotto: "Margherita",
+                prezzoBase: 6.5,
+                ingredienti: menu[0].ingredienti,
+                extra: [{ id: "mozzarella", nome: "Mozzarella", prezzo: 1.5 }],
+                senza: ["Basilico"]
+            },
+            {
+                prodotto: "Margherita",
+                prezzoBase: 6.5,
+                ingredienti: menu[0].ingredienti,
+                extra: [],
+                senza: []
+            }
+        ]
+    };
+    const rows = preparaRigheModifica(order.righe, menu, extraMenu);
+    const payload = creaPayloadComanda({
+        ...order,
+        tavoloOCliente: nomeTavoloDaNumero(numeroTavoloDaNome(order.tavoloOCliente))
+    }, rows);
+
+    assert.deepEqual(payload, {
+        tipo: "tavolo",
+        orario: "",
+        statoPagamento: null,
+        cognomeBanco: "",
+        tavoloOCliente: "Tavolo 4",
+        numeroPersone: 2,
+        indirizzoConsegna: "",
+        telefonoConsegna: "",
+        costoConsegna: 0,
+        telefonoRitiro: "",
+        note: "Ben cotta",
+        righe: [
+            { prodotto: "Margherita", extra: extraMenu, senza: ["Basilico"] },
+            { prodotto: "Margherita", extra: [], senza: [] }
+        ]
+    });
+});
+
+test("editing preserves an unavailable product so the waiter can remove it", () => {
+    const rows = preparaRigheModifica([
+        {
+            prodotto: "Pizza fuori menu",
+            prezzoBase: 8,
+            ingredienti: ["Pomodoro"],
+            extra: [],
+            senza: ["Pomodoro"]
+        }
+    ], [], []);
+
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].nonDisponibile, true);
+    assert.deepEqual(rows[0].senza, ["Pomodoro"]);
+    assert.deepEqual(creaPayloadComanda({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 4",
+        numeroPersone: 1,
+        note: ""
+    }, rows).righe, [{
+        prodotto: "Pizza fuori menu",
+        extra: [],
+        senza: ["Pomodoro"]
+    }]);
+});
 
 const nomi = prodotti => prodotti.map(prodotto => prodotto.nome);
 
@@ -163,12 +274,10 @@ test("reset clears the selected table and closes the custom field", () => {
     assert.equal(selezione.aperto, false);
 });
 
-test("new order and edit pages expose the custom table number controls", () => {
+test("order entry and edit mode use the same custom table number controls", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
     const html = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
-    const editScript = fs.readFileSync(path.join(directory, "modifica.js"), "utf8");
-    const editHtml = fs.readFileSync(path.join(directory, "modifica.html"), "utf8");
 
     assert.match(script, /for \(let numero = 1; numero <= 15; numero\+\+\)/);
     assert.match(script, /dataset\.tavoloPersonalizzato = ""/);
@@ -184,14 +293,11 @@ test("new order and edit pages expose the custom table number controls", () => {
         html,
         /id="numero-tavolo-personalizzato"[\s\S]*type="number"[\s\S]*inputmode="numeric"[\s\S]*pattern="\[0-9\]\*"[\s\S]*min="1"[\s\S]*max="99"/
     );
-    assert.match(
-        editHtml,
-        /id="numero-tavolo" type="number" inputmode="numeric" pattern="\[0-9\]\*" min="1" max="99"/
-    );
     assert.equal(numeroTavoloDaNome("Tavolo 23"), "23");
     assert.equal(nomeTavoloDaNumero("23"), "Tavolo 23");
-    assert.match(editScript, /numeroTavoloDaNome\(ordine\.tavoloOCliente\)/);
-    assert.match(editScript, /nomeTavoloDaNumero\(numeroTavolo\.value\)/);
+    assert.match(script, /numeroTavoloDaNome\(ordine\.tavoloOCliente\)/);
+    assert.match(script, /nomeTavoloDaNumero\(numeroTavoloDaNome\(tavolo\.value\)\)/);
+    assert.match(script, /gestioneTavoli\.impostaNumeroPersonalizzato\(numeroTavoloOrdine\)/);
 });
 
 test("quick notes append with a separator and preserve manually written text", () => {
@@ -296,16 +402,14 @@ test("cover is matched case-insensitively and calculated only for table service"
     assert.equal(calcolaCoperto("tavolo", 0, 2), null);
 });
 
-test("order entry and editing keep cover out of selectable product rows", () => {
+test("order entry and edit mode keep cover out of selectable product rows", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const orderScript = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
-    const editScript = fs.readFileSync(path.join(directory, "modifica.js"), "utf8");
 
     assert.match(orderScript, /stato\.menu\.filter\(prodotto => !isCoperto\(prodotto\)\)/);
     assert.match(orderScript, /!isCoperto\(prodotto\) && prodotto\.categoria === stato\.categoria/);
-    assert.match(editScript, /menu = menu\.filter\(prodotto => !isCoperto\(prodotto\)\)/);
+    assert.match(orderScript, /preparaRigheModifica\(ordine\.righe, stato\.menu, stato\.extra\)/);
     assert.match(orderScript, /numeroPersone\.addEventListener\("input", \(\) => \{[\s\S]*?renderRiepilogo\(\);/);
-    assert.match(editScript, /document\.getElementById\("numero-persone"\)\.addEventListener\("input", aggiornaTotale\)/);
 });
 
 test("count label updates to plural after adding three products", () => {

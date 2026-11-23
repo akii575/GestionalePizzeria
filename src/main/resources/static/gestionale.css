@@ -45,7 +45,7 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 .order-card__note { margin: 10px 0 0; padding: 9px; border-left: 3px solid var(--rosso); background: #fff4ef; font-size: 16px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .order-card__delivery-fee { margin: 8px 0; padding: 8px; border-left: 3px solid #2563eb; background: #eff6ff; font-weight: 700; text-align: right; }
 .order-card__actions { display: grid; grid-template-columns: repeat(3, minmax(0, 160px)); gap: 8px; padding: 0 14px 12px; }
-.order-card__actions button { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--bordo); background: #fff; font-size: 16px; line-height: 1.3; }
+.order-card__actions button, .order-card__actions a { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; padding: 8px 12px; border: 1px solid var(--bordo); background: #fff; color: var(--theme-green); font-size: 16px; line-height: 1.3; text-align: center; text-decoration: none; }
 .order-card__actions .pericolo { color: var(--rosso); }
 .app-ristampa-opzioni { display: grid; gap: 8px; }
 .app-ristampa-opzione { width: 100%; min-height: 48px; padding: 11px 12px; border: 1px solid var(--bordo); border-radius: 7px; background: #fff; color: var(--verde); font-weight: 700; text-align: left; }
@@ -209,7 +209,8 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
     margin-top: auto;
 }
 
-.dashboard .order-card__actions button {
+.dashboard .order-card__actions button,
+.dashboard .order-card__actions a {
     min-height: 48px;
     border: 1px solid var(--theme-line);
     border-radius: 12px;
@@ -217,6 +218,7 @@ label { font-weight: bold; } input[type="search"], input[type="date"] { display:
 }
 
 .dashboard .order-card__actions button[data-modifica],
+.dashboard .order-card__actions a[data-modifica],
 .dashboard .order-card__actions button[data-ristampa] {
     border-color: var(--theme-green);
     background: var(--theme-green);

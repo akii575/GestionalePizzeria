@@ -74,6 +74,10 @@ test("Vercel serves the service worker with update and root-scope headers", () =
 test("all pages load nav.js for offline status and service worker registration", () => {
     const pages = fs.readdirSync(staticDirectory).filter(file => file.endsWith(".html"));
     for (const page of pages) {
+        if (page === "modifica.html") {
+            assert.match(fs.readFileSync(path.join(staticDirectory, page), "utf8"), /src="\/modifica-redirect\.js"/);
+            continue;
+        }
         assert.match(fs.readFileSync(path.join(staticDirectory, page), "utf8"), /<script src="\/nav\.js"><\/script>/, page);
     }
     const navigation = fs.readFileSync(path.join(staticDirectory, "nav.js"), "utf8");
@@ -81,6 +85,7 @@ test("all pages load nav.js for offline status and service worker registration",
     assert.match(navigation, /Nessuna connessione internet — le comande non vengono inviate/);
     assert.match(navigation, /Connessione tornata/);
     assert.match(navigation, /civico7:online/);
+    assert.doesNotMatch(source, /"\/modifica\.html"/);
     for (const script of ["gestionale.js", "consegne.js", "printer-status.js"]) {
         assert.match(
             fs.readFileSync(path.join(staticDirectory, script), "utf8"),
@@ -92,14 +97,15 @@ test("all pages load nav.js for offline status and service worker registration",
 
 test("order forms retain their data and show a clear message when offline", () => {
     const orderForm = fs.readFileSync(path.join(staticDirectory, "ordini.js"), "utf8");
-    const editForm = fs.readFileSync(path.join(staticDirectory, "modifica.js"), "utf8");
-    const offlineMessage = "Comanda NON inviata: manca la connessione. Riprova appena torna internet.";
-    assert.ok(orderForm.includes(offlineMessage));
-    assert.ok(editForm.includes(offlineMessage));
+    const newOrderOfflineMessage = "Comanda NON inviata: manca la connessione. Riprova appena torna internet.";
+    const editOfflineMessage = "Modifiche NON salvate: manca la connessione. Riprova appena torna internet.";
+    assert.ok(orderForm.includes(newOrderOfflineMessage));
+    assert.ok(orderForm.includes(editOfflineMessage));
     assert.match(orderForm, /navigator\.onLine === false/);
     assert.match(orderForm, /errore instanceof TypeError/);
     assert.ok(orderForm.indexOf("stato.righe = [];") > orderForm.indexOf('fetch("/api/ordini"'));
-    assert.match(editForm, /pulsante\.disabled = false;[\s\S]*?Comanda NON inviata/);
+    assert.match(orderForm, /fetch\(`\/api\/ordini\/\$\{numeroModifica\}`,[\s\S]*?method: "PUT"/);
+    assert.match(orderForm, /Modifiche NON salvate:[\s\S]*?invia\.disabled = false;/);
     for (const file of ["nav.js", "auth-guard.js", "auth-logout.js"]) {
         const logout = fs.readFileSync(path.join(staticDirectory, file), "utf8");
         assert.match(logout, /civico7ClearOfflineCaches|caches\.keys\(\)/, file);

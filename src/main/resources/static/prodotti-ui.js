@@ -150,6 +150,70 @@ const prodottiUI = (() => {
         };
     }
 
+    function preparaRigheModifica(righe, menu, extraMenu) {
+        const prodotti = new Map((menu || []).map(prodotto => [prodotto.nome, prodotto]));
+        const extraPerId = new Map((extraMenu || []).map(extra => [extra.id, extra]));
+        const extraPerNome = new Map((extraMenu || []).map(extra => [extra.nome, extra]));
+        return (righe || [])
+            .filter(riga => riga && typeof riga === "object" && !isCoperto({ nome: riga.prodotto }))
+            .map(riga => {
+                const prodotto = prodotti.get(riga.prodotto);
+                const ingredienti = Array.isArray(riga.ingredienti)
+                    ? riga.ingredienti
+                    : Array.isArray(prodotto?.ingredienti) ? prodotto.ingredienti : [];
+                const extra = (Array.isArray(riga.extra) ? riga.extra : [])
+                    .map(elemento => {
+                        const nome = typeof elemento === "string" ? elemento : elemento?.nome;
+                        const id = typeof elemento === "string" ? "" : elemento?.id;
+                        return extraPerId.get(id) || extraPerNome.get(nome)
+                            || (typeof elemento === "string" ? null : elemento);
+                    })
+                    .filter(Boolean);
+                return {
+                    prodotto: riga.prodotto,
+                    prezzo: Number(prodotto?.prezzo ?? riga.prezzoBase ?? riga.prezzo ?? 0),
+                    categoria: prodotto?.categoria || riga.categoria || "",
+                    ingredienti,
+                    ammetteExtra: prodotto?.ammetteExtra === true,
+                    extra,
+                    senza: normalizzaSenzaIngredienti(riga.senza, ingredienti),
+                    nonDisponibile: !prodotto
+                        || prodotto.disponibile === false
+                        || prodotto.archiviato === true
+                };
+            });
+    }
+
+    function creaPayloadComanda(dati, righe) {
+        const tipo = dati.tipo;
+        const ritiro = tipo === "ritiro";
+        const consegna = tipo === "consegna";
+        const tavolo = tipo === "tavolo";
+        const banco = tipo === "banco";
+        return {
+            tipo,
+            orario: tavolo ? "" : dati.orario,
+            statoPagamento: ritiro || consegna ? dati.statoPagamento || null : null,
+            cognomeBanco: banco ? dati.cognomeBanco : "",
+            tavoloOCliente: tavolo || ritiro ? dati.tavoloOCliente : "",
+            numeroPersone: tavolo ? Number(dati.numeroPersone) : null,
+            indirizzoConsegna: consegna ? dati.indirizzoConsegna : "",
+            telefonoConsegna: consegna ? dati.telefonoConsegna : "",
+            costoConsegna: consegna ? dati.costoConsegna : 0,
+            telefonoRitiro: ritiro ? dati.telefonoRitiro : "",
+            note: dati.note,
+            righe: righe.map(riga => ({
+                prodotto: riga.prodotto,
+                extra: Array.isArray(riga.extra) ? riga.extra : [],
+                senza: Array.isArray(riga.senza) ? riga.senza : []
+            }))
+        };
+    }
+
+    function puoSalvareModifica(payloadOriginale) {
+        return payloadOriginale !== null;
+    }
+
     function aggiungiProdotti(righe, rigaAttiva, prodotto, quantita = 1) {
         const aggiunte = Array.from({ length: quantita }, () => creaRiga(prodotto));
         const nuoveRighe = [...righe, ...aggiunte];
@@ -512,6 +576,9 @@ const prodottiUI = (() => {
         isCoperto,
         calcolaCoperto,
         creaRiga,
+        preparaRigheModifica,
+        creaPayloadComanda,
+        puoSalvareModifica,
         aggiungiProdotti,
         preparaRipetizione,
         impostaRigaAttiva,

@@ -7,7 +7,6 @@
     { "source": "/index.html", "destination": "/api/router?percorso=pages/index.html" },
     { "source": "/ordini.html", "destination": "/api/router?percorso=pages/ordini.html" },
     { "source": "/gestionale.html", "destination": "/api/router?percorso=pages/gestionale.html" },
-    { "source": "/modifica.html", "destination": "/api/router?percorso=pages/modifica.html" },
     { "source": "/consegne.html", "destination": "/api/router?percorso=pages/consegne.html" },
     { "source": "/ritiri.html", "destination": "/api/router?percorso=pages/ritiri.html" },
     { "source": "/banco.html", "destination": "/api/router?percorso=pages/banco.html" },

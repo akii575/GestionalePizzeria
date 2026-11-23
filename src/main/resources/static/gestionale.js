@@ -48,7 +48,6 @@ function render() {
             menu: stato.menu
         }));
     });
-    lista.querySelectorAll("[data-modifica]").forEach(button => button.addEventListener("click", () => window.location.href = `/modifica.html?numero=${button.dataset.modifica}`));
     lista.querySelectorAll("[data-elimina]").forEach(button => button.addEventListener("click", () => eliminaOrdine(button.dataset.elimina)));
 }
 async function eliminaOrdine(numero) {

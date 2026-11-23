@@ -59,7 +59,7 @@ test("account toolbar is shown on home only", async () => {
         assert.equal(result.appendedElements.length, 1, `${pathname} should show the toolbar`);
     }
 
-    for (const pathname of ["/ordini.html", "/gestionale.html", "/modifica.html", "/consegne.html", "/ritiri.html", "/banco.html", "/tavoli.html"]) {
+    for (const pathname of ["/ordini.html", "/gestionale.html", "/consegne.html", "/ritiri.html", "/banco.html", "/tavoli.html"]) {
         const result = await runGuard(pathname);
         assert.equal(result.appendedElements.length, 0, `${pathname} should not show the toolbar`);
     }

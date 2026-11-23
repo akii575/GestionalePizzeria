@@ -185,6 +185,21 @@ function lease(expiresAt) {
     return { toMillis: () => expiresAt };
 }
 
+test("individual order GET returns the public order and reports missing numbers", async () => {
+    database = createDatabase({
+        orders: { "7": storedOrder({ righe: [{ prodotto: "Margherita" }] }) }
+    });
+
+    const response = await invoke(orderHandler, "GET", { numero: "7" });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.numero, 7);
+    assert.equal(response.body.righe[0].prodotto, "Margherita");
+
+    database = createDatabase();
+    const missing = await invoke(orderHandler, "GET", { numero: "7" });
+    assert.equal(missing.statusCode, 404);
+});
+
 function storedOrder(input, overrides = {}) {
     return {
         ...prepareOrder({
