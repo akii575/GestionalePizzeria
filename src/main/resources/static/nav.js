@@ -3,6 +3,7 @@
         if (window.authReady && !(await window.authReady)) return;
 
         const account = window.currentAccount || {};
+        const accountEmail = typeof account.email === "string" ? account.email.trim() : "";
         const isDelivery = account.delivery === true;
         const main = document.querySelector("main");
         if (!main) return;
@@ -29,10 +30,7 @@
         const sourceNavigation = header.querySelector("nav");
         const refreshButton = document.getElementById("aggiorna");
         const resetButton = document.getElementById("reset-numeri");
-        let logoutButton = document.querySelector(".account-toolbar .auth-logout, nav .auth-logout");
-        if (logoutButton && logoutButton.closest(".account-toolbar")) {
-            logoutButton.closest(".account-toolbar").remove();
-        }
+        let logoutButton = document.querySelector("nav .auth-logout");
 
         const actions = document.createElement("div");
         actions.className = "app-header-actions";
@@ -131,6 +129,8 @@
             resetButton.classList.add("app-reset");
             sidebarActions.append(resetButton);
         }
+        const sidebarEmail = createAccountEmail("app-sidebar-account-email", accountEmail);
+        if (sidebarEmail) sidebarActions.append(sidebarEmail);
         sidebarActions.append(logoutButton);
         sidebar.append(sidebarActions);
         document.body.prepend(sidebar);
@@ -190,6 +190,8 @@
                     resetCopy.hidden = resetButton.hidden;
                 }).observe(resetButton, { attributes: true, attributeFilter: ["hidden"] });
             }
+            const sheetEmail = createAccountEmail("app-more-account-email", accountEmail);
+            if (sheetEmail) sheetLinks.append(sheetEmail);
             sheetLinks.append(createButtonLink("Esci", "logout", () => logoutButton.click()));
             const closeButton = document.createElement("button");
             closeButton.type = "button";
@@ -251,6 +253,15 @@
         button.append(text);
         button.addEventListener("click", action);
         return button;
+    }
+
+    function createAccountEmail(className, email) {
+        if (!email) return null;
+        const label = document.createElement("span");
+        label.className = className;
+        label.textContent = email;
+        label.title = email;
+        return label;
     }
 
     function createIcon(name) {

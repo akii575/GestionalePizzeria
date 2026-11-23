@@ -149,16 +149,26 @@ async function runGuard(pathname, account = { admin: true, delivery: false, emai
     };
 }
 
-test("account toolbar is shown on home only", async () => {
+test("the account toolbar is never created on home, including optimistic verification", async () => {
     for (const pathname of ["/", "/index.html"]) {
-        const result = await runGuard(pathname);
-        assert.equal(result.appendedElements.length, 1, `${pathname} should show the toolbar`);
-    }
+        const staff = {
+            admin: false,
+            staff: true,
+            delivery: false,
+            email: "staff@example.com",
+            verificatoAlle: Date.now() - 1000
+        };
+        const result = await runGuard(pathname, staff, {
+            cachedAccount: staff,
+            pendingVerify: true
+        });
 
-    for (const pathname of ["/ordini.html", "/gestionale.html", "/consegne.html", "/ritiri.html", "/banco.html", "/tavoli.html"]) {
-        const result = await runGuard(pathname);
-        assert.equal(result.appendedElements.length, 0, `${pathname} should not show the toolbar`);
+        assert.equal(result.appendedElements.length, 0, `${pathname} should not create a toolbar before verification`);
+        result.resolveVerify(response(200, staff));
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(result.appendedElements.length, 0, `${pathname} should not create a toolbar after verification`);
     }
+    assert.doesNotMatch(guardSource, /account-toolbar|showToolbar/);
 });
 
 test("delivery account is allowed only on the delivery page", async () => {
@@ -201,7 +211,7 @@ test("admin can see admin-only navigation on the delivery page", async () => {
     assert.equal(page.navigationElements.length, 1);
 });
 
-test("staff has admin access and sees the home toolbar but not staff-hidden summaries", async () => {
+test("staff has admin access without a home toolbar and not staff-hidden summaries", async () => {
     const staff = { admin: false, staff: true, delivery: false, email: "staff@example.com" };
     for (const pathname of ["/", "/gestionale.html", "/ritiri.html", "/banco.html", "/tavoli.html", "/ordini.html", "/consegne.html"]) {
         const page = await runGuard(pathname, staff);
@@ -209,7 +219,7 @@ test("staff has admin access and sees the home toolbar but not staff-hidden summ
         assert.equal(page.window.currentAccount.staff, true);
         assert.deepEqual(page.adminOnlyElements.map(element => element.hidden), [false, false, false, false, false, false]);
         assert.deepEqual(page.hideForStaffElements.map(element => element.hidden), [true]);
-        assert.equal(page.appendedElements.length, pathname === "/" ? 1 : 0);
+        assert.equal(page.appendedElements.length, 0);
     }
 });
 
@@ -324,9 +334,8 @@ test("a changed role updates the cache and triggers at most one reload", async (
 });
 
 test("guard logout removes the account cache", async () => {
-    const page = await runGuard("/");
-    const toolbar = page.appendedElements[0];
-    const logoutButton = toolbar.children[1];
+    const page = await runGuard("/consegne.html");
+    const logoutButton = page.navigationElements[0];
 
     assert.notEqual(page.localStorage.getItem(accountCacheKey), null);
     await logoutButton.listeners.click();
