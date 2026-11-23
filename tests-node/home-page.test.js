@@ -11,15 +11,16 @@ const styles = fs.readFileSync(
     path.join(__dirname, "../src/main/resources/static/home.css"),
     "utf8"
 );
-const navigation = page.match(/<nav class="home-actions"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
+const primaryAction = page.match(/<div class="home-actions">([\s\S]*?)<\/div>/)?.[1];
 
 test("home presents one primary action, linked summary cards and printer status", () => {
-    assert.ok(navigation);
-    assert.equal([...navigation.matchAll(/<a\b/g)].length, 1);
-    assert.match(navigation, /href="\/ordini\.html"/);
-    assert.match(navigation, /<strong>Nuova comanda<\/strong>/);
-    assert.match(navigation, /aria-hidden="true">\+<\/span>/);
-    assert.doesNotMatch(navigation, /Tutti gli ordini|Consegne|Ritiri|Banco|Tavoli/);
+    assert.ok(primaryAction);
+    assert.equal([...primaryAction.matchAll(/<a\b/g)].length, 1);
+    assert.match(primaryAction, /href="\/ordini\.html"/);
+    assert.match(primaryAction, /<strong>Nuova comanda<\/strong>/);
+    assert.match(primaryAction, /aria-hidden="true">\+<\/span>/);
+    assert.doesNotMatch(primaryAction, /Tutti gli ordini|Consegne|Ritiri|Banco|Tavoli/);
+    assert.match(styles, /\.home-new-order\s*\{[^}]*color:\s*#fff;/);
 
     for (const [tile, href, value, label] of [
         ["riepilogo-tavoli", "/tavoli.html", "tavoli-value", "tavoli-label"],
