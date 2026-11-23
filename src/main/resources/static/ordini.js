@@ -1379,6 +1379,7 @@ async function inviaOrdine() {
         }))
     };
     try {
+        if (navigator.onLine === false) throw new TypeError("offline");
         const risposta = await fetch("/api/ordini", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1409,7 +1410,13 @@ async function inviaOrdine() {
         pagamentoConsegna.value = "non_pagato";
         renderRiepilogo();
     } catch (errore) {
-        mostraMessaggio(errore.message, "errore");
+        const senzaConnessione = navigator.onLine === false || errore instanceof TypeError;
+        mostraMessaggio(
+            senzaConnessione
+                ? "Comanda NON inviata: manca la connessione. Riprova appena torna internet."
+                : errore.message,
+            "errore"
+        );
         invia.disabled = false;
     }
 }
