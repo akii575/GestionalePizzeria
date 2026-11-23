@@ -257,28 +257,25 @@
                         <section id="prodotti" class="griglia-prodotti" aria-live="polite"></section>
                     </div>
                     <section class="extra-section" id="extra-section">
-                        <h2 id="extra-intestazione" aria-live="polite">Extra — aggiungi prima una pizza</h2>
-                        <div id="senza-ingredienti" class="senza-ingredienti" hidden>
-                            <strong>Senza:</strong>
-                            <div id="senza-ingredienti-lista" class="senza-ingredienti-lista" role="group" aria-label="Ingredienti da togliere"></div>
+                        <button id="extra-intestazione" class="extra-intestazione" type="button" aria-expanded="false" aria-controls="extra-dettagli">
+                            <span id="extra-prodotto" class="extra-intestazione-prodotto">Seleziona un prodotto</span>
+                            <span id="extra-senza-conteggio" class="extra-intestazione-conteggio">Senza (0)</span>
+                            <span id="extra-conteggio" class="extra-intestazione-conteggio">Extra (0)</span>
+                            <span id="extra-freccia" aria-hidden="true">▾</span>
+                        </button>
+                        <div id="extra-dettagli" class="extra-dettagli" hidden>
+                            <div id="senza-ingredienti" class="senza-ingredienti" hidden>
+                                <strong>Senza:</strong>
+                                <div id="senza-ingredienti-lista" class="senza-ingredienti-lista" role="group" aria-label="Ingredienti da togliere"></div>
+                            </div>
+                            <div id="extra-lista" class="griglia-extra" aria-label="Extra disponibili"></div>
                         </div>
-                        <div id="extra-lista" class="griglia-extra" aria-label="Extra disponibili"></div>
                     </section>
                 </div>
                 <aside class="composer-summary">
                     <div class="riepilogo-card">
                         <section class="riepilogo">
                             <h2>Riepilogo ordine</h2>
-                            <div class="gestione-extra-riepilogo">
-                    <label for="riga-extra">Prodotto da modificare</label>
-                    <select id="riga-extra" disabled>
-                        <option value="">Seleziona un prodotto</option>
-                    </select>
-                    <div id="extra-riepilogo" class="extra-riepilogo" hidden>
-                        <div id="extra-riepilogo-lista" class="extra-carousel" aria-label="Extra selezionabili"></div>
-                        <button id="applica-extra" type="button">Applica extra</button>
-                    </div>
-                        </div>
                             <div id="riepilogo-items"><p>Nessun prodotto selezionato</p></div>
                                 <div class="riepilogo-totale-riga">
                                     <p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
@@ -340,7 +337,10 @@
         >
             <div class="conferma-contenuto">
                 <h2 id="conferma-titolo">Conferma ordine</h2>
-                <div id="conferma-riepilogo" class="conferma-riepilogo"></div>
+                <div id="conferma-riepilogo" class="conferma-riepilogo">
+                    <div id="conferma-intestazione" class="conferma-intestazione"></div>
+                    <div id="conferma-righe" class="conferma-righe"></div>
+                </div>
                 <p id="conferma-totale" class="conferma-totale"></p>
                 <div class="conferma-azioni">
                     <button id="conferma-invio" type="button" class="btn-invia">Conferma</button

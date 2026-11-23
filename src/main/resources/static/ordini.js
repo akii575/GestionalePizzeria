@@ -22,9 +22,15 @@ const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
 const extraLista = document.getElementById("extra-lista");
 const extraIntestazione = document.getElementById("extra-intestazione");
+const extraProdotto = document.getElementById("extra-prodotto");
+const extraSenzaConteggio = document.getElementById("extra-senza-conteggio");
+const extraConteggio = document.getElementById("extra-conteggio");
+const extraFreccia = document.getElementById("extra-freccia");
+const extraDettagli = document.getElementById("extra-dettagli");
 const senzaIngredienti = document.getElementById("senza-ingredienti");
 const senzaIngredientiLista = document.getElementById("senza-ingredienti-lista");
 const mediaGrigliaExtra = window.matchMedia("(max-width: 699px)");
+let extraAperto = false;
 let prodottoCoperto = null;
 const tipoOrdine = document.getElementById("tipo-ordine");
 const campoTavolo = document.getElementById("campo-tavolo");
@@ -59,10 +65,9 @@ const campoPagamentoRitiro = document.getElementById("campo-pagamento-ritiro");
 const campoPagamentoConsegna = document.getElementById("campo-pagamento-consegna");
 const pagamentoRitiro = document.getElementById("pagamento-ritiro");
 const pagamentoConsegna = document.getElementById("pagamento-consegna");
-const selettoreRigaExtra = document.getElementById("riga-extra");
-const extraRiepilogo = document.getElementById("extra-riepilogo");
 const confermaModale = document.getElementById("conferma-modale");
-const confermaRiepilogo = document.getElementById("conferma-riepilogo");
+const confermaIntestazione = document.getElementById("conferma-intestazione");
+const confermaRighe = document.getElementById("conferma-righe");
 const confermaTotale = document.getElementById("conferma-totale");
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const bottoneRicerca = document.getElementById("btn-ricerca");
@@ -82,10 +87,10 @@ const {
     aggiungiProdotti,
     preparaRipetizione,
     impostaRigaAttiva,
+    raggruppaRigheConferma,
     rimuoviProdotto,
     toggleExtra,
     toggleSenza,
-    intestazioneExtra,
     creaStatoMoltiplicatore,
     premiTastoMoltiplicatore,
     quantitaDaApplicare,
@@ -775,26 +780,6 @@ function copertoCorrente() {
 function testoCoperto(coperto) {
     return `Coperto ${coperto.persone} × ${euro.format(coperto.prezzoUnitario)} = ${euro.format(coperto.totale)}`;
 }
-function renderExtra(container, selezionati, onChange) {
-    container.innerHTML = "";
-    stato.extra.filter(extra => extra.disponibile !== false).forEach(extra => {
-        const bottone = document.createElement("button");
-        bottone.type = "button";
-        bottone.className = "extra-card";
-        bottone.classList.toggle(
-            "selezionato",
-            selezionati.some(elemento => elemento.id === extra.id)
-        );
-        bottone.innerHTML = `<strong>${escapeHtml(extra.nome)}</strong><span>${escapeHtml(euro.format(Number(extra.prezzo)))}</span>`;
-        bottone.addEventListener("click", () => {
-            const presenti = selezionati.some(elemento => elemento.id === extra.id);
-            selezionati = presenti ? selezionati.filter(elemento => elemento.id !== extra.id) : [...selezionati, extra];
-            onChange(selezionati);
-            renderExtra(container, selezionati, onChange);
-        });
-        container.appendChild(bottone);
-    });
-}
 function extraSelezionato(extra, riga) {
     return riga?.extra.some(elemento =>
         (elemento.id || elemento.nome) === (extra.id || extra.nome)
@@ -807,7 +792,20 @@ function renderGrigliaExtra() {
     const rigaAttiva = stato.righe[stato.rigaAttiva];
     const ingredienti = Array.isArray(rigaAttiva?.ingredienti) ? rigaAttiva.ingredienti : [];
     sezioneExtra.hidden = !stato.extra.length && !ingredienti.length;
-    extraIntestazione.textContent = intestazioneExtra(stato.righe, stato.rigaAttiva);
+    const nomeProdotto = rigaAttiva?.prodotto || "Seleziona un prodotto";
+    const conteggioSenza = Array.isArray(rigaAttiva?.senza) ? rigaAttiva.senza.length : 0;
+    const conteggioExtra = Array.isArray(rigaAttiva?.extra) ? rigaAttiva.extra.length : 0;
+    extraProdotto.textContent = nomeProdotto;
+    extraSenzaConteggio.textContent = `Senza (${conteggioSenza})`;
+    extraConteggio.textContent = `Extra (${conteggioExtra})`;
+    extraFreccia.textContent = extraAperto ? "▴" : "▾";
+    extraIntestazione.setAttribute(
+        "aria-label",
+        `${nomeProdotto} · Senza (${conteggioSenza}) · Extra (${conteggioExtra})`
+    );
+    extraIntestazione.setAttribute("aria-expanded", String(extraAperto));
+    sezioneExtra.classList.toggle("extra-aperto", extraAperto);
+    extraDettagli.hidden = !extraAperto;
     extraLista.hidden = !stato.extra.length;
     extraLista.replaceChildren();
     const colonne = mediaGrigliaExtra.matches ? 3 : 4;
@@ -822,7 +820,7 @@ function renderGrigliaExtra() {
             bottone.type = "button";
             bottone.className = "extra-card";
             bottone.classList.toggle("selezionato", extraSelezionato(extra, rigaAttiva));
-            bottone.disabled = !rigaAttiva || extra.disponibile === false;
+            bottone.disabled = !rigaAttiva || rigaAttiva.ammetteExtra !== true || extra.disponibile === false;
             bottone.setAttribute("aria-pressed", String(extraSelezionato(extra, rigaAttiva)));
             bottone.innerHTML = `<strong>${escapeHtml(extra.nome)}</strong><span>${escapeHtml(euro.format(Number(extra.prezzo)))}</span>${extra.disponibile === false ? '<small>Esaurito</small>' : ""}`;
             bottone.addEventListener("click", () => {
@@ -896,6 +894,7 @@ function aggiungiProdotto(prodotto) {
         mostraMessaggio(`Massimo 100 prodotti per comanda: puoi aggiungerne ancora ${limite.disponibili}`, "errore");
         return false;
     }
+    extraAperto = false;
     const primoProdotto = stato.righe.length === 0;
     const risultato = aggiungiProdotti(stato.righe, stato.rigaAttiva, prodotto);
     stato.righe = risultato.righe;
@@ -981,35 +980,6 @@ function chiudiRicerca() {
     paginaPrincipale.inert = false;
     bottoneRicerca.focus({ preventScroll: true });
 }
-function aggiornaGestioneExtra() {
-    const riga = stato.righe[Number(selettoreRigaExtra.value)];
-    const prodotto = riga && stato.menu.find(item => item.nome === riga.prodotto);
-    const modificabile = riga && prodotto?.ammetteExtra === true;
-    extraRiepilogo.hidden = !modificabile;
-    if (modificabile)
-        renderExtra(
-            document.getElementById("extra-riepilogo-lista"),
-            nomiExtra(riga.extra)
-                .map(nome => stato.extra.find(extra => extra.nome === nome))
-                .filter(Boolean),
-            selezionati => {
-                riga.extra = selezionati;
-            }
-        );
-}
-function aggiornaSelettoreRighe() {
-    const scelto = selettoreRigaExtra.value;
-    selettoreRigaExtra.innerHTML = '<option value="">Seleziona un prodotto</option>';
-    stato.righe.forEach((riga, indice) => {
-        const opzione = document.createElement("option");
-        opzione.value = indice;
-        opzione.textContent = `${riga.prodotto}${riga.extra.length ? ` + ${nomiExtra(riga.extra).join(", ")}` : ""}`;
-        selettoreRigaExtra.appendChild(opzione);
-    });
-    selettoreRigaExtra.disabled = !stato.righe.length;
-    selettoreRigaExtra.value = scelto < stato.righe.length ? scelto : "";
-    aggiornaGestioneExtra();
-}
 function renderRiepilogo() {
     renderRigheRiepilogo(riepilogo);
     renderRigheRiepilogo(riepilogoSheetLista);
@@ -1029,7 +999,6 @@ function renderRiepilogo() {
     const inviaSheet = document.getElementById("riepilogo-sheet-invia");
     inviaSheet.disabled = !stato.righe.length;
     inviaSheet.textContent = invia.textContent;
-    aggiornaSelettoreRighe();
 }
 function renderRigheRiepilogo(contenitore) {
     contenitore.replaceChildren();
@@ -1037,6 +1006,7 @@ function renderRigheRiepilogo(contenitore) {
         const voce = document.createElement("div");
         voce.className = "riepilogo-item";
         voce.classList.toggle("riga-attiva", indice === stato.rigaAttiva);
+        voce.dataset.rigaAttiva = indice;
         const descrizione = riga.ingredienti?.length
             ? `<small class="riepilogo-descrizione">${escapeHtml(riga.ingredienti.join(", "))}</small>`
             : "";
@@ -1046,9 +1016,7 @@ function renderRigheRiepilogo(contenitore) {
         const senza = Array.isArray(riga.senza) && riga.senza.length
             ? `<small class="riepilogo-senza">senza ${escapeHtml(riga.senza.join(", "))}</small>`
             : "";
-        const nomeRiga = riga.ammetteExtra || riga.ingredienti?.length
-            ? `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indice)}">${escapeHtml(riga.prodotto)}</button>`
-            : `<strong>${escapeHtml(riga.prodotto)}</strong>`;
+        const nomeRiga = `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indice)}">${escapeHtml(riga.prodotto)}</button>`;
         voce.innerHTML = `<div>${nomeRiga}${senza}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
         contenitore.appendChild(voce);
     });
@@ -1062,19 +1030,24 @@ function renderRigheRiepilogo(contenitore) {
     }
 }
 function rimuoviRigaRiepilogo(evento) {
-    const selezione = evento.target.closest(".seleziona-riga");
-    if (selezione && evento.currentTarget.contains(selezione)) {
-        const risultato = impostaRigaAttiva(stato.righe, Number(selezione.dataset.rigaAttiva));
+    const pulsante = evento.target.closest(".rimuovi");
+    if (pulsante && evento.currentTarget.contains(pulsante)) {
+        const risultato = rimuoviProdotto(stato.righe, stato.rigaAttiva, Number(pulsante.dataset.indice));
+        stato.righe = risultato.righe;
         stato.rigaAttiva = risultato.rigaAttiva;
         renderRiepilogo();
         return;
     }
-    const pulsante = evento.target.closest(".rimuovi");
-    if (!pulsante || !evento.currentTarget.contains(pulsante)) return;
-    const risultato = rimuoviProdotto(stato.righe, stato.rigaAttiva, Number(pulsante.dataset.indice));
-    stato.righe = risultato.righe;
+    const riga = evento.target.closest(".riepilogo-item[data-riga-attiva]");
+    if (!riga || !evento.currentTarget.contains(riga)) return;
+    const risultato = impostaRigaAttiva(stato.righe, Number(riga.dataset.rigaAttiva));
     stato.rigaAttiva = risultato.rigaAttiva;
+    extraAperto = true;
     renderRiepilogo();
+    if (evento.currentTarget === riepilogoSheetLista && riepilogoSheetAperto) {
+        chiudiRiepilogoSheet(false);
+        requestAnimationFrame(() => sezioneExtra.scrollIntoView({ block: "nearest" }));
+    }
 }
 function riepilogoSheetDisponibile() {
     return mediaRiepilogoSheet.matches;
@@ -1320,25 +1293,21 @@ function apriConferma() {
     const dettaglioCoperto = coperto
         ? `<div class="conferma-coperto">${escapeHtml(testoCoperto(coperto))}</div>`
         : "";
-    confermaRiepilogo.innerHTML =
+    confermaIntestazione.innerHTML =
         dettagliServizio +
         dettaglioOrario +
         dettaglioCostoConsegna +
-        dettaglioCoperto +
-        stato.righe
-            .map(riga => {
-                const extra = nomiExtra(riga.extra)
-                    .map(nome => {
-                        const dato = stato.extra.find(item => item.nome === nome);
-                        return `${escapeHtml(nome)} (${escapeHtml(euro.format(Number(dato?.prezzo || 0)))})`;
-                    })
-                    .join(", ");
-                const senza = Array.isArray(riga.senza) && riga.senza.length
-                    ? `<span class="conferma-senza">senza ${escapeHtml(riga.senza.join(", "))}</span>`
-                    : "";
-                return `<div class="conferma-riga"><strong>${escapeHtml(riga.prodotto)} - ${escapeHtml(euro.format(Number(riga.prezzo)))}</strong>${senza}${riga.ingredienti?.length ? `<span>${escapeHtml(riga.ingredienti.join(", "))}</span>` : ""}${extra ? `<span>Extra: ${extra}</span>` : ""}<span>Totale riga: ${escapeHtml(euro.format(prezzoRiga(riga)))}</span></div>`;
-            })
-            .join("");
+        dettaglioCoperto;
+    confermaRighe.innerHTML = raggruppaRigheConferma(stato.righe)
+        .map(({ riga, quantita }) => {
+            const extra = nomiExtra(riga.extra).join(", ");
+            const senza = Array.isArray(riga.senza) && riga.senza.length
+                ? `<small class="conferma-senza">SENZA ${escapeHtml(riga.senza.join(", "))}</small>`
+                : "";
+            const quantitaTesto = quantita > 1 ? `${quantita}× ` : "";
+            return `<div class="conferma-riga"><strong>${quantitaTesto}${escapeHtml(riga.prodotto)} — ${escapeHtml(euro.format(prezzoRiga(riga) * quantita))}</strong>${extra ? `<small class="conferma-extra">+ ${escapeHtml(extra)}</small>` : ""}${senza}</div>`;
+        })
+        .join("");
     confermaTotale.textContent = `Totale: ${euro.format(totaleOrdine())}`;
     confermaModale.hidden = false;
     document.body.classList.add("modale-aperta");
@@ -1594,10 +1563,9 @@ numeroPersone.min = "1";
 numeroPersone.max = "30";
 aggiornaPulsanteNote();
 aggiornaTipoOrdine();
-selettoreRigaExtra.addEventListener("change", aggiornaGestioneExtra);
-document.getElementById("applica-extra").addEventListener("click", () => {
+extraIntestazione.addEventListener("click", () => {
+    extraAperto = !extraAperto;
     renderRiepilogo();
-    mostraMessaggio("Extra aggiornati.", "successo");
 });
 invia.addEventListener("click", apriConferma);
 document.getElementById("conferma-invio").addEventListener("click", inviaOrdine);
