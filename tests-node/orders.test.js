@@ -238,7 +238,7 @@ test("new rows without menu ingredients ignore removed ingredients", () => {
     const order = prepareOrder({
         tipo: "banco",
         cognomeBanco: "Rossi",
-        righe: [{ prodotto: "Margherita", senza: "not-an-array" }]
+        righe: [{ prodotto: "Margherita", senza: [] }]
     }, { ...testCatalog, allProducts: [product] });
 
     assert.deepEqual(order.righe[0].senza, []);
@@ -258,6 +258,32 @@ test("editing preserves removed ingredients that are no longer in the menu", () 
     });
 
     assert.deepEqual(order.righe[0].senza, ["Basilico"]);
+    assert.throws(() => prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita", senza: ["Origano"] }]
+    }, { ...testCatalog, allProducts: [product] }, {
+        existingRows: [{ prodotto: "Margherita", senza: ["Basilico"] }]
+    }), /Ingrediente non valido/);
+});
+
+test("editing duplicate products uses each row's client-supplied removed ingredients", () => {
+    const product = {
+        ...testCatalog.menu.find(item => item.nome === "Margherita"),
+        ingredienti: ["Pomodoro", "Basilico"]
+    };
+    const order = prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita", senza: [] }]
+    }, { ...testCatalog, allProducts: [product] }, {
+        existingRows: [
+            { prodotto: "Margherita", senza: ["Basilico"] },
+            { prodotto: "Margherita", senza: [] }
+        ]
+    });
+
+    assert.deepEqual(order.righe.map(row => row.senza), [[]]);
 });
 
 test("order validation rejects archived and unavailable products", () => {
