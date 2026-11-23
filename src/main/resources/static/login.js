@@ -2,6 +2,19 @@ const form = document.getElementById("login-form");
 const button = document.getElementById("login-button");
 const status = document.getElementById("login-status");
 
+function clearAuthCache() {
+    try {
+        window.localStorage.removeItem("civico7-account-v1");
+    } catch {
+        // Storage can be unavailable in private browsing.
+    }
+    try {
+        window.sessionStorage.removeItem("civico7-account-role-reload");
+    } catch {
+        // Storage can be unavailable in private browsing.
+    }
+}
+
 async function firebaseConfig() {
     const response = await fetch("/api/config", { cache: "no-store" });
     if (!response.ok) throw new Error("Configurazione Firebase non disponibile.");
@@ -31,6 +44,7 @@ function mostraAccessoNegato() {
         try {
             const response = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
             if (!response.ok) throw new Error("Impossibile terminare la sessione.");
+            clearAuthCache();
             await window.civico7ClearOfflineCaches();
             window.location.replace("/login.html");
         } catch (error) {

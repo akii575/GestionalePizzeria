@@ -296,6 +296,7 @@
             try {
                 const response = await window.fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
                 if (!response.ok) throw new Error("Impossibile terminare la sessione.");
+                clearAuthCache();
                 await window.civico7ClearOfflineCaches();
                 window.location.replace("/login.html");
             } catch (error) {
@@ -366,6 +367,19 @@
             .filter(name => name.startsWith("civico7-"))
             .map(name => window.caches.delete(name)));
     };
+
+    function clearAuthCache() {
+        try {
+            window.localStorage.removeItem("civico7-account-v1");
+        } catch {
+            // Storage can be unavailable in private browsing.
+        }
+        try {
+            window.sessionStorage.removeItem("civico7-account-role-reload");
+        } catch {
+            // Storage can be unavailable in private browsing.
+        }
+    }
 
     setupOfflineBanner();
     window.addEventListener("load", () => {
