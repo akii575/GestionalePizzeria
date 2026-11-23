@@ -26,7 +26,22 @@ const mediaGrigliaExtra = window.matchMedia("(max-width: 699px)");
 let prodottoCoperto = null;
 const tipoOrdine = document.getElementById("tipo-ordine");
 const campoTavolo = document.getElementById("campo-tavolo");
+const tavolo = document.getElementById("tavolo");
 const numeroPersone = document.getElementById("numero-persone");
+const selettoreTipoOrdine = document.getElementById("selettore-tipo-ordine");
+const tavoliGriglia = document.getElementById("tavoli-griglia");
+const personeSelettore = document.getElementById("persone-selettore");
+const personePersonalizzate = document.getElementById("persone-personalizzate");
+const sezioneTavoli = document.getElementById("sezione-tavoli");
+const sezionePersone = document.getElementById("sezione-persone");
+const intestazione = document.querySelector(".composer-main > .tavolo-input");
+const intestazioneCompatta = document.getElementById("intestazione-compatta");
+const intestazioneCompattaTesto = document.getElementById("intestazione-compatta-testo");
+const noteToggle = document.getElementById("note-toggle");
+const noteEditor = document.getElementById("note-editor");
+const note = document.getElementById("note");
+const composerMain = document.querySelector(".composer-main");
+let noteAperta = false;
 const campoRitiro = document.getElementById("campo-ritiro");
 const campiConsegna = document.getElementById("campi-consegna");
 const inputIndirizzoConsegna = document.getElementById("indirizzo-consegna");
@@ -70,7 +85,12 @@ const {
     quantitaDaApplicare,
     testoMoltiplicatore,
     aggiornaConteggioProdotti,
-    controllaLimiteRighe
+    controllaLimiteRighe,
+    impostaValoreControllo,
+    datiObbligatoriMancanti,
+    datiOrdineCompleti,
+    riepilogoIntestazione,
+    anteprimaNota
 } = window.prodottiUI;
 const clientiAbituali = window.prodottiUI.creaGestoreSuggerimentiClienti();
 let etichetteCategorie = Object.fromEntries(
@@ -89,6 +109,7 @@ let tokenRicercaCliente = 0;
 const cacheRicercaClientiIndirizzo = new Map();
 let timerRicercaClientiIndirizzo = 0;
 let tokenRicercaClientiIndirizzo = 0;
+let tipoOrdineCorrente = tipoOrdine.value;
 const iconeCliente = {
     pin: '<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
     stella: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9L12 3Z" fill="currentColor" stroke="none"/>',
@@ -494,6 +515,142 @@ function oraLocale() {
     const adesso = new Date();
     return `${String(adesso.getHours()).padStart(2, "0")}:${String(adesso.getMinutes()).padStart(2, "0")}`;
 }
+function aggiornaSelettoreTipoOrdine() {
+    selettoreTipoOrdine.querySelectorAll("[data-tipo-ordine]").forEach(bottone => {
+        const selezionato = bottone.dataset.tipoOrdine === tipoOrdine.value;
+        bottone.classList.toggle("selezionato", selezionato);
+        bottone.setAttribute("aria-checked", String(selezionato));
+        bottone.tabIndex = selezionato ? 0 : -1;
+    });
+}
+function aggiornaSelettoreTavoli() {
+    tavoliGriglia.querySelectorAll("[data-tavolo]").forEach(bottone => {
+        const selezionato = bottone.dataset.tavolo === tavolo.value;
+        bottone.classList.toggle("selezionato", selezionato);
+        bottone.setAttribute("aria-pressed", String(selezionato));
+    });
+}
+function aggiornaSelettorePersone() {
+    const valore = Number(numeroPersone.value);
+    personeSelettore.querySelectorAll("[data-numero-persone]").forEach(bottone => {
+        const selezionato = Number(bottone.dataset.numeroPersone) === valore && !personePersonalizzateAperte();
+        bottone.classList.toggle("selezionato", selezionato);
+        bottone.setAttribute("aria-pressed", String(selezionato));
+    });
+    const aggiunta = personeSelettore.querySelector("[data-persone-custom]");
+    const customSelezionato = personePersonalizzateAperte() || (Number.isInteger(valore) && valore > 8);
+    aggiunta.classList.toggle("selezionato", customSelezionato);
+    aggiunta.setAttribute("aria-pressed", String(customSelezionato));
+}
+function personePersonalizzateAperte() {
+    return !personePersonalizzate.classList.contains("visually-hidden");
+}
+function impostaPersonePersonalizzate(aperta) {
+    personePersonalizzate.classList.toggle("visually-hidden", !aperta);
+    numeroPersone.classList.toggle("visually-hidden", !aperta);
+    numeroPersone.min = aperta ? "9" : "1";
+}
+function creaSelettoriOrdine() {
+    for (const opzione of tavolo.options) {
+        if (opzione.disabled || !opzione.value) continue;
+        const bottone = document.createElement("button");
+        const testo = opzione.textContent.trim();
+        bottone.type = "button";
+        bottone.className = "opzione-tavolo";
+        bottone.dataset.tavolo = opzione.value;
+        bottone.textContent = testo.replace(/^Tavolo\s*/i, "") || testo;
+        bottone.setAttribute("aria-label", testo);
+        bottone.setAttribute("aria-pressed", "false");
+        bottone.addEventListener("click", () => impostaValoreControllo(tavolo, opzione.value, "change"));
+        tavoliGriglia.appendChild(bottone);
+    }
+
+    for (let persone = 1; persone <= 8; persone++) {
+        const bottone = document.createElement("button");
+        bottone.type = "button";
+        bottone.className = "opzione-persone";
+        bottone.dataset.numeroPersone = String(persone);
+        bottone.textContent = String(persone);
+        bottone.setAttribute("aria-pressed", "false");
+        bottone.addEventListener("click", () => {
+            impostaPersonePersonalizzate(false);
+            impostaValoreControllo(numeroPersone, String(persone), "input");
+        });
+        personeSelettore.appendChild(bottone);
+    }
+    const bottonePersonePersonalizzate = document.createElement("button");
+    bottonePersonePersonalizzate.type = "button";
+    bottonePersonePersonalizzate.className = "opzione-persone";
+    bottonePersonePersonalizzate.dataset.personeCustom = "";
+    bottonePersonePersonalizzate.textContent = "+";
+    bottonePersonePersonalizzate.setAttribute("aria-label", "Altre persone");
+    bottonePersonePersonalizzate.setAttribute("aria-pressed", "false");
+    bottonePersonePersonalizzate.addEventListener("click", () => {
+        const aperta = !personePersonalizzateAperte();
+        impostaPersonePersonalizzate(aperta);
+        aggiornaSelettorePersone();
+        if (personePersonalizzateAperte()) {
+            if (Number(numeroPersone.value) < 9) impostaValoreControllo(numeroPersone, "", "input");
+            numeroPersone.focus();
+        }
+    });
+    personeSelettore.appendChild(bottonePersonePersonalizzate);
+
+    selettoreTipoOrdine.querySelectorAll("[data-tipo-ordine]").forEach((bottone, indice, bottoni) => {
+        bottone.addEventListener("click", () => {
+            impostaValoreControllo(tipoOrdine, bottone.dataset.tipoOrdine, "change");
+        });
+        bottone.addEventListener("keydown", evento => {
+            if (evento.key !== "ArrowLeft" && evento.key !== "ArrowRight") return;
+            evento.preventDefault();
+            const direzione = evento.key === "ArrowRight" ? 1 : -1;
+            const prossimoIndice = (indice + direzione + bottoni.length) % bottoni.length;
+            const prossimo = bottoni[prossimoIndice];
+            prossimo.focus();
+            impostaValoreControllo(tipoOrdine, prossimo.dataset.tipoOrdine, "change");
+        });
+    });
+}
+function datiIntestazioneCorrenti() {
+    return {
+        tavolo: tavolo.value,
+        numeroPersone: numeroPersone.value,
+        cognome: document.getElementById("cognome-banco").value,
+        nome: document.getElementById("cliente-ritiro").value,
+        telefono: tipoOrdine.value === "consegna" ? inputTelefonoConsegna.value : document.getElementById("telefono-ritiro").value,
+        telefonoValido: tipoOrdine.value === "consegna" ? inputTelefonoConsegna.checkValidity() : document.getElementById("telefono-ritiro").checkValidity(),
+        indirizzo: inputIndirizzoConsegna.value,
+        orario: orario.value
+    };
+}
+function apriIntestazione() {
+    intestazione.classList.remove("visually-hidden");
+    composerMain.classList.remove("intestazione-chiusa");
+    intestazioneCompatta.hidden = true;
+}
+function chiudiIntestazione() {
+    intestazioneCompattaTesto.textContent = riepilogoIntestazione(tipoOrdine.value, datiIntestazioneCorrenti());
+    intestazione.classList.add("visually-hidden");
+    composerMain.classList.add("intestazione-chiusa");
+    intestazioneCompatta.hidden = false;
+}
+function aggiornaPulsanteNote() {
+    const anteprima = anteprimaNota(note.value);
+    noteToggle.textContent = noteAperta ? "− Chiudi nota" : anteprima ? `Nota: ${anteprima}` : "+ Nota";
+    noteToggle.setAttribute("aria-expanded", String(noteAperta));
+    noteEditor.classList.toggle("visually-hidden", !noteAperta);
+}
+function ripristinaIntestazioneComanda() {
+    apriIntestazione();
+    noteAperta = false;
+    note.value = "";
+    aggiornaPulsanteNote();
+    impostaPersonePersonalizzate(false);
+    impostaValoreControllo(tavolo, "", "change");
+    impostaValoreControllo(numeroPersone, "", "input");
+    sezioneTavoli.classList.remove("errore");
+    sezionePersone.classList.remove("errore");
+}
 function aggiornaBottoneCostoConsegna() {
     const attivo = costoConsegna === 2;
     bottoneCostoConsegna.setAttribute("aria-pressed", String(attivo));
@@ -520,6 +677,9 @@ function aggiornaTipoOrdine() {
     for (const id of ["indirizzo-consegna", "telefono-consegna"]) {
         document.getElementById(id).required = consegna;
     }
+    aggiornaSelettoreTipoOrdine();
+    aggiornaSelettoreTavoli();
+    aggiornaSelettorePersone();
     aggiornaBottoneCostoConsegna();
 }
 function nomiExtra(extra) {
@@ -648,9 +808,13 @@ function aggiungiProdotto(prodotto) {
         mostraMessaggio(`Massimo 100 prodotti per comanda: puoi aggiungerne ancora ${limite.disponibili}`, "errore");
         return false;
     }
+    const primoProdotto = stato.righe.length === 0;
     const risultato = aggiungiProdotti(stato.righe, stato.rigaAttiva, prodotto);
     stato.righe = risultato.righe;
     stato.rigaAttiva = risultato.rigaAttiva;
+    if (primoProdotto && datiOrdineCompleti(tipoOrdine.value, datiIntestazioneCorrenti())) {
+        chiudiIntestazione();
+    }
     renderRiepilogo();
     return true;
 }
@@ -975,27 +1139,65 @@ function intrappolaFocusNelRiepilogoSheet(evento) {
         primo.focus();
     }
 }
+function segnalaCampoObbligatorio(elemento, testo) {
+    apriIntestazione();
+    mostraMessaggio(testo, "errore");
+    elemento.scrollIntoView({ block: "center", behavior: "smooth" });
+    elemento.focus();
+    return false;
+}
+function validaDatiOrdine() {
+    const dati = datiIntestazioneCorrenti();
+    const campoMancante = datiObbligatoriMancanti(tipoOrdine.value, dati);
+    if (tipoOrdine.value === "tavolo") {
+        if (campoMancante === "tavolo") {
+            sezioneTavoli.classList.add("errore");
+            apriIntestazione();
+            mostraMessaggio("Scegli il tavolo", "errore");
+            tavoliGriglia.querySelector("button")?.focus();
+            return false;
+        }
+        sezioneTavoli.classList.remove("errore");
+        if (campoMancante === "persone" || !numeroPersone.checkValidity()) {
+            sezionePersone.classList.add("errore");
+            apriIntestazione();
+            mostraMessaggio("Scegli il numero di persone", "errore");
+            (personePersonalizzateAperte() ? numeroPersone : personeSelettore.querySelector("button"))?.focus();
+            return false;
+        }
+        sezionePersone.classList.remove("errore");
+    } else if (tipoOrdine.value === "banco") {
+        const cognome = document.getElementById("cognome-banco");
+        if (campoMancante === "cognome" || !cognome.checkValidity()) {
+            return segnalaCampoObbligatorio(cognome, "Inserisci il cognome cliente.");
+        }
+    } else if (tipoOrdine.value === "ritiro") {
+        const nome = document.getElementById("cliente-ritiro");
+        const telefono = document.getElementById("telefono-ritiro");
+        if (campoMancante === "nome" || !nome.checkValidity()) {
+            return segnalaCampoObbligatorio(nome, "Inserisci il nome cliente.");
+        }
+        if (campoMancante === "telefono" || !telefono.checkValidity()) {
+            return segnalaCampoObbligatorio(telefono, "Inserisci un numero di telefono valido.");
+        }
+    } else if (tipoOrdine.value === "consegna") {
+        if (campoMancante === "indirizzo" || !inputIndirizzoConsegna.checkValidity()) {
+            return segnalaCampoObbligatorio(inputIndirizzoConsegna, "Inserisci l'indirizzo di consegna.");
+        }
+        if (campoMancante === "telefono" || !inputTelefonoConsegna.checkValidity()) {
+            return segnalaCampoObbligatorio(inputTelefonoConsegna, "Inserisci un numero di telefono valido.");
+        }
+    }
+    if (tipoOrdine.value !== "tavolo" && (!orario.value || !orario.checkValidity())) {
+        return segnalaCampoObbligatorio(orario, "Scegli l'orario richiesto.");
+    }
+    return true;
+}
 function apriConferma() {
     if (!stato.righe.length) return;
     const consegna = tipoOrdine.value === "consegna";
     const ritiro = tipoOrdine.value === "ritiro";
-    if (
-        tipoOrdine.value === "tavolo" &&
-        (!document.getElementById("tavolo").reportValidity() || !numeroPersone.reportValidity())
-    )
-        return;
-    if (tipoOrdine.value === "ritiro") {
-        for (const id of ["cliente-ritiro", "telefono-ritiro"]) {
-            if (!document.getElementById(id).reportValidity()) return;
-        }
-        if (tipoOrdine.value === "banco" && !document.getElementById("cognome-banco").reportValidity()) return;
-    }
-    if (tipoOrdine.value === "consegna") {
-        for (const id of ["indirizzo-consegna", "telefono-consegna"]) {
-            if (!document.getElementById(id).reportValidity()) return;
-        }
-    }
-    if (tipoOrdine.value !== "tavolo" && !orario.reportValidity()) return;
+    if (!validaDatiOrdine()) return;
     const dettagliServizio =
         tipoOrdine.value === "consegna"
               ? `<div class="conferma-consegna"><strong>Consegna</strong><span>${escapeHtml(document.getElementById("indirizzo-consegna").value.trim())}</span><span>${escapeHtml(document.getElementById("telefono-consegna").value.trim())}</span></div>`
@@ -1084,7 +1286,6 @@ async function inviaOrdine() {
         stato.rigaAttiva = null;
         costoConsegna = 0;
         aggiornaBottoneCostoConsegna();
-        document.getElementById("note").value = "";
         document.getElementById("cliente-ritiro").value = "";
         document.getElementById("telefono-ritiro").value = "";
         document.getElementById("cognome-banco").value = "";
@@ -1093,6 +1294,7 @@ async function inviaOrdine() {
         chiudiRisultatiClientiIndirizzo();
         clientiAbituali.reset();
         aggiornaRicercaClienteAbituale();
+        ripristinaIntestazioneComanda();
         orario.value = oraLocale();
         pagamentoRitiro.value = "non_pagato";
         pagamentoConsegna.value = "non_pagato";
@@ -1196,11 +1398,24 @@ ricercaModale.addEventListener("click", evento => {
     if (evento.target === ricercaModale) chiudiRicerca();
 });
 tipoOrdine.addEventListener("change", () => {
+    if (tipoOrdine.value !== tipoOrdineCorrente) apriIntestazione();
+    tipoOrdineCorrente = tipoOrdine.value;
     if (tipoOrdine.value !== "consegna") costoConsegna = 0;
     aggiornaTipoOrdine();
     aggiornaRicercaClienteAbituale();
     aggiornaRicercaClientiIndirizzo();
     renderRiepilogo();
+});
+noteToggle.addEventListener("click", () => {
+    noteAperta = !noteAperta;
+    aggiornaPulsanteNote();
+    if (noteAperta) note.focus();
+});
+note.addEventListener("input", aggiornaPulsanteNote);
+intestazioneCompatta.addEventListener("click", apriIntestazione);
+tavolo.addEventListener("change", () => {
+    sezioneTavoli.classList.remove("errore");
+    aggiornaSelettoreTavoli();
 });
 for (const id of ["telefono-consegna", "telefono-ritiro"]) {
     document.getElementById(id).addEventListener("input", aggiornaRicercaClienteAbituale);
@@ -1224,13 +1439,21 @@ document.addEventListener("pointerdown", evento => {
         chiudiRisultatiClientiIndirizzo();
     }
 });
-numeroPersone.addEventListener("input", renderRiepilogo);
+numeroPersone.addEventListener("input", () => {
+    sezionePersone.classList.remove("errore");
+    aggiornaSelettorePersone();
+    renderRiepilogo();
+});
 bottoneCostoConsegna.addEventListener("click", () => {
     costoConsegna = costoConsegna === 2 ? 0 : 2;
     aggiornaBottoneCostoConsegna();
     renderRiepilogo();
 });
 orario.value = oraLocale();
+creaSelettoriOrdine();
+numeroPersone.min = "1";
+numeroPersone.max = "30";
+aggiornaPulsanteNote();
 aggiornaTipoOrdine();
 selettoreRigaExtra.addEventListener("change", aggiornaGestioneExtra);
 document.getElementById("applica-extra").addEventListener("click", () => {
@@ -1277,6 +1500,7 @@ document.getElementById("btn-annulla").addEventListener("click", () => {
     clientiAbituali.reset();
     costoConsegna = 0;
     aggiornaBottoneCostoConsegna();
+    ripristinaIntestazioneComanda();
     renderRiepilogo();
     mostraMessaggio("Ordine annullato.", "");
 });

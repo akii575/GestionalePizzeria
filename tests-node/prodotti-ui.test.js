@@ -21,7 +21,12 @@ const {
     quantitaDaApplicare,
     testoMoltiplicatore,
     aggiornaConteggioProdotti,
-    controllaLimiteRighe
+    controllaLimiteRighe,
+    impostaValoreControllo,
+    datiObbligatoriMancanti,
+    datiOrdineCompleti,
+    riepilogoIntestazione,
+    anteprimaNota
 } = require("../src/main/resources/static/prodotti-ui");
 
 const nomi = prodotti => prodotti.map(prodotto => prodotto.nome);
@@ -46,6 +51,70 @@ test("selecting a delivery address fills customer fields and displays its profil
     assert.equal(campi.telefono.value, cliente.telefono);
     assert.equal(campi.indirizzo.value, cliente.indirizzo);
     assert.equal(profiloMostrato, cliente);
+});
+
+test("custom order selectors update the native controls and dispatch bubbling events", () => {
+    class ControlloFinto extends EventTarget {
+        value = "";
+    }
+
+    const tipo = new ControlloFinto();
+    const tavolo = new ControlloFinto();
+    const persone = new ControlloFinto();
+    const eventi = [];
+    for (const [nome, controllo] of [["tipo", tipo], ["tavolo", tavolo], ["persone", persone]]) {
+        controllo.addEventListener(nome === "persone" ? "input" : "change", evento => {
+            eventi.push([nome, controllo.value, evento.bubbles]);
+        });
+    }
+
+    impostaValoreControllo(tipo, "consegna", "change");
+    impostaValoreControllo(tavolo, "Tavolo 3", "change");
+    impostaValoreControllo(persone, "4", "input");
+
+    assert.deepEqual(eventi, [
+        ["tipo", "consegna", true],
+        ["tavolo", "Tavolo 3", true],
+        ["persone", "4", true]
+    ]);
+});
+
+test("table orders require both an explicit table and a valid people count", () => {
+    assert.equal(datiObbligatoriMancanti("tavolo", { tavolo: "", numeroPersone: "" }), "tavolo");
+    assert.equal(datiObbligatoriMancanti("tavolo", { tavolo: "Tavolo 2", numeroPersone: "" }), "persone");
+    assert.equal(datiObbligatoriMancanti("tavolo", { tavolo: "Tavolo 2", numeroPersone: "31" }), "persone");
+    assert.equal(datiObbligatoriMancanti("tavolo", { tavolo: "Tavolo 2", numeroPersone: "4" }), null);
+    assert.equal(datiOrdineCompleti("tavolo", { tavolo: "Tavolo 2", numeroPersone: "4" }), true);
+    assert.equal(
+        datiObbligatoriMancanti("ritiro", { nome: "Rossi", telefono: "123", telefonoValido: false }),
+        "telefono"
+    );
+});
+
+test("order header summaries and note previews use the compact UI labels", () => {
+    assert.equal(riepilogoIntestazione("tavolo", { tavolo: "Tavolo 3", numeroPersone: 4 }), "Tavolo 3 · 4 persone");
+    assert.equal(
+        riepilogoIntestazione("consegna", { indirizzo: "Via De Sanctis 7/F", orario: "20:30" }),
+        "Consegna · Via De Sanctis 7/F · 20:30"
+    );
+    assert.equal(anteprimaNota("  Una   nota breve  "), "Una nota breve");
+    assert.equal(anteprimaNota("12345678901234567890123456789012345678901"), "1234567890123456789012345678901234567890…");
+});
+
+test("order entry wires selector events, first-product collapse, reset and note toggle", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+    const html = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
+
+    assert.match(script, /impostaValoreControllo\(tipoOrdine, bottone\.dataset\.tipoOrdine, "change"\)/);
+    assert.match(script, /impostaValoreControllo\(tavolo, opzione\.value, "change"\)/);
+    assert.match(script, /impostaValoreControllo\(numeroPersone, String\(persone\), "input"\)/);
+    assert.match(script, /primoProdotto && datiOrdineCompleti\(tipoOrdine\.value, datiIntestazioneCorrenti\(\)\)/);
+    assert.match(script, /intestazioneCompatta\.addEventListener\("click", apriIntestazione\)/);
+    assert.match(script, /noteToggle\.addEventListener\("click"/);
+    assert.match(script, /ripristinaIntestazioneComanda\(\)/);
+    assert.match(html, /id="tavolo" class="visually-hidden" required/);
+    assert.match(html, /id="numero-persone" class="visually-hidden" type="number"[^>]*required/);
 });
 
 test("search ignores case and accents on the real menu", () => {
@@ -100,7 +169,7 @@ test("order entry and editing keep cover out of selectable product rows", () => 
     assert.match(orderScript, /stato\.menu\.filter\(prodotto => !isCoperto\(prodotto\)\)/);
     assert.match(orderScript, /!isCoperto\(prodotto\) && prodotto\.categoria === stato\.categoria/);
     assert.match(editScript, /menu = menu\.filter\(prodotto => !isCoperto\(prodotto\)\)/);
-    assert.match(orderScript, /numeroPersone\.addEventListener\("input", renderRiepilogo\)/);
+    assert.match(orderScript, /numeroPersone\.addEventListener\("input", \(\) => \{[\s\S]*?renderRiepilogo\(\);/);
     assert.match(editScript, /document\.getElementById\("numero-persone"\)\.addEventListener\("input", aggiornaTotale\)/);
 });
 

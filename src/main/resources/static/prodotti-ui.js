@@ -282,6 +282,57 @@ const prodottiUI = (() => {
         };
     }
 
+    function impostaValoreControllo(controllo, valore, tipoEvento) {
+        controllo.value = valore;
+        controllo.dispatchEvent(new Event(tipoEvento, { bubbles: true }));
+    }
+
+    function datiObbligatoriMancanti(tipo, dati) {
+        if (tipo === "tavolo") {
+            const persone = Number(dati.numeroPersone);
+            if (!String(dati.tavolo || "").trim()) return "tavolo";
+            if (!Number.isInteger(persone) || persone < 1 || persone > 30) return "persone";
+            return null;
+        }
+        if (tipo === "banco") return String(dati.cognome || "").trim() ? null : "cognome";
+        if (tipo === "ritiro") {
+            if (!String(dati.nome || "").trim()) return "nome";
+            if (!String(dati.telefono || "").trim() || dati.telefonoValido === false) return "telefono";
+            return null;
+        }
+        if (tipo === "consegna") {
+            if (!String(dati.indirizzo || "").trim()) return "indirizzo";
+            if (!String(dati.telefono || "").trim() || dati.telefonoValido === false) return "telefono";
+            return null;
+        }
+        return "tipo";
+    }
+
+    function datiOrdineCompleti(tipo, dati) {
+        return datiObbligatoriMancanti(tipo, dati) === null;
+    }
+
+    function riepilogoIntestazione(tipo, dati) {
+        if (tipo === "tavolo") return `${dati.tavolo} · ${dati.numeroPersone} persone`;
+        if (tipo === "banco") return `Banco · ${String(dati.cognome || "").trim()}`;
+        if (tipo === "ritiro") {
+            return ["Ritiro", String(dati.nome || "").trim(), String(dati.orario || "").trim()]
+                .filter(Boolean)
+                .join(" · ");
+        }
+        if (tipo === "consegna") {
+            return ["Consegna", String(dati.indirizzo || "").trim(), String(dati.orario || "").trim()]
+                .filter(Boolean)
+                .join(" · ");
+        }
+        return "";
+    }
+
+    function anteprimaNota(testo, lunghezza = 40) {
+        const nota = String(testo || "").replace(/\s+/g, " ").trim();
+        return nota.length > lunghezza ? `${nota.slice(0, lunghezza)}…` : nota;
+    }
+
     return {
         LIMITE_RIGHE_ORDINE,
         leggiCacheMenu,
@@ -307,7 +358,12 @@ const prodottiUI = (() => {
         quantitaDaApplicare,
         testoMoltiplicatore,
         aggiornaConteggioProdotti,
-        controllaLimiteRighe
+        controllaLimiteRighe,
+        impostaValoreControllo,
+        datiObbligatoriMancanti,
+        datiOrdineCompleti,
+        riepilogoIntestazione,
+        anteprimaNota
     };
 })();
 
