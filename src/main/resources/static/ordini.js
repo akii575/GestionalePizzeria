@@ -38,6 +38,7 @@ const intestazione = document.querySelector(".composer-main > .tavolo-input");
 const intestazioneCompatta = document.getElementById("intestazione-compatta");
 const intestazioneCompattaTesto = document.getElementById("intestazione-compatta-testo");
 const noteToggle = document.getElementById("note-toggle");
+const noteRapide = document.getElementById("note-rapide");
 const noteEditor = document.getElementById("note-editor");
 const note = document.getElementById("note");
 const composerMain = document.querySelector(".composer-main");
@@ -90,7 +91,10 @@ const {
     datiObbligatoriMancanti,
     datiOrdineCompleti,
     riepilogoIntestazione,
-    anteprimaNota
+    anteprimaNota,
+    aggiungiNotaRapida,
+    togliNotaRapida,
+    notaContiene
 } = window.prodottiUI;
 const clientiAbituali = window.prodottiUI.creaGestoreSuggerimentiClienti();
 let etichetteCategorie = Object.fromEntries(
@@ -639,6 +643,11 @@ function aggiornaPulsanteNote() {
     noteToggle.textContent = noteAperta ? "− Chiudi nota" : anteprima ? `Nota: ${anteprima}` : "+ Nota";
     noteToggle.setAttribute("aria-expanded", String(noteAperta));
     noteEditor.classList.toggle("visually-hidden", !noteAperta);
+    noteRapide.querySelectorAll("[data-note-rapida]").forEach(bottone => {
+        const selezionato = notaContiene(note.value, bottone.dataset.noteRapida);
+        bottone.classList.toggle("selezionato", selezionato);
+        bottone.setAttribute("aria-pressed", String(selezionato));
+    });
 }
 function ripristinaIntestazioneComanda() {
     apriIntestazione();
@@ -681,6 +690,9 @@ function aggiornaTipoOrdine() {
     aggiornaSelettoreTavoli();
     aggiornaSelettorePersone();
     aggiornaBottoneCostoConsegna();
+    noteRapide.querySelectorAll("[data-note-rapida-consegna]").forEach(bottone => {
+        bottone.hidden = !consegna;
+    });
 }
 function nomiExtra(extra) {
     return (extra || []).map(elemento => (typeof elemento === "string" ? elemento : elemento.nome));
@@ -1410,6 +1422,15 @@ noteToggle.addEventListener("click", () => {
     noteAperta = !noteAperta;
     aggiornaPulsanteNote();
     if (noteAperta) note.focus();
+});
+noteRapide.addEventListener("click", evento => {
+    const bottone = evento.target.closest("[data-note-rapida]");
+    if (!bottone || !noteRapide.contains(bottone)) return;
+    const testo = bottone.dataset.noteRapida;
+    note.value = notaContiene(note.value, testo)
+        ? togliNotaRapida(note.value, testo)
+        : aggiungiNotaRapida(note.value, testo);
+    note.dispatchEvent(new Event("input", { bubbles: true }));
 });
 note.addEventListener("input", aggiornaPulsanteNote);
 intestazioneCompatta.addEventListener("click", apriIntestazione);
