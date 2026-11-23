@@ -119,55 +119,41 @@ const orderCard = (() => {
         if (type === "consegna") {
             return [
                 {
-                    label: "Telefono",
                     value: order.telefonoConsegna || "—",
-                    kind: "telephone",
-                    deliveryAction: true
+                    kind: "telephone"
                 },
                 {
-                    label: "Indirizzo",
                     value: order.indirizzoConsegna || "—",
-                    kind: "address",
-                    deliveryAction: true
+                    kind: "address"
                 }
             ];
-        }
-        if (type === "ritiro") {
-            return order.telefonoRitiro
-                ? [{ label: "Telefono", value: order.telefonoRitiro, kind: "telephone", deliveryAction: true }]
-                : [];
         }
         return [];
     }
 
     function renderFieldValue(field) {
         const value = String(field.value ?? "—");
-        if (field.kind === "telephone" && value !== "—") {
-            const phone = value.replace(/[^\d+]/g, "");
-            if (field.deliveryAction) {
-                return `<div class="order-card__delivery-contact"><a class="order-card__delivery-action order-card__delivery-action--call" href="tel:${escapeHtml(phone)}">Chiama</a><small>${escapeHtml(value)}</small></div>`;
-            }
-            return `<a class="order-card__field-link" href="tel:${escapeHtml(phone)}">${escapeHtml(value)}</a>`;
+        const icon = field.kind === "telephone"
+            ? '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.6 3.8 9.1 3l2 4.7-1.8 1.6a14 14 0 0 0 5.4 5.4l1.6-1.8 4.7 2-.8 2.5a2 2 0 0 1-2 1.4A15.5 15.5 0 0 1 4.2 5.8a2 2 0 0 1 1.4-2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+            : '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="10" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>';
+        if (field.kind === "telephone") {
+            const action = value === "—"
+                ? ""
+                : `<a class="order-card__delivery-action order-card__delivery-action--call" href="tel:${escapeHtml(value.replace(/[^\d+]/g, ""))}">Chiama</a>`;
+            return `<div class="order-card__delivery-contact"><span class="order-card__delivery-icon">${icon}</span><span class="order-card__delivery-value">${escapeHtml(value)}</span>${action}</div>`;
         }
-        if (field.kind === "address" && value !== "—") {
-            if (field.deliveryAction) {
-                return `<div class="order-card__delivery-contact"><button class="order-card__delivery-action order-card__delivery-action--map" type="button" data-indirizzo="${escapeHtml(value)}" aria-haspopup="dialog" aria-label="Apri la mappa: ${escapeHtml(value)}">Apri mappa</button><small>${escapeHtml(value)}</small></div>`;
-            }
-            return `<button class="order-card__field-action" type="button" data-indirizzo="${escapeHtml(value)}" aria-haspopup="dialog"><span title="${escapeHtml(value)}">${escapeHtml(value)}</span><span class="order-card__field-hint">Apri nelle mappe</span></button>`;
+        if (field.kind === "address") {
+            const action = value === "—"
+                ? ""
+                : `<button class="order-card__delivery-action order-card__delivery-action--map" type="button" data-indirizzo="${escapeHtml(value)}" aria-haspopup="dialog">Mappa</button>`;
+            return `<div class="order-card__delivery-contact"><span class="order-card__delivery-icon">${icon}</span><span class="order-card__delivery-value">${escapeHtml(value)}</span>${action}</div>`;
         }
         return escapeHtml(value);
     }
 
     function renderFields(fields) {
         if (!fields.length) return "";
-        const layout = fields.some(field => field.kind === "address") ? " order-card__fields--delivery" : "";
-        const fieldMarkup = fields.map(field => `
-            <div class="order-card__field${field.full ? " order-card__field--full" : ""}">
-                <strong class="order-card__field-label">${escapeHtml(field.label)}</strong>
-                <div class="order-card__field-value">${renderFieldValue(field)}</div>
-            </div>
-        `).join("");
-        return `<div class="order-card__fields${layout}">${fieldMarkup}</div>`;
+        return `<div class="order-card__contacts">${fields.map(renderFieldValue).join("")}</div>`;
     }
 
     function extraIdentity(row) {
@@ -237,6 +223,22 @@ const orderCard = (() => {
         return `<span class="order-card__print-status order-card__print-status--${status.state}">${status.label}</span>`;
     }
 
+    function renderExpandedStatus(order, type, canEdit) {
+        const items = [];
+        const payment = renderPayment(order, canEdit, type);
+        const requestedTime = ["consegna", "ritiro"].includes(type)
+            ? String(order.orario || "").trim()
+            : "";
+        const print = printSummary(order);
+
+        if (payment) items.push(payment);
+        if (requestedTime) {
+            items.push(`<span class="order-card__requested-time">Orario richiesto ${escapeHtml(requestedTime)}</span>`);
+        }
+        if (print.state !== "printed") items.push(renderPrintStatus(order));
+        return items.length ? `<div class="order-card__detail-status">${items.join("")}</div>` : "";
+    }
+
     function renderActions(order, canEdit) {
         if (!canEdit) return "";
         const number = Number(order.numero);
@@ -280,8 +282,7 @@ const orderCard = (() => {
             ritiro: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 8h14l-1 13H6L5 8zM9 8V6a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             banco: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 10h16v11H4zM3 10l2-6h14l2 6M8 14h4v7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         };
-        const label = type === "consegna" ? "consegna" : type === "ritiro" ? "ritiro" : "banco";
-        return `<span class="order-card__service-tile order-card__service-tile--${escapeHtml(type)}">${icons[type] || icons.tavolo}<small>${escapeHtml(time)}</small><span class="visually-hidden">${label}</span></span>`;
+        return `<span class="order-card__service-tile order-card__service-tile--${escapeHtml(type)}">${icons[type] || icons.tavolo}<small>${escapeHtml(time)}</small></span>`;
     }
 
     function renderCompactPreview(rows) {
@@ -401,8 +402,12 @@ const orderCard = (() => {
         const expanded = expansionState.isOpen(order.numero);
         const deliveryMode = options.deliveryMode === true && type === "consegna";
         const name = orderName(order, type);
-        const time = order.orario || formatTime(order.dataOra);
-        const metadata = `#${escapeHtml(orderNumber)} · ${escapeHtml(formatTime(order.dataOra))} · ${escapeHtml(renderCompactPreview(order.righe))}`;
+        const serviceTime = ["consegna", "ritiro"].includes(type)
+            ? String(order.orario || "—")
+            : formatTime(order.dataOra);
+        const metadata = ["consegna", "ritiro"].includes(type)
+            ? `#${escapeHtml(orderNumber)} · ${escapeHtml(renderCompactPreview(order.righe))}`
+            : `#${escapeHtml(orderNumber)} · ${escapeHtml(formatTime(order.dataOra))} · ${escapeHtml(renderCompactPreview(order.righe))}`;
         const canEdit = options.canEdit === true;
         const hideTotalForStaff = options.hideTotalForStaff === true;
         const isStaff = typeof window !== "undefined" && window.currentAccount?.staff === true;
@@ -418,9 +423,6 @@ const orderCard = (() => {
         const coverCharge = type === "tavolo" && Number(order.coperto?.totale) > 0
             ? `<p class="order-card__cover-charge">Coperto <span>${Number(order.coperto.persone)} × ${euro.format(Number(order.coperto.prezzoUnitario))}</span></p>`
             : "";
-        const serviceTime = ["consegna", "ritiro"].includes(type) && order.orario
-            ? ` · Orario richiesto ${escapeHtml(order.orario)}`
-            : "";
         const compactStatus = deliveryMode
             ? renderDeliveryCompactStatus(order)
             : renderCompactState(order, type);
@@ -430,13 +432,11 @@ const orderCard = (() => {
         const compactTotal = deliveryMode
             ? euro.format(deliveryAmount)
             : euro.format(Number(order.totale || 0));
-        const printStatus = renderPrintStatus(order);
-
         return `
             <article class="order-card${expanded ? " order-card--expanded" : ""}${deliveryMode ? " order-card--delivery-mode" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
                 <div class="order-card__compact-row">
                     <button class="order-card__toggle" type="button" data-order-number="${escapeHtml(orderNumber)}" aria-expanded="${String(expanded)}" aria-controls="${detailId}">
-                        ${renderServiceTile(order, type, time)}
+                        ${renderServiceTile(order, type, serviceTime)}
                         <span class="order-card__compact-copy">
                             <span class="order-card__reference">${escapeHtml(name)}</span>
                             <span class="order-card__meta">${metadata}</span>
@@ -448,16 +448,7 @@ const orderCard = (() => {
                     </span>
                 </div>
                 <div class="order-card__expanded" id="${detailId}"${expanded ? "" : " hidden"}>
-                    <header class="order-card__header">
-                        <div class="order-card__heading">
-                            <h2 class="order-card__number">${escapeHtml(name)}</h2>
-                            <p class="order-card__expanded-meta">#${escapeHtml(orderNumber)} · ${escapeHtml(formatTime(order.dataOra))} · ${printStatus}${serviceTime}</p>
-                        </div>
-                        <div class="order-card__totals">
-                            ${renderPayment(order, canEdit, type)}
-                            <div class="order-card__total">${euro.format(Number(order.totale || 0))}</div>
-                        </div>
-                    </header>
+                    ${renderExpandedStatus(order, type, canEdit)}
                     ${renderFields(fieldsForOrder(order, type))}
                     ${renderDeliveryUndo(order, deliveryMode)}
                     <section class="order-card__details">

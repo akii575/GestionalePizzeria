@@ -125,20 +125,23 @@
 
 .order-card__delivery-contact {
     display: grid;
-    justify-items: start;
-    gap: 5px;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 
 .order-card__delivery-action {
     display: inline-flex;
-    min-height: 48px;
+    min-height: 40px;
     align-items: center;
     justify-content: center;
     padding: 8px 16px;
-    border: 0;
-    border-radius: 10px;
-    color: #fff !important;
-    font-size: 15px !important;
+    border: 1px solid #1a5ea9;
+    border-radius: 9px;
+    background: #fff;
+    color: #1a5ea9;
+    font-size: 13px;
     font-weight: 700 !important;
     line-height: 1.25 !important;
     text-decoration: none;
@@ -146,15 +149,10 @@
     -webkit-tap-highlight-color: transparent;
 }
 
-.order-card__delivery-action--call { background: #1a5ea9; }
-.order-card__delivery-action--map { background: #166534; }
+.order-card__delivery-action--call,
+.order-card__delivery-action--map { background: #fff; }
 
-.order-card__delivery-contact small {
-    color: #4b5563;
-    font-size: 13px;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-}
+.order-card__delivery-icon { color: #1a5ea9; }
 
 .order-card__delivery-undo {
     min-height: 36px;
@@ -197,34 +195,19 @@
 .order-card--delivery-mode .order-card__delivery-status--consegnata > span { font-size: 14px; }
 .order-card--delivery-mode .order-card__delivery-status--consegnata small { font-size: 10px; }
 
-.order-card__fields--delivery {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 8px 12px;
-}
-.order-card__fields--delivery .order-card__field {
-    display: block;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-}
-.order-card__fields--delivery .order-card__field-label { display: none; }
 .order-card__delivery-contact {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
 }
 .order-card__delivery-action {
     min-width: 0;
-    min-height: 36px;
+    min-height: 40px;
     flex: 0 0 auto;
     padding: 5px 8px;
     border-radius: 8px;
-    font-size: 12px !important;
+    font-size: 12px;
 }
-.order-card__delivery-contact small {
+.order-card__delivery-value {
     min-width: 0;
     overflow: hidden;
     font-size: 11px;
@@ -236,7 +219,7 @@
     .order-card--delivery-mode .order-card__compact-status { min-width: 74px; }
     .order-card--delivery-mode .order-card__delivery-status { min-width: 74px; font-size: 11px; }
     .order-card--delivery-mode .order-card__delivery-status--consegnata { min-width: 74px; }
-    .order-card__fields--delivery { gap: 5px; padding-inline: 8px; }
-    .order-card__delivery-contact { gap: 4px; }
-    .order-card__delivery-action { padding-inline: 6px; font-size: 11px !important; }
+    .order-card__contacts { margin-inline: 8px; }
+    .order-card__delivery-contact { gap: 5px; }
+    .order-card__delivery-action { padding-inline: 6px; font-size: 11px; }
 }

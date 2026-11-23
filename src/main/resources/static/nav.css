@@ -266,6 +266,35 @@ body.app-shell nav.app-bottom-nav {
     }
 }
 
+@media (min-width: 1200px) {
+    html body.app-shell main.dashboard .lista-ordini,
+    html body.app-shell main.dashboard .lista-consegne {
+        grid-auto-flow: dense;
+    }
+
+    html body.app-shell main.dashboard .order-card--expanded {
+        grid-column: span 2;
+    }
+}
+
+@media (min-width: 1025px) and (max-width: 1179px) {
+    body.app-shell main.container .composer-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    body.app-shell main.container .composer-summary {
+        position: static;
+        max-height: none;
+    }
+}
+
+@media (min-width: 1180px) and (max-width: 1279px) {
+    body.app-shell main.container .composer-layout {
+        gap: 20px;
+    }
+}
+
 @media (min-width: 768px) and (max-width: 1024px) {
     body.app-shell main.dashboard,
     body.app-shell main.container,
@@ -274,6 +303,16 @@ body.app-shell nav.app-bottom-nav {
         width: calc(100% - 112px);
         margin-left: 96px;
         padding: 16px;
+    }
+
+    body.app-shell main.container .composer-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    body.app-shell main.container .composer-summary {
+        position: static;
+        max-height: none;
     }
 
     html body.app-shell main.dashboard .lista-ordini,
