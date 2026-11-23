@@ -597,13 +597,23 @@ test("mobile navigation and checkout use one safe-area offset", () => {
 
 test("order summary rows keep a two-column remove action and omit empty extras", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const page = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
     const styles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
     const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
 
+    assert.match(page, /id="extra-intestazione" class="extra-intestazione" type="button" aria-expanded="false" aria-controls="extra-dettagli"/);
+    assert.match(page, /id="extra-dettagli" class="extra-dettagli" hidden/);
     assert.match(styles, /\.riepilogo-item\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto;[^}]*column-gap:\s*12px;[^}]*align-items:\s*start;/);
     assert.match(styles, /\.riepilogo-item \.rimuovi\s*\{[^}]*min-height:\s*40px;[^}]*padding:\s*6px 10px;[^}]*border:\s*1px solid #F7C1C1;[^}]*border-radius:\s*8px;[^}]*background:\s*#FCEBEB;[^}]*color:\s*#A32D2D;[^}]*font-size:\s*13px;[^}]*font-weight:\s*600;[^}]*text-decoration:\s*none;[^}]*white-space:\s*nowrap;/);
     assert.doesNotMatch(styles, /#riepilogo-items \.riepilogo-item\s*\{|#riepilogo-items \.rimuovi\s*\{/);
-    assert.match(script, /const extra = riga\.extra\.length\s*\?\s*`<span>Extra: \$\{escapeHtml\(nomiExtra\(riga\.extra\)\.join\(", "\)\)\}<\/span>`\s*:\s*"";/);
+    assert.match(script, /const extra = nomiExtra\(riga\.extra\)\.join\(", "\);/);
+    assert.match(script, /return `<div class="conferma-riga"><strong>\$\{quantitaTesto\}/);
+    assert.match(styles, /\.conferma-righe\s*\{[^}]*overflow-y:\s*auto;/);
+    assert.match(styles, /\.conferma-azioni\s*\{[^}]*flex:\s*0 0 auto;/);
+    const aggiunta = script.match(/function aggiungiProdotto\(prodotto\) \{([\s\S]*?)\n\}/);
+    assert.ok(aggiunta);
+    assert.doesNotMatch(aggiunta[1], /scrollIntoView|\.focus\(/);
+    assert.match(script, /if \(evento\.currentTarget === riepilogoSheetLista && riepilogoSheetAperto\)[\s\S]*?chiudiRiepilogoSheet\(false\)[\s\S]*?sezioneExtra\.scrollIntoView/);
     assert.doesNotMatch(script, /Nessun extra/);
 });
 

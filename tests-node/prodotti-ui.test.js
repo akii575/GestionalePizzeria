@@ -13,6 +13,7 @@ const {
     aggiungiProdotti,
     preparaRipetizione,
     impostaRigaAttiva,
+    raggruppaRigheConferma,
     rimuoviProdotto,
     toggleExtra,
     toggleSenza,
@@ -448,6 +449,32 @@ test("selecting a previous pizza and disambiguating duplicate names", () => {
     stato = impostaRigaAttiva(stato.righe, 0);
     assert.equal(stato.rigaAttiva, 0);
     assert.equal(intestazioneExtra(stato.righe, stato.rigaAttiva), "Extra per: Margherita (n° 1)");
+
+    const bibita = creaRiga({ nome: "Coca Cola", categoria: "bibite", prezzo: 2 });
+    assert.equal(impostaRigaAttiva([bibita], 0).rigaAttiva, 0);
+});
+
+test("confirmation groups identical rows but keeps different extras and notes separate", () => {
+    const margherita = {
+        prodotto: "Margherita",
+        prezzo: 6.5,
+        extra: [],
+        senza: [],
+        nota: "ben cotta"
+    };
+    const righe = raggruppaRigheConferma([margherita, { ...margherita }]);
+    assert.equal(righe.length, 1);
+    assert.equal(righe[0].quantita, 2);
+
+    const conExtra = { ...margherita, extra: [{ id: "bufala", nome: "Bufala" }] };
+    const differenziate = raggruppaRigheConferma([margherita, conExtra]);
+    assert.equal(differenziate.length, 2);
+    assert.deepEqual(differenziate.map(gruppo => gruppo.quantita), [1, 1]);
+
+    const conNotaDiversa = { ...margherita, nota: "poco cotta" };
+    const separate = raggruppaRigheConferma([margherita, conExtra, conNotaDiversa]);
+    assert.equal(separate.length, 3);
+    assert.deepEqual(separate.map(gruppo => gruppo.quantita), [1, 1, 1]);
 });
 
 test("multiplier keypad composes up to two digits and ignores a leading zero", () => {

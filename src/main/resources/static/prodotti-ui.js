@@ -201,8 +201,27 @@ const prodottiUI = (() => {
     function impostaRigaAttiva(righe, indice) {
         return {
             righe,
-            rigaAttiva: Number.isInteger(indice) && rigaModificabile(righe[indice]) ? indice : null
+            rigaAttiva: Number.isInteger(indice) && indice >= 0 && indice < righe.length ? indice : null
         };
+    }
+
+    function raggruppaRigheConferma(righe) {
+        const gruppi = new Map();
+        (righe || []).forEach(riga => {
+            const extra = (Array.isArray(riga.extra) ? riga.extra : [])
+                .map(elemento => typeof elemento === "string" ? elemento : elemento?.id || elemento?.nome || "")
+                .sort();
+            const senza = (Array.isArray(riga.senza) ? riga.senza : []).slice().sort();
+            const nota = typeof riga.nota === "string" ? riga.nota : typeof riga.note === "string" ? riga.note : "";
+            const chiave = JSON.stringify([riga.prodotto, extra, senza, nota]);
+            const gruppo = gruppi.get(chiave);
+            if (gruppo) {
+                gruppo.quantita++;
+            } else {
+                gruppi.set(chiave, { riga, quantita: 1 });
+            }
+        });
+        return [...gruppi.values()];
     }
 
     function rimuoviProdotto(righe, rigaAttiva, indice) {
@@ -496,6 +515,7 @@ const prodottiUI = (() => {
         aggiungiProdotti,
         preparaRipetizione,
         impostaRigaAttiva,
+        raggruppaRigheConferma,
         rimuoviProdotto,
         toggleExtra,
         toggleSenza,
