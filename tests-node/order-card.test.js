@@ -382,7 +382,8 @@ test("mobile navigation and checkout use one safe-area offset", () => {
     assert.match(navigationScript, /create = createLink\(\{ \.\.\.link, label: "Nuova" \}/);
     assert.match(orderStyles, /\.composer-summary > \.barra-conto\s*\{[^}]*position:\s*fixed;[^}]*bottom:\s*var\(--app-mobile-nav-height\);[^}]*height:\s*var\(--app-mobile-checkout-height\);/);
     assert.match(orderStyles, /\.composer-summary > \.barra-conto > \.btn-invia:disabled\s*\{[^}]*cursor:\s*not-allowed;[^}]*opacity:\s*\.45;/);
-    assert.match(orderStyles, /@media \(max-width: 767px\) and \(orientation: portrait\)[\s\S]*?\.composer-summary > \.riepilogo-card\s*\{[^}]*display:\s*block;[^}]*border-radius:\s*16px;/);
+    assert.match(orderStyles, /@media \(max-width: 767px\), \(min-width: 768px\) and \(max-width: 1023px\) and \(orientation: portrait\)[\s\S]*?\.composer-layout\s*\{[^}]*display:\s*block;/);
+    assert.match(orderStyles, /@media \(max-width: 1023px\) and \(orientation: portrait\)[\s\S]*?\.composer-summary > \.riepilogo-card\s*\{[^}]*display:\s*block;[^}]*border-radius:\s*16px;/);
     assert.match(orderStyles, /@media \(max-width: 767px\) and \(orientation: landscape\)[\s\S]*?\.composer-summary > \.riepilogo-card > \.riepilogo\s*\{\s*display:\s*none;/);
     assert.match(orderScript, /invia\.textContent = stato\.righe\.length \? "Rivedi e invia" : "Aggiungi prodotti";/);
     assert.match(editStyles, /\.modifica-footer\s*\{[^}]*bottom:\s*var\(--app-mobile-nav-height\);/);
@@ -432,7 +433,7 @@ test("portrait order summary sheet opens accessibly and removes rows through sha
     assert.match(styles, /\.barra-conto-maniglia\s*\{[^}]*position:\s*absolute;[^}]*top:\s*6px;[^}]*left:\s*50%;[^}]*transform:\s*translateX\(-50%\);/);
     assert.match(styles, /\.barra-conto\s*\{[^}]*touch-action:\s*none;/);
     assert.match(styles, /\.riepilogo-sheet-header\s*\{[^}]*touch-action:\s*none;/);
-    assert.match(styles, /@media \(max-width: 767px\) and \(orientation: portrait\)[\s\S]*?\.riepilogo-sheet\s*\{[^}]*height:\s*auto;[^}]*max-height:\s*85vh;[^}]*padding:\s*10px 16px 0;[^}]*border-radius:\s*20px 20px 0 0;/);
+    assert.match(styles, /@media \(max-width: 1023px\) and \(orientation: portrait\)[\s\S]*?\.riepilogo-sheet\s*\{[^}]*height:\s*auto;[^}]*max-height:\s*85vh;[^}]*padding:\s*10px 16px 0;[^}]*border-radius:\s*20px 20px 0 0;/);
     assert.match(styles, /\.riepilogo-sheet-items\s*\{[^}]*overflow-y:\s*auto;[^}]*overscroll-behavior:\s*contain;/);
     assert.match(styles, /\.riepilogo-sheet-items\s*\{[^}]*flex:\s*0 1 auto;/);
     assert.match(styles, /\.riepilogo-sheet-footer\s*\{[^}]*padding:\s*10px 16px max\(12px, env\(safe-area-inset-bottom\)\);/);
@@ -440,6 +441,8 @@ test("portrait order summary sheet opens accessibly and removes rows through sha
     assert.match(styles, /\.riepilogo-sheet-backdrop\s*\{[^}]*transition:\s*opacity 280ms cubic-bezier\(\.2, \.9, \.3, 1\);/);
     assert.match(styles, /\.riepilogo-sheet\s*\{[^}]*overscroll-behavior:\s*contain;/);
     assert.match(styles, /prefers-reduced-motion:\s*reduce/);
+    assert.match(styles, /@media \(max-width: 1023px\) and \(orientation: portrait\) and \(prefers-reduced-motion: reduce\)/);
+    assert.match(script, /matchMedia\("\(max-width: 1023px\) and \(orientation: portrait\)"\)/);
     assert.doesNotMatch(styles, /riepilogo-sheet(?:-backdrop)?\.is-dragging|body\.riepilogo-sheet-aperto/);
     assert.match(script, /renderRigheRiepilogo\(riepilogo\);\s*renderRigheRiepilogo\(riepilogoSheetLista\);/);
     assert.match(script, /riepilogoSheetLista\.addEventListener\("click", rimuoviRigaRiepilogo\)/);
@@ -466,6 +469,22 @@ test("portrait order summary sheet opens accessibly and removes rows through sha
     assert.match(script, /window\.addEventListener\("orientationchange", aggiornaSheetAlCambioViewport\)/);
     assert.match(script, /riepilogoSheetAperto && !riepilogoSheetDisponibile\(\)\) chiudiRiepilogoSheet\(false\)/);
     assert.match(script, /document\.getElementById\("riepilogo-sheet-invia"\)\.addEventListener\("click", \(\) => \{\s*chiudiRiepilogoSheet\(\);\s*apriConferma\(\);/);
+});
+
+test("product names wrap only between words and clamp to two lines", () => {
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.css"),
+        "utf8"
+    );
+    const regolaNomeProdotto = styles.match(/\.prodotto-btn strong\s*\{([^}]*)\}/);
+
+    assert.ok(regolaNomeProdotto);
+    assert.match(regolaNomeProdotto[1], /overflow-wrap:\s*normal;/);
+    assert.match(regolaNomeProdotto[1], /word-break:\s*normal;/);
+    assert.match(regolaNomeProdotto[1], /hyphens:\s*none;/);
+    assert.match(regolaNomeProdotto[1], /-webkit-line-clamp:\s*2;/);
+    assert.match(regolaNomeProdotto[1], /text-overflow:\s*ellipsis;/);
+    assert.doesNotMatch(regolaNomeProdotto[1], /word-break:\s*break-(?:all|word)|hyphens:\s*auto/);
 });
 
 test("mobile filters keep the date input inside its row and show the search full-width", () => {
