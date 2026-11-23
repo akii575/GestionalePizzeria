@@ -82,6 +82,38 @@ test("compact rows show the reference, order number, total, and print state", ()
     assert.match(html, /aria-expanded="false"/);
 });
 
+test("delivery status controls are separate, role-safe, and match the delivery state", () => {
+    const pending = render({
+        tipo: "consegna",
+        indirizzoConsegna: "Via Roma 12",
+        telefonoConsegna: "3331234567",
+        statoConsegna: "da_consegnare"
+    }, { deliveryMode: true, isRider: true, canEdit: false });
+    const inTransit = render({
+        tipo: "consegna",
+        indirizzoConsegna: "Via Roma 12",
+        telefonoConsegna: "3331234567",
+        statoConsegna: "in_consegna"
+    }, { deliveryMode: true, isRider: true, canEdit: false });
+    const completed = render({
+        tipo: "consegna",
+        indirizzoConsegna: "Via Roma 12",
+        telefonoConsegna: "3331234567",
+        statoConsegna: "consegnata",
+        consegnataAlle: "2026-10-27T20:41:00.000Z"
+    }, { deliveryMode: true, isRider: true, canEdit: false });
+
+    assert.match(pending, /<button class="order-card__toggle"[^>]*>[\s\S]*?<\/button>\s*<span class="order-card__compact-status"><button[^>]*data-stato-consegna="in_consegna"[^>]*>Parti<\/button>/);
+    assert.match(inTransit, /data-stato-consegna="consegnata"[^>]*>Consegnata<\/button>/);
+    assert.match(completed, /order-card__delivery-status--consegnata[^>]*aria-label="Consegnata/);
+    assert.match(completed, /<small>consegnata [^<]+<\/small>/);
+    for (const html of [pending, inTransit, completed]) {
+        assert.match(html, /order-card__delivery-action--call[^>]*>Chiama/);
+        assert.match(html, /order-card__delivery-action--map[^>]*>Apri mappa/);
+        assert.doesNotMatch(html, /data-modifica=|data-ristampa=|data-elimina=/);
+    }
+});
+
 test("the all-orders page can show a colored service label before each reference", () => {
     for (const [type, label, reference] of [
         ["tavolo", "Tavolo", "Tavolo 1"],

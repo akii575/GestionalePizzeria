@@ -9,8 +9,41 @@ const stato = {
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const lista = document.getElementById("lista-consegne");
 const statoPagina = document.getElementById("stato");
+const aggiornamentiStatoInCorso = new Set();
 window.orderCard.bindReprints(lista);
 window.orderCard.bindDateFilter(document.getElementById("data"), document.getElementById("apri-data"));
+
+function statoConsegna(ordine) {
+    return ["da_consegnare", "in_consegna", "consegnata"].includes(ordine.statoConsegna)
+        ? ordine.statoConsegna
+        : "da_consegnare";
+}
+
+function confrontaPerNumero(primo, secondo) {
+    return Number(primo.numero) - Number(secondo.numero);
+}
+
+function confrontaConsegneAttive(primo, secondo) {
+    const primoOrario = typeof primo.orario === "string" ? primo.orario : "";
+    const secondoOrario = typeof secondo.orario === "string" ? secondo.orario : "";
+    if (primoOrario && !secondoOrario) return -1;
+    if (!primoOrario && secondoOrario) return 1;
+    if (primoOrario && secondoOrario && primoOrario !== secondoOrario) {
+        return primoOrario.localeCompare(secondoOrario);
+    }
+    return confrontaPerNumero(primo, secondo);
+}
+
+function confrontaConsegneCompletate(primo, secondo) {
+    const primoOrario = Date.parse(primo.consegnataAlle);
+    const secondoOrario = Date.parse(secondo.consegnataAlle);
+    if (Number.isFinite(primoOrario) && Number.isFinite(secondoOrario) && primoOrario !== secondoOrario) {
+        return secondoOrario - primoOrario;
+    }
+    if (Number.isFinite(primoOrario) && !Number.isFinite(secondoOrario)) return -1;
+    if (!Number.isFinite(primoOrario) && Number.isFinite(secondoOrario)) return 1;
+    return confrontaPerNumero(secondo, primo);
+}
 
 function mostraStato(testo, classe = "") {
     statoPagina.textContent = testo;
@@ -35,19 +68,36 @@ function render() {
     document.getElementById("totale-consegne").textContent = euro.format(
         ordini.reduce((somma, ordine) => somma + Number(ordine.totale || 0), 0)
     );
+    const conteggi = { da_consegnare: 0, in_consegna: 0, consegnata: 0 };
+    ordini.forEach(ordine => { conteggi[statoConsegna(ordine)]++; });
+    document.getElementById("riepilogo-stati-consegna").textContent =
+        `${conteggi.da_consegnare} da consegnare · ${conteggi.in_consegna} in consegna · ${conteggi.consegnata} consegnate`;
+
     lista.replaceChildren();
     if (!ordini.length) {
         lista.innerHTML = '<div class="vuoto">Nessuna consegna corrisponde ai filtri.</div>';
         return;
     }
 
-    ordini.forEach(ordine => {
-        lista.insertAdjacentHTML("beforeend", window.orderCard.render(ordine, {
+    const consegneAttive = ordini.filter(ordine => statoConsegna(ordine) !== "consegnata")
+        .sort(confrontaConsegneAttive);
+    const consegneCompletate = ordini.filter(ordine => statoConsegna(ordine) === "consegnata")
+        .sort(confrontaConsegneCompletate);
+    const isRider = window.currentAccount.delivery === true
+        && window.currentAccount.admin !== true
+        && window.currentAccount.staff !== true;
+    const cardMarkup = ordine => window.orderCard.render(ordine, {
             canEdit: window.currentAccount.admin === true || window.currentAccount.staff === true,
             hideTotalForStaff: false,
+            deliveryMode: true,
+            isRider,
             menu: stato.menu
-        }));
-    });
+        });
+    const activeMarkup = consegneAttive.map(cardMarkup).join("");
+    const deliveredMarkup = consegneCompletate.length
+        ? `<details class="consegne-completate"><summary>Consegnate (${consegneCompletate.length})</summary><div class="consegne-completate__lista">${consegneCompletate.map(cardMarkup).join("")}</div></details>`
+        : "";
+    lista.innerHTML = `${activeMarkup}${deliveredMarkup}`;
 
     lista.querySelectorAll("[data-modifica]").forEach(button => {
         button.addEventListener("click", () => {
@@ -57,6 +107,51 @@ function render() {
     lista.querySelectorAll("[data-elimina]").forEach(button => {
         button.addEventListener("click", () => eliminaConsegna(button.dataset.elimina));
     });
+    lista.querySelectorAll("[data-stato-consegna]").forEach(button => {
+        button.addEventListener("click", () => aggiornaStatoConsegna(
+            button.dataset.numero,
+            button.dataset.statoConsegna
+        ));
+    });
+}
+
+async function aggiornaStatoConsegna(numero, nuovoStato) {
+    const id = String(numero);
+    if (aggiornamentiStatoInCorso.has(id)) return;
+    const ordine = stato.ordini.find(elemento => String(elemento.numero) === id);
+    if (!ordine) return;
+
+    aggiornamentiStatoInCorso.add(id);
+    const statoPrecedente = ordine.statoConsegna;
+    const consegnataAllePrecedente = ordine.consegnataAlle;
+    ordine.statoConsegna = nuovoStato;
+    if (nuovoStato === "consegnata") ordine.consegnataAlle = new Date().toISOString();
+    else delete ordine.consegnataAlle;
+    render();
+
+    try {
+        const risposta = await fetch(`/api/ordini/${encodeURIComponent(id)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ statoConsegna: nuovoStato })
+        });
+        const risultato = await risposta.json();
+        if (!risposta.ok) throw new Error(risultato.errore || "Aggiornamento dello stato consegna non riuscito.");
+        ordine.statoConsegna = risultato.statoConsegna || nuovoStato;
+        if (risultato.consegnataAlle) ordine.consegnataAlle = risultato.consegnataAlle;
+        else delete ordine.consegnataAlle;
+        mostraStato("");
+        render();
+    } catch (errore) {
+        if (statoPrecedente === undefined) delete ordine.statoConsegna;
+        else ordine.statoConsegna = statoPrecedente;
+        if (consegnataAllePrecedente === undefined) delete ordine.consegnataAlle;
+        else ordine.consegnataAlle = consegnataAllePrecedente;
+        render();
+        mostraStato(errore.message || "Aggiornamento dello stato consegna non riuscito.", "errore");
+    } finally {
+        aggiornamentiStatoInCorso.delete(id);
+    }
 }
 
 async function eliminaConsegna(numero) {

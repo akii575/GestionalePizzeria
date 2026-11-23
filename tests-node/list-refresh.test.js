@@ -12,6 +12,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
     const intervals = new Map();
     const renderCounts = new Map();
     const renderedCards = [];
+    const renderedMarkup = new Map();
     let nextIntervalId = 0;
     let clock = 1_000;
 
@@ -27,10 +28,12 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
                 querySelectorAll() { return []; },
                 insertAdjacentHTML(_position, markup) {
                     renderedCards.push(String(markup));
+                    renderedMarkup.set(id, (renderedMarkup.get(id) || "") + String(markup));
                     renderCounts.set(id, (renderCounts.get(id) || 0) + 1);
                 },
                 replaceChildren() {
                     renderedCards.length = 0;
+                    renderedMarkup.set(id, "");
                     renderCounts.set(id, (renderCounts.get(id) || 0) + 1);
                 },
                 className: "",
@@ -38,8 +41,11 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
             };
             Object.defineProperty(value, "innerHTML", {
                 get() { return ""; },
-                set() {
-                    if (id.startsWith("lista-")) renderedCards.length = 0;
+                set(markup) {
+                    if (id.startsWith("lista-")) {
+                        renderedCards.length = 0;
+                        renderedMarkup.set(id, String(markup));
+                    }
                     renderCounts.set(id, (renderCounts.get(id) || 0) + 1);
                 }
             });
@@ -71,7 +77,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         window: {
             authReady: Promise.resolve(true),
             currentAccount,
-            orderCard: { bindReprints() {}, bindDateFilter() {}, render(order) { return String(order.numero); } }
+            orderCard: { bindReprints() {}, bindDateFilter() {}, render(order) { return `|#${order.numero}|`; } }
         },
         fetch: async url => {
             requests.push(String(url));
@@ -106,6 +112,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         requests,
         renderCounts,
         renderedCards,
+        renderedMarkup,
         element,
         advance(milliseconds) {
             clock += milliseconds;
@@ -126,19 +133,29 @@ test("the all-orders list sorts newest order numbers first", async () => {
     ]);
     await flushPagePromises();
 
-    assert.deepEqual(state.renderedCards, ["10", "4", "2"]);
+    assert.deepEqual(state.renderedCards, ["|#10|", "|#4|", "|#2|"]);
 });
 
-test("the delivery list preserves its existing order", async () => {
+test("the delivery list sorts active deliveries by requested time and completed ones last", async () => {
     const scriptPath = path.join(__dirname, "../src/main/resources/static/consegne.js");
     const state = createPageContext(fs.readFileSync(scriptPath, "utf8"), undefined, [
-        { numero: 2, totale: 0 },
-        { numero: 10, totale: 0 },
-        { numero: 4, totale: 0 }
+        { numero: 2, totale: 0, orario: "20:30", statoConsegna: "da_consegnare" },
+        { numero: 7, totale: 0, orario: "19:30", statoConsegna: "in_consegna" },
+        { numero: 9, totale: 0, statoConsegna: "da_consegnare" },
+        { numero: 8, totale: 0, statoConsegna: "consegnata", consegnataAlle: "2026-10-27T19:30:00.000Z" },
+        { numero: 4, totale: 0, statoConsegna: "consegnata", consegnataAlle: "2026-10-27T20:30:00.000Z" }
     ]);
     await flushPagePromises();
 
-    assert.deepEqual(state.renderedCards, ["2", "10", "4"]);
+    const markup = state.renderedMarkup.get("lista-consegne");
+    const orderNumbers = ["7", "2", "9", "4", "8"].map(numero => markup.indexOf(`|#${numero}|`));
+    assert.ok(orderNumbers.every(index => index >= 0));
+    assert.deepEqual(orderNumbers, [...orderNumbers].sort((first, second) => first - second));
+    assert.match(markup, /<details class="consegne-completate"><summary>Consegnate \(2\)<\/summary>/);
+    assert.equal(
+        state.element("riepilogo-stati-consegna").textContent,
+        "2 da consegnare · 1 in consegna · 2 consegnate"
+    );
 });
 
 for (const [page, endpoint, interval, listId] of [
