@@ -9,6 +9,111 @@ const staticDirectory = path.join(root, "src", "main", "resources", "static");
 const source = fs.readFileSync(path.join(staticDirectory, "sw.js"), "utf8");
 const built = fs.readFileSync(path.join(root, "public", "sw.js"), "utf8");
 
+function deferred() {
+    let resolve;
+    const promise = new Promise(done => { resolve = done; });
+    return { promise, resolve };
+}
+
+function createServiceWorker({
+    cachedResponse = null,
+    fetchImpl,
+    setTimer,
+    clearTimer,
+    cachePut,
+    onWaitUntil
+} = {}) {
+    const listeners = new Map();
+    const waitUntilPromises = [];
+    const cacheOperations = [];
+    let cacheValue = cachedResponse;
+    let navigationPreloadEnabled = 0;
+    const cache = {
+        async match() {
+            return cacheValue;
+        },
+        async put(request, response) {
+            cacheOperations.push({ type: "put", request, response });
+            if (cachePut) {
+                await cachePut(request, response);
+            }
+            cacheValue = response;
+        },
+        async delete(request) {
+            cacheOperations.push({ type: "delete", request });
+            cacheValue = null;
+            return true;
+        }
+    };
+    const self = {
+        location: { origin: "https://civico7.example" },
+        registration: {
+            navigationPreload: {
+                async enable() {
+                    navigationPreloadEnabled++;
+                }
+            }
+        },
+        clients: { claim: async () => {} },
+        addEventListener(type, listener) {
+            listeners.set(type, listener);
+        }
+    };
+    const serviceWorkerContext = {
+        self,
+        URL,
+        Response,
+        caches: {
+            open: async () => cache,
+            keys: async () => [],
+            delete: async () => true
+        },
+        fetch: fetchImpl || (async () => {
+            throw new Error("unexpected network fetch");
+        }),
+        setTimeout: setTimer || setTimeout,
+        clearTimeout: clearTimer || clearTimeout,
+        console
+    };
+    vm.runInNewContext(built, serviceWorkerContext);
+
+    return {
+        cacheOperations,
+        get cacheValue() { return cacheValue; },
+        dispatchFetch(request, preloadResponse) {
+            let responsePromise;
+            const event = {
+                request,
+                preloadResponse,
+                respondWith(response) {
+                    responsePromise = Promise.resolve(response);
+                },
+                waitUntil(promise) {
+                    waitUntilPromises.push(Promise.resolve(promise));
+                    if (onWaitUntil) onWaitUntil();
+                }
+            };
+            listeners.get("fetch")(event);
+            return responsePromise;
+        },
+        listeners,
+        get navigationPreloadEnabled() { return navigationPreloadEnabled; },
+        waitUntilPromises
+    };
+}
+
+function pageResponse(body, { status = 200, redirected = false, url = "https://civico7.example/tavoli.html" } = {}) {
+    return {
+        body,
+        status,
+        redirected,
+        url,
+        clone() {
+            return pageResponse(body, { status, redirected, url });
+        }
+    };
+}
+
 test("copy-static substitutes the version token and precaches static assets", () => {
     assert.match(source, /__CACHE_VERSION__/);
     assert.match(built, /const CACHE_NAME = "civico7-v[0-9a-f]{12}";/);
@@ -61,6 +166,103 @@ test("service worker does not intercept API requests or non-GET requests", () =>
         assert.equal(intercepted, false, request.url);
     }
     assert.equal(networkCalls, 0);
+});
+
+test("activate enables navigation preload when supported", async () => {
+    const worker = createServiceWorker();
+    let activation;
+    worker.listeners.get("activate")({
+        waitUntil(promise) {
+            activation = promise;
+        }
+    });
+
+    await activation;
+    assert.equal(worker.navigationPreloadEnabled, 1);
+});
+
+test("cached pages respond before revalidation and are refreshed inside waitUntil", async () => {
+    const cached = pageResponse("cached");
+    const refreshed = pageResponse("refreshed");
+    const preload = deferred();
+    const worker = createServiceWorker({ cachedResponse: cached });
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+    const responsePromise = worker.dispatchFetch(request, preload.promise);
+
+    assert.equal(await responsePromise, cached);
+    assert.equal(worker.cacheOperations.length, 0);
+
+    preload.resolve(refreshed);
+    await Promise.all(worker.waitUntilPromises);
+    assert.equal(worker.cacheOperations[0].type, "put");
+    assert.equal(worker.cacheOperations[0].request, request);
+    assert.equal(worker.cacheValue.body, "refreshed");
+});
+
+test("uncached navigation uses preload or a bare fetch and cache writes do not delay its response", async () => {
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+    const networkResponse = pageResponse("network");
+    const cacheWrite = deferred();
+    const fetchArguments = [];
+    let waitUntilCalled = false;
+    const worker = createServiceWorker({
+        fetchImpl: async (...args) => {
+            fetchArguments.push(args);
+            return networkResponse;
+        },
+        cachePut() {
+            assert.equal(waitUntilCalled, true);
+            return cacheWrite.promise;
+        },
+        onWaitUntil() {
+            waitUntilCalled = true;
+        }
+    });
+    const responsePromise = worker.dispatchFetch(request, Promise.resolve(undefined));
+
+    assert.equal(await responsePromise, networkResponse);
+    assert.equal(fetchArguments.length, 1);
+    assert.equal(fetchArguments[0].length, 1);
+    assert.equal(fetchArguments[0][0], request);
+    assert.equal(worker.cacheOperations[0].type, "put");
+    cacheWrite.resolve();
+    await Promise.all(worker.waitUntilPromises);
+});
+
+test("a redirect to login removes the cached page", async () => {
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+    const worker = createServiceWorker({ cachedResponse: pageResponse("cached") });
+    const loginRedirect = pageResponse("login", {
+        redirected: true,
+        url: "https://civico7.example/login.html"
+    });
+    const responsePromise = worker.dispatchFetch(request, Promise.resolve(loginRedirect));
+
+    assert.equal((await responsePromise).body, "cached");
+    await Promise.all(worker.waitUntilPromises);
+    assert.deepEqual(worker.cacheOperations.map(operation => operation.type), ["delete"]);
+    assert.equal(worker.cacheValue, null);
+});
+
+test("uncached navigation falls back to the offline page after 2.5 seconds", async () => {
+    const timers = [];
+    const worker = createServiceWorker({
+        setTimer(callback, delay) {
+            const timer = { callback, delay };
+            timers.push(timer);
+            return timer;
+        },
+        clearTimer() {}
+    });
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+    const responsePromise = worker.dispatchFetch(request, new Promise(() => {}));
+
+    await new Promise(resolve => setImmediate(resolve));
+    const timeout = timers.find(timer => timer.delay === 2500);
+    assert.ok(timeout);
+    timeout.callback();
+    const response = await responsePromise;
+    assert.equal(response.status, 503);
 });
 
 test("Vercel serves the service worker with update and root-scope headers", () => {

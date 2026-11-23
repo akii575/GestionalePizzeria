@@ -38,28 +38,66 @@ async function cachedResponse(request) {
     }
 }
 
-async function handlePageRequest(request) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500);
-    let response;
+async function pageNetworkResponse(event, request) {
+    let preloadedResponse;
     try {
-        response = await fetch(request, { cache: "no-cache", signal: controller.signal });
-    } catch {
-        return (await cachedResponse(request)) || offlinePage();
-    } finally {
-        clearTimeout(timeout);
+        preloadedResponse = await event.preloadResponse;
+    } catch (error) {
+        console.warn("Service worker navigation preload failed:", error);
     }
+    return preloadedResponse || fetch(request);
+}
 
-    if (response.status === 200 && !response.redirected) {
-        try {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.put(request, response.clone());
-        } catch (error) {
-            console.error("Service worker page cache write failed:", error);
-        }
+function isLoginRedirect(response) {
+    if (!response.redirected || !response.url) return false;
+    try {
+        const url = new URL(response.url);
+        return url.origin === self.location.origin && url.pathname === "/login.html";
+    } catch {
+        return false;
     }
-    if (response.status >= 500) return (await cachedResponse(request)) || response;
-    return response;
+}
+
+async function updatePageCache(request, response) {
+    if (isLoginRedirect(response)) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.delete(request);
+        return;
+    }
+    if (response.status !== 200 || response.redirected) return;
+
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, response.clone());
+}
+
+function handlePageRequest(event) {
+    const request = event.request;
+    const networkPromise = pageNetworkResponse(event, request);
+    const cacheUpdatePromise = networkPromise
+        .then(response => updatePageCache(request, response))
+        .catch(error => {
+            console.warn("Service worker page refresh failed:", error);
+        });
+    event.waitUntil(cacheUpdatePromise);
+
+    return cachedResponse(request).then(async cached => {
+        if (cached) return cached;
+
+        let timeoutId;
+        const timeoutPromise = new Promise(resolve => {
+            timeoutId = setTimeout(() => resolve(null), 2500);
+        });
+        try {
+            const response = await Promise.race([networkPromise, timeoutPromise]);
+            if (!response) return offlinePage();
+            if (response.status >= 500) return (await cachedResponse(request)) || response;
+            return response;
+        } catch {
+            return (await cachedResponse(request)) || offlinePage();
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    });
 }
 
 function handleStaticAsset(event) {
@@ -74,21 +112,17 @@ function handleStaticAsset(event) {
             console.error("Service worker cache read failed:", error);
             return null;
         });
-    const networkPromise = fetch(request, { cache: "no-cache" }).then(async response => {
+    const networkPromise = fetch(request, { cache: "no-cache" });
+    const cacheUpdatePromise = networkPromise.then(async response => {
         if (response.status === 200 && !response.redirected) {
             const cache = await cachePromise;
             if (cache) {
-                try {
-                    await cache.put(request, response.clone());
-                } catch (error) {
-                    console.error("Service worker asset cache write failed:", error);
-                }
+                await cache.put(request, response.clone());
             }
         }
-        return response;
     });
 
-    event.waitUntil(networkPromise.then(
+    event.waitUntil(cacheUpdatePromise.then(
         () => undefined,
         error => console.warn("Service worker asset refresh failed:", error)
     ));
@@ -109,6 +143,13 @@ self.addEventListener("activate", event => {
         await Promise.all(cacheNames
             .filter(name => name.startsWith("civico7-") && name !== CACHE_NAME)
             .map(name => caches.delete(name)));
+        if (self.registration.navigationPreload) {
+            try {
+                await self.registration.navigationPreload.enable();
+            } catch (error) {
+                console.error("Service worker navigation preload could not be enabled:", error);
+            }
+        }
         await self.clients.claim();
     })());
 });
@@ -127,7 +168,8 @@ self.addEventListener("fetch", event => {
     }
 
     if (isPageNavigation(request, url)) {
-        event.respondWith(handlePageRequest(request));
+        // Cached HTML has no user data; auth-guard verifies the session and API 401s redirect to login.
+        event.respondWith(handlePageRequest(event));
         return;
     }
     if (isStaticAsset(url)) handleStaticAsset(event);
