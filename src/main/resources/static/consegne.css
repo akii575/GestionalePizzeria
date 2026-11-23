@@ -117,43 +117,9 @@
 }
 
 .order-card__delivery-status:focus-visible,
-.order-card__delivery-undo:focus-visible,
-.order-card__delivery-action:focus-visible {
+.order-card__delivery-undo:focus-visible {
     outline: 3px solid rgba(228, 176, 52, .5);
     outline-offset: 2px;
-}
-
-.order-card__delivery-contact {
-    display: grid;
-    justify-items: start;
-    gap: 5px;
-}
-
-.order-card__delivery-action {
-    display: inline-flex;
-    min-height: 48px;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 16px;
-    border: 0;
-    border-radius: 10px;
-    color: #fff !important;
-    font-size: 15px !important;
-    font-weight: 700 !important;
-    line-height: 1.25 !important;
-    text-decoration: none;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.order-card__delivery-action--call { background: #1a5ea9; }
-.order-card__delivery-action--map { background: #166534; }
-
-.order-card__delivery-contact small {
-    color: #4b5563;
-    font-size: 13px;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
 }
 
 .order-card__delivery-undo {
@@ -177,4 +143,28 @@
     }
 
     .order-card__delivery-status--consegnata { min-width: 0; }
+}
+
+.order-card--delivery-mode .order-card__compact-status { min-width: 80px; }
+.order-card--delivery-mode .order-card__delivery-status {
+    min-width: 80px;
+    min-height: 38px;
+    padding: 5px 7px;
+    border-radius: 9px;
+    font-size: 12px;
+}
+.order-card--delivery-mode .order-card__delivery-status--consegnata {
+    min-width: 80px;
+    flex-direction: row;
+    gap: 4px;
+    background: transparent;
+    color: #166534;
+}
+.order-card--delivery-mode .order-card__delivery-status--consegnata > span { font-size: 14px; }
+.order-card--delivery-mode .order-card__delivery-status--consegnata small { font-size: 10px; }
+
+@media (max-width: 420px) {
+    .order-card--delivery-mode .order-card__compact-status { min-width: 74px; }
+    .order-card--delivery-mode .order-card__delivery-status { min-width: 74px; font-size: 11px; }
+    .order-card--delivery-mode .order-card__delivery-status--consegnata { min-width: 74px; }
 }

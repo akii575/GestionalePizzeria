@@ -1087,16 +1087,14 @@ function aggiornaStatoCaricamentoModifica() {
 }
 function renderRigheRiepilogo(contenitore) {
     contenitore.replaceChildren();
-    stato.righe.forEach((riga, indice) => {
+    raggruppaRigheConferma(stato.righe).forEach(({ riga, quantita, indici }) => {
+        const indiceUltimaRiga = indici[indici.length - 1];
         const voce = document.createElement("div");
         voce.className = "riepilogo-item";
-        voce.classList.toggle("riga-attiva", indice === stato.rigaAttiva);
-        voce.dataset.rigaAttiva = indice;
-        const descrizione = riga.ingredienti?.length
-            ? `<small class="riepilogo-descrizione">${escapeHtml(riga.ingredienti.join(", "))}</small>`
-            : "";
+        voce.classList.toggle("riga-attiva", indici.includes(stato.rigaAttiva));
+        voce.dataset.rigaAttiva = indiceUltimaRiga;
         const extra = riga.extra.length
-            ? `<span>Extra: ${escapeHtml(nomiExtra(riga.extra).join(", "))}</span>`
+            ? `<small class="riepilogo-extra">+ ${escapeHtml(nomiExtra(riga.extra).join(", "))}</small>`
             : "";
         const senza = Array.isArray(riga.senza) && riga.senza.length
             ? `<small class="riepilogo-senza">senza ${escapeHtml(riga.senza.join(", "))}</small>`
@@ -1107,8 +1105,9 @@ function renderRigheRiepilogo(contenitore) {
         const nonDisponibile = riga.nonDisponibile
             ? '<small class="riepilogo-non-disponibile">Non più disponibile</small>'
             : "";
-        const nomeRiga = `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indice)}">${escapeHtml(riga.prodotto)}</button>`;
-        voce.innerHTML = `<div>${nomeRiga}${nonDisponibile}${senza}${noteRiga}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
+        const nomeRiga = `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indiceUltimaRiga)}">${escapeHtml(riga.prodotto)}</button>`;
+        const totaleGruppo = euro.format(prezzoRiga(riga) * quantita);
+        voce.innerHTML = `<span class="riepilogo-quantita">${quantita}×</span><div class="riepilogo-item__descrizione">${nomeRiga}${nonDisponibile}${senza}${extra}${noteRiga}</div><strong class="riepilogo-prezzo">${totaleGruppo}</strong><button class="rimuovi" type="button" data-indice="${escapeHtml(indiceUltimaRiga)}" aria-label="Togli uno">−</button>`;
         contenitore.appendChild(voce);
     });
     if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
@@ -1374,7 +1373,7 @@ function apriConferma() {
                 ? `<div class="conferma-consegna"><strong>Ritiro: ${escapeHtml(document.getElementById("cliente-ritiro").value.trim())}</strong><span>${escapeHtml(document.getElementById("telefono-ritiro").value.trim())}</span></div>`
               : tipoOrdine.value === "banco"
                   ? `<div class="conferma-consegna"><strong>Banco · ${escapeHtml(document.getElementById("cognome-banco").value.trim())}</strong></div>`
-                  : `<div class="conferma-consegna"><strong>${escapeHtml(document.getElementById("tavolo").value)} · ${escapeHtml(numeroPersone.value)} persone</strong></div>`;
+                  : `<div class="conferma-consegna"><strong>${escapeHtml(document.getElementById("tavolo").value)} · ${escapeHtml(numeroPersone.value)} ${Number(numeroPersone.value) === 1 ? "persona" : "persone"}</strong></div>`;
     const dettaglioOrario =
         tipoOrdine.value === "tavolo"
             ? ""

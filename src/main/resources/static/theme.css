@@ -108,7 +108,7 @@ button, input, select, textarea { font-family: inherit; font-size: 16px; }
 button { position: relative; min-height: 48px; overflow: hidden; transition: background var(--theme-fast), border-color var(--theme-fast), color var(--theme-fast); }
 button:active:not(:disabled) { transform: scale(.98); }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(228, 176, 52, .3); outline-offset: 3px; }
-:where(.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .order-card, .home-links a, .printer-panel, .riga-edit, .login-card, .order-card__field, .conferma-contenuto, .order-card__details) {
+:where(.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .order-card, .home-links a, .printer-panel, .riga-edit, .login-card, .order-card__field, .conferma-contenuto) {
     background: var(--theme-surface);
     border: var(--theme-surface-border);
     border-radius: var(--theme-radius);
@@ -133,7 +133,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 :where(.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .order-card,
     .home-links a, .printer-panel, .riga-edit, .login-card, .order-card__field,
-    .conferma-contenuto, .order-card__details) {
+        .conferma-contenuto) {
     border-color: var(--theme-line) !important;
     border-radius: var(--theme-radius) !important;
     box-shadow: var(--theme-shadow);
@@ -254,8 +254,8 @@ nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom
 .modifica { width: min(760px, 100%); }
 .extra-card { border-radius: var(--theme-control-radius) !important; }
 .rimuovi, .extra-rimuovi { min-height: 44px; }
-button.pericolo:not(.app-reset) { border: 1px solid rgba(185, 50, 40, .3) !important; background: #fff2ef !important; color: var(--theme-red) !important; }
-.pericolo:not(.app-reset) { color: var(--theme-red) !important; }
+button.pericolo:not(.app-reset):not([data-elimina]) { border: 1px solid rgba(185, 50, 40, .3) !important; background: #fff2ef !important; color: var(--theme-red) !important; }
+.pericolo:not(.app-reset):not([data-elimina]) { color: var(--theme-red) !important; }
 .stato-pagamento {
     display: inline-flex;
     align-items: center;
@@ -353,7 +353,7 @@ button.stato-pagamento { cursor: pointer; }
         margin-right: 12px;
     }
     .dashboard, .container, .modifica { padding: 12px; }
-    .home { padding: 0 12px 24px; }
+    .home { padding: 0 16px 24px; }
     .ordine-testa { padding: 10px; gap: 6px; }
     .ordine-totali, .order-card__totals { gap: 4px; }
     .stato-pagamento { gap: 4px; min-height: 44px; padding: 6px 7px; font-size: 11px; white-space: nowrap; }
@@ -393,4 +393,285 @@ button.stato-pagamento { cursor: pointer; }
     .riga-pagamento-consegna > label,
     .riga-pagamento-consegna > .campo-pagamento-consegna,
     .riga-pagamento-consegna > .btn-costo-consegna { flex: 1 1 100%; }
+}
+
+html body.app-shell main.dashboard .order-card {
+    display: block;
+    min-width: 0;
+    height: auto;
+    overflow: hidden;
+    border: 1px solid var(--theme-line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: none;
+}
+
+html body.app-shell main.dashboard .order-card__compact-row,
+.order-card--delivery-mode .order-card__compact-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 64px;
+    padding: 6px 10px;
+}
+
+.order-card__toggle {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    min-height: 64px;
+    padding: 0;
+}
+
+.order-card__compact-copy {
+    display: grid;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    align-content: center;
+    gap: 3px;
+    min-width: 0;
+    flex-wrap: nowrap;
+}
+
+.order-card__service-tile {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 10px;
+    line-height: 1;
+    text-align: center;
+}
+
+.order-card__service-tile strong { font-size: 17px; }
+.order-card__service-tile small { font-size: 11px; font-weight: 700; }
+.order-card__service-tile--tavolo small { font-size: 9px; }
+.order-card__service-tile svg { width: 21px; height: 21px; }
+.order-card__service-tile--tavolo { background: #e8f4e8; color: #166534; }
+.order-card__service-tile--consegna { background: #f2eaff; color: #6d28d9; }
+.order-card__service-tile--ritiro { background: #e8f4ff; color: #1d4ed8; }
+.order-card__service-tile--banco { background: #fff2d6; color: #92400e; }
+
+.order-card__reference,
+.order-card__meta {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.order-card__reference { font-size: 14px; font-weight: 700; line-height: 1.25; }
+.order-card__meta { color: var(--theme-muted); font-size: 11px; line-height: 1.25; }
+.order-card__compact-status { display: grid; justify-items: end; align-content: center; gap: 3px; min-width: 0; }
+.order-card__compact-total { font-size: 14px; line-height: 1.2; }
+.order-card__compact-state { font-size: 10px; line-height: 1.2; }
+.order-card__compact-state--printed,
+.order-card__compact-state--paid,
+.order-card__compact-state--pos { color: #166534; }
+.order-card__compact-state--queued { color: #a45b08; }
+.order-card__compact-state--not-printed,
+.order-card__compact-state--unpaid { color: #b91c1c; }
+
+html body.app-shell main.dashboard .order-card__header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    padding: 10px 12px 8px;
+    border: 0;
+}
+
+html body.app-shell main.dashboard .order-card__heading,
+html body.app-shell main.dashboard .order-card__number {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+html body.app-shell main.dashboard .order-card__number {
+    font-size: 16px;
+    text-overflow: ellipsis;
+}
+
+.order-card__expanded-meta { margin: 4px 0 0; color: var(--theme-muted); font-size: 11px; line-height: 1.35; }
+.order-card__expanded { padding: 0 0 8px; border-top: 1px solid var(--theme-line); }
+.order-card__totals { gap: 8px; }
+.order-card__total { font-size: 22px; }
+.order-card__print-status { display: inline; margin: 0; padding: 0; border: 0; background: transparent; font-size: inherit; font-weight: inherit; }
+.order-card__print-status--printed { color: #166534; }
+.order-card__print-status--queued { color: #a45b08; }
+.order-card__print-status--not-printed { color: #b91c1c; }
+
+html body.app-shell main.dashboard .order-card__details {
+    margin: 0 12px 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.order-card__products { margin: 0; padding: 0; list-style: none; }
+.order-card__products li { padding: 8px 0; }
+.order-card__products li:first-child { border-top: 1px solid #eef0f2; }
+.order-card__product-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 0; }
+.order-card__product-quantity { justify-self: end; color: var(--theme-muted); font-size: 13px; font-weight: 700; text-align: right; }
+.order-card__product-name { display: grid; min-width: 0; gap: 2px; }
+.order-card__product-name strong { font-size: 14px; }
+.order-card__product-price { font-size: 13px; font-weight: 700; text-align: right; white-space: nowrap; }
+.order-card__without-ingredients,
+.order-card__extra,
+.order-card__product-note { display: block; margin: 0; font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
+.order-card__without-ingredients { color: #b91c1c; }
+.order-card__extra { color: #1a5ea9; }
+.order-card__product-note { color: #8a5a00; }
+.order-card__cover-charge,
+.order-card__delivery-fee { display: flex; justify-content: space-between; gap: 8px; margin: 0; padding: 7px 0; border-top: 1px solid #eef0f2; background: transparent; color: var(--theme-muted); font-size: 12px; font-weight: 500; text-align: left; }
+.order-card__note { margin: 8px 12px; border: 0; border-radius: 8px; background: #fff8dc; color: #694d00; font-size: 13px; }
+
+html body.app-shell main.dashboard .order-card__actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 56px;
+    gap: 8px;
+    padding: 0 12px;
+}
+
+html body.app-shell main.dashboard .order-card__actions button,
+html body.app-shell main.dashboard .order-card__actions a {
+    min-width: 0;
+    min-height: 44px;
+    padding: 6px 8px;
+    border-radius: 9px;
+    font-size: 14px;
+}
+
+html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
+    grid-column: auto;
+    width: 56px;
+    border-color: var(--theme-red);
+    background: #fff;
+    color: var(--theme-red);
+}
+
+.order-card__actions button[data-elimina] svg { width: 20px; height: 20px; }
+
+.order-card__detail-status {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+}
+
+.order-card__detail-status .stato-pagamento {
+    width: auto;
+    min-width: 0;
+    min-height: 34px;
+    flex: 0 0 auto;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.order-card__requested-time { color: var(--theme-muted); font-size: 12px; }
+
+.order-card__contacts {
+    display: grid;
+    gap: 6px;
+    margin: 0 12px 8px;
+    font-size: 13px;
+}
+
+.order-card__delivery-contact {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.order-card__delivery-icon {
+    display: grid;
+    width: 20px;
+    height: 20px;
+    place-items: center;
+    color: var(--theme-green);
+}
+
+.order-card__delivery-icon svg { width: 18px; height: 18px; }
+
+.order-card__delivery-value {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--theme-ink);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.order-card__delivery-action {
+    display: inline-flex;
+    height: 40px;
+    min-height: 40px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    border: 1px solid #1a5ea9;
+    border-radius: 10px;
+    background: #fff;
+    color: #1a5ea9;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.order-card__delivery-action:focus-visible {
+    outline: 3px solid rgba(228, 176, 52, .5);
+    outline-offset: 2px;
+}
+
+html body.app-shell main.dashboard .order-card__actions a[data-modifica],
+html body.app-shell main.dashboard .order-card__actions button[data-ristampa] {
+    border-color: var(--theme-green);
+    background: var(--theme-green);
+    color: #fff;
+    text-decoration: none;
+}
+
+html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
+    width: 56px;
+    border-color: var(--theme-red);
+    background: #fff;
+    color: var(--theme-red);
+}
+
+.order-card__detail-status .stato-pagamento,
+.order-card__actions a,
+.order-card__actions button,
+.order-card__delivery-action {
+    box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+    html body.app-shell main.dashboard .lista-ordini,
+    html body.app-shell main.dashboard .lista-consegne { gap: 8px; }
+
+    .order-card__compact-row,
+    .order-card--delivery-mode .order-card__compact-row { gap: 6px; padding-inline: 8px; }
+    .order-card__toggle { grid-template-columns: 44px minmax(0, 1fr); gap: 7px; padding: 0; }
+    .order-card__compact-status { gap: 3px; }
+    .order-card__compact-total { font-size: 13px; }
+    .order-card__reference { font-size: 13px; }
+    .order-card__meta { font-size: 10px; }
+    .order-card__total { font-size: 20px; }
+    .order-card__contacts { margin-inline: 8px; }
+    .order-card__delivery-contact { gap: 5px; }
 }

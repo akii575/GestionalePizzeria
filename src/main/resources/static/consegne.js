@@ -10,7 +10,8 @@ const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR"
 const lista = document.getElementById("lista-consegne");
 const statoPagina = document.getElementById("stato");
 const aggiornamentiStatoInCorso = new Set();
-window.orderCard.bindReprints(lista);
+const statoEspansioneConsegne = window.orderCard.createExpansionState();
+window.orderCard.bindReprints(lista, statoEspansioneConsegne);
 window.orderCard.bindDateFilter(document.getElementById("data"), document.getElementById("apri-data"));
 
 function statoConsegna(ordine) {
@@ -91,7 +92,8 @@ function render() {
             hideTotalForStaff: false,
             deliveryMode: true,
             isRider,
-            menu: stato.menu
+            menu: stato.menu,
+            expansionState: statoEspansioneConsegne
         });
     const activeMarkup = consegneAttive.map(cardMarkup).join("");
     const deliveredMarkup = consegneCompletate.length
@@ -183,7 +185,7 @@ async function aggiornaConsegneAutomaticamente() {
 
 async function caricaConsegne({ completa = true } = {}) {
     const richiesta = ++stato.richiestaCaricamento;
-    if (completa) mostraStato("Caricamento consegne...", "loading");
+    if (completa && lista.childElementCount === 0) mostraStato("Caricamento consegne...", "loading");
     try {
         const data = document.getElementById("data").value;
         const parametri = new URLSearchParams();

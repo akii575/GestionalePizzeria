@@ -222,6 +222,7 @@ test("table orders require both an explicit table and a valid people count", () 
 });
 
 test("order header summaries and note previews use the compact UI labels", () => {
+    assert.equal(riepilogoIntestazione("tavolo", { tavolo: "Tavolo 2", numeroPersone: 1 }), "Tavolo 2 · 1 persona");
     assert.equal(riepilogoIntestazione("tavolo", { tavolo: "Tavolo 3", numeroPersone: 4 }), "Tavolo 3 · 4 persone");
     assert.equal(riepilogoIntestazione("tavolo", { tavolo: "Tavolo 23", numeroPersone: 4 }), "Tavolo 23 · 4 persone");
     assert.equal(
@@ -604,6 +605,21 @@ test("confirmation groups identical rows but keeps different extras and notes se
     const separate = raggruppaRigheConferma([margherita, conExtra, conNotaDiversa]);
     assert.equal(separate.length, 3);
     assert.deepEqual(separate.map(gruppo => gruppo.quantita), [1, 1, 1]);
+});
+
+test("removing one from an identical-row group removes only its last row", () => {
+    const rows = [
+        { prodotto: "Margherita", extra: [], senza: [], note: [] },
+        { prodotto: "Margherita", extra: [], senza: [], note: [] },
+        { prodotto: "Margherita", extra: [], senza: [], note: [] }
+    ];
+    const [group] = raggruppaRigheConferma(rows);
+    const result = rimuoviProdotto(rows, null, group.indici[group.indici.length - 1]);
+
+    assert.equal(group.quantita, 3);
+    assert.equal(result.righe.length, 2);
+    assert.deepEqual(result.righe, rows.slice(0, 2));
+    assert.equal(result.rigaAttiva, null);
 });
 
 test("multiplier keypad composes up to two digits and ignores a leading zero", () => {

@@ -11,7 +11,8 @@ const lista = document.getElementById("lista-ordini");
 const statoPagina = document.getElementById("stato");
 const eliminazioniInCorso = new Set();
 const tipoServizio = document.body.dataset.serviceType || "";
-window.orderCard.bindReprints(lista);
+const statoEspansioneOrdini = window.orderCard.createExpansionState();
+window.orderCard.bindReprints(lista, statoEspansioneOrdini);
 window.orderCard.bindDateFilter(document.getElementById("data"), document.getElementById("apri-data"));
 
 function mostraStato(testo, classe) { statoPagina.textContent = testo; statoPagina.className = classe || ""; }
@@ -45,7 +46,8 @@ function render() {
             canEdit: window.currentAccount?.admin === true || window.currentAccount?.staff === true,
             hideTotalForStaff: true,
             showServiceTypeLabel: !tipoServizio,
-            menu: stato.menu
+            menu: stato.menu,
+            expansionState: statoEspansioneOrdini
         }));
     });
     lista.querySelectorAll("[data-elimina]").forEach(button => button.addEventListener("click", () => eliminaOrdine(button.dataset.elimina)));
@@ -86,7 +88,7 @@ async function aggiornaOrdiniAutomaticamente() {
 }
 async function caricaOrdini({ completa = true } = {}) {
     const richiesta = ++stato.richiestaCaricamento;
-    if (completa) mostraStato("Caricamento ordini...", "loading");
+    if (completa && lista.childElementCount === 0) mostraStato("Caricamento ordini...", "loading");
     try {
         const parametri = new URLSearchParams();
         const data = document.getElementById("data").value;

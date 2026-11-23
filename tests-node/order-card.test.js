@@ -22,7 +22,7 @@ function render(order, options = {}) {
     }
 }
 
-test("all order services use the same card structure and field styling", () => {
+test("all order services use the same compact and expanded card structure", () => {
     const orders = [
         { tipo: "consegna", telefonoConsegna: "3331234567", indirizzoConsegna: "Via Roma 12" },
         { tipo: "ritiro", tavoloOCliente: "Anna Rossi", telefonoRitiro: "3331234567" },
@@ -33,11 +33,12 @@ test("all order services use the same card structure and field styling", () => {
     for (const order of orders) {
         const html = render(order);
         assert.match(html, /class="order-card"/);
-        assert.match(html, /class="order-card__header"/);
-        assert.match(html, /class="order-card__totals"/);
+        assert.match(html, /class="order-card__compact-row"/);
         assert.match(html, /class="order-card__details"/);
         assert.match(html, /class="order-card__actions"/);
-        assert.equal((html.match(/class="order-card__field(?: |")/g) || []).length, order.tipo === "banco" ? 1 : 2);
+        const contactCount = order.tipo === "consegna" ? 2 : 0;
+        assert.equal((html.match(/class="order-card__delivery-contact"/g) || []).length, contactCount);
+        assert.doesNotMatch(html, /class="order-card__header"|class="order-card__number"|class="order-card__total"/);
         assert.doesNotMatch(html, /consegna--tutti-ordini|consegna-recapiti/);
         assert.equal((html.match(/data-modifica=/g) || []).length, 1);
         assert.equal((html.match(/data-ristampa=/g) || []).length, 1);
@@ -71,26 +72,19 @@ test("legacy edit path is referenced only by its redirect page", () => {
     assert.match(fs.readFileSync(path.join(directory, "modifica.html"), "utf8"), /modifica-redirect\.js/);
 });
 
-test("order heading shows only the service name and number without truncation", () => {
+test("expanded order details do not duplicate the compact name, number, or total", () => {
     const orders = [
-        { tipo: "consegna", title: "Consegna · ordine #8", indirizzoConsegna: "Via Roma 12" },
-        { tipo: "ritiro", title: "Ritiro Rossi · ordine #8", tavoloOCliente: "Rossi" },
-        { tipo: "banco", title: "Banco Bianchi · ordine #8", cognomeBanco: "Bianchi" },
-        { tipo: "tavolo", title: "Tavolo 1 · ordine #8", tavoloOCliente: "Tavolo 1" }
+        { tipo: "consegna", indirizzoConsegna: "Via Roma 12" },
+        { tipo: "ritiro", tavoloOCliente: "Rossi" },
+        { tipo: "banco", cognomeBanco: "Bianchi" },
+        { tipo: "tavolo", tavoloOCliente: "Tavolo 1", numeroPersone: 1 }
     ];
-    const styles = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
-        "utf8"
-    );
 
     for (const order of orders) {
         const html = render(order);
-        assert.match(html, new RegExp(`<h2 class="order-card__number">${order.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
-        assert.doesNotMatch(html, /order-card__title|Dettagli (consegna|ritiro|banco|tavolo)/);
+        assert.match(html, /class="order-card__reference"/);
+        assert.doesNotMatch(html, /class="order-card__header"|class="order-card__number"|class="order-card__total"|order-card__expanded-meta/);
     }
-
-    assert.match(styles, /\.order-card__number\s*\{[^}]*font-size:\s*18px;[^}]*font-weight:\s*600;[^}]*white-space:\s*nowrap;/);
-    assert.doesNotMatch(styles, /\.order-card__number\s*\{[^}]*text-overflow:\s*ellipsis/);
 });
 
 test("compact rows show the reference, order number, total, and print state", () => {
@@ -101,11 +95,30 @@ test("compact rows show the reference, order number, total, and print state", ()
         stampaCompletata: true
     });
 
-    assert.match(html, /class="order-card__reference">Tavolo 1<\/span>/);
-    assert.match(html, /class="order-card__meta">#8 · 4 pers ·/);
+    assert.match(html, /class="order-card__reference">Tavolo 1 · 4 persone<\/span>/);
+    assert.match(html, /class="order-card__meta">#8 · 19:30 · Margherita<\/span>/);
     assert.match(html, /class="order-card__compact-total">31,00\s*€/);
-    assert.match(html, /order-card__compact-print--printed[^>]*aria-label="Stampata"/);
+    assert.match(html, /class="order-card__compact-state order-card__compact-state--printed">stampata<\/span>/);
     assert.match(html, /aria-expanded="false"/);
+});
+
+test("compact statuses use words and prioritize pending delivery printing", () => {
+    const renderStatus = order => render({
+        tipo: "consegna",
+        indirizzoConsegna: "Via Roma",
+        ...order
+    });
+    assert.match(renderStatus({ statoPagamento: "non_pagato" }), /order-card__compact-state--not-printed">non stampata/);
+    assert.match(renderStatus({ statoPagamento: "non_pagato", stampaCompletata: true }), /order-card__compact-state--unpaid">non pagato/);
+    assert.match(renderStatus({ statoPagamento: "pagato" }), /order-card__compact-state--paid">pagato/);
+    assert.match(renderStatus({ statoPagamento: "pos" }), /order-card__compact-state--pos">POS/);
+    assert.match(render({ tipo: "tavolo", stampaInCoda: true }), /order-card__compact-state--queued">in coda/);
+    assert.match(render({ tipo: "banco", stampaCompletata: true }), /order-card__compact-state--printed">stampata/);
+});
+
+test("table cards use singular and plural people labels", () => {
+    assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2", numeroPersone: 1 }), /Tavolo 2 · 1 persona/);
+    assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2", numeroPersone: 2 }), /Tavolo 2 · 2 persone/);
 });
 
 test("delivery status controls are separate, role-safe, and match the delivery state", () => {
@@ -129,38 +142,72 @@ test("delivery status controls are separate, role-safe, and match the delivery s
         consegnataAlle: "2026-10-27T20:41:00.000Z"
     }, { deliveryMode: true, isRider: true, canEdit: false });
 
-    assert.match(pending, /<button class="order-card__toggle"[^>]*>[\s\S]*?<\/button>\s*<span class="order-card__compact-status"><button[^>]*data-stato-consegna="in_consegna"[^>]*>Parti<\/button>/);
+    assert.match(pending, /<span class="order-card__compact-status">[\s\S]*?<button[^>]*data-stato-consegna="in_consegna"[^>]*>Parti<\/button>/);
     assert.match(inTransit, /data-stato-consegna="consegnata"[^>]*>Consegnata<\/button>/);
     assert.match(completed, /order-card__delivery-status--consegnata[^>]*aria-label="Consegnata/);
     assert.match(completed, /<small>consegnata [^<]+<\/small>/);
     for (const html of [pending, inTransit, completed]) {
         assert.match(html, /order-card__delivery-action--call[^>]*>Chiama/);
-        assert.match(html, /order-card__delivery-action--map[^>]*>Apri mappa/);
+        assert.match(html, /order-card__delivery-action--map[^>]*>Mappa/);
         assert.doesNotMatch(html, /data-modifica=|data-ristampa=|data-elimina=/);
     }
 });
 
-test("the all-orders page can show a colored service label before each reference", () => {
-    for (const [type, label, reference] of [
-        ["tavolo", "Tavolo", "Tavolo 1"],
-        ["banco", "Banco", "Bianchi"],
-        ["ritiro", "Ritiro", "Rossi"],
-        ["consegna", "Consegna", "Via Roma 12"]
+test("compact service tiles identify each order type", () => {
+    for (const [type, reference] of [
+        ["tavolo", "Tavolo 1"],
+        ["banco", "Bianchi"],
+        ["ritiro", "Rossi"],
+        ["consegna", "Via Roma 12"]
     ]) {
         const html = render({
             tipo: type,
             tavoloOCliente: ["tavolo", "ritiro"].includes(type) ? reference : undefined,
             cognomeBanco: type === "banco" ? reference : undefined,
             indirizzoConsegna: type === "consegna" ? reference : undefined
-        }, { showServiceTypeLabel: true });
+        });
 
-        assert.match(html, new RegExp(`class="order-card__type order-card__type--${type}">${label}<\\/span>\\s*<span class="order-card__reference">${reference.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/span>`));
+        assert.match(html, new RegExp(`class="order-card__service-tile order-card__service-tile--${type}"`));
+        assert.match(html, new RegExp(`class="order-card__reference">[^<]*${reference.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
     }
 
-    assert.doesNotMatch(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 1" }), /class="order-card__type/);
+    assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2" }), /<strong>T2<\/strong><small>tavolo<\/small>/);
 });
 
-test("identical product rows group by product, extras, exclusions, and price", () => {
+test("delivery and pickup compact metadata show requested time only in their tile", () => {
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
+        "utf8"
+    );
+    const delivery = render({
+        tipo: "consegna",
+        orario: "20:15",
+        dataOra: "2026-10-27T18:30:00.000Z",
+        indirizzoConsegna: "Via Roma"
+    });
+    const pickup = render({
+        tipo: "ritiro",
+        orario: "19:45",
+        dataOra: "2026-10-27T18:30:00.000Z",
+        tavoloOCliente: "Rossi"
+    });
+    const counter = render({
+        tipo: "banco",
+        dataOra: "2026-10-27T18:30:00.000Z",
+        cognomeBanco: "Bianchi"
+    });
+
+    assert.match(delivery, /<small>20:15<\/small>[\s\S]*?class="order-card__meta">#8 · Margherita<\/span>/);
+    assert.match(pickup, /<small>19:45<\/small>[\s\S]*?class="order-card__meta">#8 · Margherita<\/span>/);
+    assert.match(counter, /class="order-card__service-tile order-card__service-tile--banco">[\s\S]*?<small>19:30<\/small>/);
+    assert.match(counter, /class="order-card__meta">#8 · 19:30 · Margherita<\/span>/);
+    assert.doesNotMatch(delivery, /class="order-card__service-tile[^"]*">[^<]*(?:consegna|ritiro|banco)</);
+    assert.doesNotMatch(delivery, /visually-hidden">(?:consegna|ritiro|banco)/);
+    assert.match(styles, /\.order-card__service-tile\s*\{[^}]*overflow:\s*hidden;[^}]*text-align:\s*center;/);
+    assert.match(styles, /\.order-card__service-tile small\s*\{\s*font-size:\s*11px;/);
+});
+
+test("identical product rows group by product, extras, exclusions and notes", () => {
     const rows = [
         ...Array.from({ length: 4 }, () => ({ prodotto: "Margherita", totale: 5 })),
         { prodotto: "Margherita", totale: 5, extra: ["Olive"] },
@@ -170,11 +217,12 @@ test("identical product rows group by product, extras, exclusions, and price", (
     const html = render({ righe: rows });
     const productRows = html.match(/<li>/g) || [];
 
-    assert.equal(productRows.length, 4);
-    assert.match(html, /<strong>4× Margherita<\/strong>[\s\S]*?<span>20,00\s*€<\/span>/);
-    assert.match(html, /Extra: Olive/);
+    assert.equal(productRows.length, 3);
+    assert.match(html, /<span class="order-card__product-quantity">5×<\/span>[\s\S]*?<strong>Margherita<\/strong>[\s\S]*?<span class="order-card__product-price">26,00\s*€/);
+    assert.match(html, /\+ Olive/);
     assert.match(html, /senza Basilico/);
-    assert.match(html, /<span>6,00\s*€<\/span>/);
+    assert.match(html, /<span class="order-card__product-price">5,00\s*€/);
+    assert.doesNotMatch(html, /ingredienti/i);
 });
 
 test("only one compact row is expanded and its state survives rerendering", () => {
@@ -280,24 +328,29 @@ test("order detail shows the automatic cover charge for table service", () => {
         coperto: { persone: 4, prezzoUnitario: 2, totale: 8 }
     });
 
-    test("order card shows removed ingredients below the product", () => {
-        const html = render({
-            righe: [{
-                prodotto: "Margherita",
-                totale: 5,
-                senza: ["Basilico"]
-            }]
-        });
-
-        assert.match(html, /class="order-card__without-ingredients">senza Basilico<\/small>/);
-    });
-
-    assert.match(table, /Coperto 4 × 2,00\s*€<\/p>/);
-    assert.match(table, /order-card__total">13,00/);
+    assert.match(table, /class="order-card__cover-charge">Coperto <span>4 × 2,00\s*€<\/span><\/p>/);
+    assert.doesNotMatch(table, /class="order-card__total">13,00/);
     assert.doesNotMatch(counter, /order-card__cover-charge/);
 });
 
-test("all order types share two-column fields and counter names span the row", () => {
+test("product details show removals, extras and notes without ingredients", () => {
+    const html = render({
+        righe: [{
+            prodotto: "Margherita",
+            totale: 5,
+            senza: ["Basilico"],
+            extra: [{ nome: "Olive" }],
+            note: ["Ben cotta"]
+        }]
+    });
+
+    assert.match(html, /class="order-card__without-ingredients">senza Basilico<\/small>/);
+    assert.match(html, /class="order-card__extra">\+ Olive<\/small>/);
+    assert.match(html, /class="order-card__product-note">Ben cotta<\/small>/);
+    assert.doesNotMatch(html, /Pomodoro|Basilico<\/small>[\s\S]*ingredienti/i);
+});
+
+test("only deliveries render the two icon-led contact rows", () => {
     const delivery = render({
         tipo: "consegna",
         telefonoConsegna: "3331234567",
@@ -311,95 +364,87 @@ test("all order types share two-column fields and counter names span the row", (
     const counter = render({ tipo: "banco", cognomeBanco: "Rossi" });
     const table = render({ tipo: "tavolo", tavoloOCliente: "Tavolo 4", numeroPersone: 3 });
 
-    for (const html of [delivery, pickup, counter, table]) {
-        assert.match(html, /class="order-card__fields"/);
-        assert.doesNotMatch(html, /order-card__field--inline|order-card__fields--delivery/);
-    }
-    assert.match(counter, /class="order-card__field order-card__field--full"/);
-    assert.match(pickup, /order-card__field-label">Nome<\/strong>\s*<div class="order-card__field-value">Anna Rossi<\/div>/);
-
-    const styles = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
-        "utf8"
-    );
-    assert.match(styles, /\.order-card__fields\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*150px\),\s*1fr\)\)/);
-    assert.match(styles, /\.order-card__field--full\s*\{\s*grid-column:\s*1\s*\/\s*-1;/);
-    assert.doesNotMatch(styles, /order-card__field--inline|order-card__fields--delivery/);
+    assert.match(delivery, /class="order-card__contacts"/);
+    assert.equal((delivery.match(/class="order-card__delivery-contact"/g) || []).length, 2);
+    assert.match(delivery, /order-card__delivery-action--call[^>]*>Chiama/);
+    assert.match(delivery, /order-card__delivery-action--map[^>]*>Mappa/);
+    assert.doesNotMatch(pickup, /order-card__contacts|order-card__delivery-contact/);
+    assert.doesNotMatch(counter, /order-card__contacts|stato-pagamento/);
+    assert.doesNotMatch(table, /order-card__contacts|stato-pagamento/);
 });
 
-test("print status occupies its own row after the header and retains its full title", () => {
+test("expanded status shows only a pending print status and requested time", () => {
     const messages = [
         "Stampata",
         "Comanda aggiornata; la copia gia' stampata non e' stata ristampata."
     ];
-    const styles = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
-        "utf8"
-    );
 
     for (const message of messages) {
         const html = render({ tipo: "tavolo", messaggioStampa: message, stampaCompletata: true });
-        const headingEnd = html.indexOf("</div>", html.indexOf('class="order-card__heading"'));
-        const statusPosition = html.indexOf('class="order-card__print-status');
-        const headerEnd = html.indexOf("</header>");
-        const datePosition = html.indexOf('class="order-card__date"');
-        assert.ok(headingEnd >= 0 && headingEnd < statusPosition);
-        assert.ok(headerEnd < statusPosition);
-        assert.ok(statusPosition < datePosition);
-        assert.ok(html.includes(message.replace(/'/g, "&#39;")));
-        assert.ok(html.includes(`title="${message.replace(/'/g, "&#39;")}"`));
+        assert.doesNotMatch(html, /order-card__print-status/);
     }
+    const pending = render({ tipo: "tavolo", stampaInCoda: true });
+    assert.match(pending, /class="order-card__detail-status"><span class="order-card__print-status order-card__print-status--queued">in coda<\/span><\/div>/);
 
-    assert.match(styles, /\.order-card__print-status\s*\{[^}]*margin:\s*0 14px;[^}]*padding:\s*8px 12px;[^}]*border-radius:\s*10px;[^}]*text-align:\s*left;[^}]*white-space:\s*normal;/);
-    assert.match(styles, /\.dashboard \.order-card\s*\{[^}]*display:\s*grid;/);
-    assert.match(styles, /\.dashboard \.order-card__actions\s*\{[^}]*margin-top:\s*auto;/);
-    assert.match(styles, /\.dashboard \.lista-ordini,[\s\S]*?align-items:\s*stretch;/);
-    assert.match(styles, /\.dashboard \.order-card__print-status:not\(\.order-card__print-status--empty\)\s*\{[^}]*max-height:\s*calc\(2 \* 1\.25em \+ 16px\);[^}]*-webkit-line-clamp:\s*2;/);
-    assert.ok(
-        styles.indexOf(".dashboard .order-card__print-status:not(.order-card__print-status--empty)") <
-        styles.indexOf("@media (min-width: 768px)")
-    );
-    assert.match(styles, /\.order-card__print-status--empty\s*\{[^}]*height:\s*0;[^}]*visibility:\s*hidden;/);
-    assert.match(styles, /grid-template-rows:\s*subgrid;/);
-    const fallbackStart = styles.indexOf("@supports not (grid-template-rows: subgrid)");
-    assert.ok(fallbackStart >= 0);
-    const fallbackStyles = styles.slice(fallbackStart);
-    assert.match(fallbackStyles, /grid-template-rows:\s*minmax\(74px,\s*auto\)[\s\S]*?minmax\(122px,\s*auto\);/);
-    assert.match(fallbackStyles, /\.dashboard \.order-card__header \{ min-height:\s*74px; \}/);
-    assert.match(fallbackStyles, /\.dashboard \.order-card__print-status \{ min-height:\s*46px;/);
-    assert.match(fallbackStyles, /\.dashboard \.order-card__date \{ min-height:\s*36px; \}/);
-    assert.match(fallbackStyles, /\.dashboard \.order-card__field \{ min-height:\s*90px; \}/);
-    assert.doesNotMatch(styles.slice(0, fallbackStart), /min-height:\s*(?:74|46|36|110|90|66|122)px/);
-    assert.match(styles, /\.dashboard \.order-card\s*\{[^}]*row-gap:\s*8px;/);
-    assert.match(styles, /\.dashboard \.lista-ordini,[\s\S]*?gap:\s*16px;/);
+    const delivery = render({
+        tipo: "consegna",
+        orario: "20:15",
+        indirizzoConsegna: "Via Roma",
+        stampaCompletata: false
+    });
+    assert.match(delivery, /Orario richiesto 20:15/);
+    assert.match(delivery, /class="order-card__detail-status">[\s\S]*?stato-pagamento[\s\S]*?Orario richiesto 20:15[\s\S]*?non stampata/);
+    assert.match(delivery, /order-card__compact-state--not-printed">non stampata/);
 });
 
-test("orders without a print status reserve desktop alignment space but not mobile space", () => {
+test("orders without print data show the text status in the compact row", () => {
     const html = render({ tipo: "tavolo", tavoloOCliente: "Tavolo 4", numeroPersone: 3 });
     const styles = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
         "utf8"
     );
 
-    assert.match(html, /class="order-card__print-status order-card__print-status--empty" aria-hidden="true"/);
-    assert.match(styles, /\.order-card__print-status--empty\s*\{[^}]*height:\s*0;[^}]*visibility:\s*hidden;/);
-    assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?\.dashboard \.order-card__print-status--empty \{ display:\s*none;/);
+    assert.match(html, /order-card__compact-state--not-printed">non stampata/);
+    assert.match(html, /class="order-card__print-status order-card__print-status--not-printed">non stampata<\/span>/);
+    assert.match(styles, /\.order-card__compact-state--not-printed,\s*\.order-card__compact-state--unpaid\s*\{[^}]*color:\s*#b91c1c;/);
 });
 
-test("delivery map action stays beside the address within equal-height fields", () => {
+test("delivery contact rows place icons and values before their secondary actions", () => {
     const html = render({
         tipo: "consegna",
+        telefonoConsegna: "3331234567",
         indirizzoConsegna: "Via Roma 12, Napoli"
     });
-    const styles = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
+    const theme = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
+        "utf8"
+    );
+    const deliveryStyles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "consegne.css"),
         "utf8"
     );
 
-    assert.match(html, /<span title="Via Roma 12, Napoli">Via Roma 12, Napoli<\/span><span class="order-card__field-hint">Apri nelle mappe<\/span>/);
-    assert.match(styles, /\.dashboard \.order-card__field \{\s*padding:\s*8px 10px;/);
-    assert.match(styles, /\.order-card__field-action \{ display:\s*grid;[^}]*justify-items:\s*start;/);
-    assert.match(styles, /\.order-card__field-hint \{[^}]*font-size:\s*12px;/);
+    assert.match(html, /order-card__delivery-icon[\s\S]*?order-card__delivery-value">3331234567<\/span><a class="order-card__delivery-action order-card__delivery-action--call" href="tel:3331234567">Chiama<\/a>/);
+    assert.match(html, /order-card__delivery-icon[\s\S]*?order-card__delivery-value">Via Roma 12, Napoli<\/span><button class="order-card__delivery-action order-card__delivery-action--map"[^>]*data-indirizzo="Via Roma 12, Napoli"[^>]*>Mappa<\/button>/);
+    assert.match(theme, /\.order-card__delivery-contact\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*20px minmax\(0,\s*1fr\) auto;/);
+    assert.match(theme, /\.order-card__delivery-action\s*\{[^}]*height:\s*40px;[^}]*min-height:\s*40px;[^}]*border:\s*1px solid #1a5ea9;[^}]*border-radius:\s*10px;[^}]*background:\s*#fff;[^}]*text-decoration:\s*none;/);
+    assert.doesNotMatch(deliveryStyles, /\.order-card__delivery-action\s*\{/);
+});
+
+test("expanded product rows have a single top separator and align quantity beside the name", () => {
+    const theme = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
+        "utf8"
+    );
+    const detailsStyles = theme.match(/html body\.app-shell main\.dashboard \.order-card__details\s*\{[^}]*\}/);
+    const productRowStyles = theme.match(/\.order-card__product-row\s*\{[^}]*\}/);
+    const quantityStyles = theme.match(/\.order-card__product-quantity\s*\{[^}]*\}/);
+
+    assert.ok(detailsStyles);
+    assert.doesNotMatch(detailsStyles[0], /dashed/);
+    assert.match(theme, /\.order-card__products li:first-child\s*\{\s*border-top:\s*1px solid #eef0f2;/);
+    assert.match(productRowStyles[0], /gap:\s*0;/);
+    assert.match(quantityStyles[0], /justify-self:\s*end;/);
 });
 
 test("delivery surcharge is included in order details only when present", () => {
@@ -414,7 +459,7 @@ test("delivery surcharge is included in order details only when present", () => 
         indirizzoConsegna: "Via Roma 12"
     });
 
-    assert.match(deliveryWithFee, /Costo consegna: 2,00\s*€/);
+    assert.match(deliveryWithFee, /class="order-card__delivery-fee">Costo consegna <span>2,00\s*€<\/span><\/p>/);
     assert.doesNotMatch(deliveryWithoutFee, /order-card__delivery-fee/);
 });
 
@@ -471,7 +516,7 @@ test("order-list pages use the calendar filter and have no auto-refresh checkbox
     assert.match(styles, /\.filtro-data__input\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*opacity:\s*0;[^}]*font-size:\s*16px;/);
 });
 
-test("payment status remains in the shared header, including non-applicable services", () => {
+test("payment status is shown only for delivery and pickup orders", () => {
     const unpaid = render({
         tipo: "ritiro",
         statoPagamento: "non_pagato",
@@ -486,18 +531,12 @@ test("payment status remains in the shared header, including non-applicable serv
 
     assert.match(unpaid, /class="stato-pagamento stato-pagamento--non-pagato"/);
     assert.match(pos, /class="stato-pagamento stato-pagamento--pos"/);
-    assert.match(counter, /stato-pagamento--non-applicabile/);
-    for (const html of [unpaid, pos, counter]) {
-        assert.ok(html.indexOf('class="order-card__totals"') < html.indexOf('class="order-card__total"'));
-    }
+    assert.doesNotMatch(counter, /stato-pagamento/);
+    assert.doesNotMatch(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2" }), /stato-pagamento/);
     assert.doesNotMatch(pos, /data-stato-pagamento/);
 });
 
-test("mobile stats stay in three columns and order totals stay on the header row", () => {
-    const styles = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
-        "utf8"
-    );
+test("expanded order controls use a compact status row and three action columns", () => {
     const theme = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
         "utf8"
@@ -505,34 +544,27 @@ test("mobile stats stay in three columns and order totals stay on the header row
 
     assert.match(theme, /\.metriche\s*\{\s*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/);
     assert.match(theme, /\.metriche div\s*\{[^}]*padding:\s*8px;[^}]*text-align:\s*center;/);
-    assert.match(theme, /\.order-card__header\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;\s*align-items:\s*start;/);
-    assert.match(theme, /\.order-card__header\s*>\s*\.order-card__heading\s*\{[^}]*overflow-wrap:\s*normal;[^}]*word-break:\s*normal;/);
-    assert.match(theme, /\.order-card__totals\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1;\s*flex-wrap:\s*nowrap;/);
-    assert.match(theme, /\.order-card__totals \.stato-pagamento\s*\{\s*flex:\s*0 0 108px;\s*width:\s*108px;\s*min-width:\s*108px;/);
-    assert.match(styles, /\.order-card__totals \.stato-pagamento\s*\{[^}]*flex:\s*0 0 108px;/);
-    assert.doesNotMatch(styles, /flex-basis:\s*124px/);
+    assert.match(theme, /html body\.app-shell main\.dashboard \.order-card__actions\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)\s+56px;/);
+    assert.match(theme, /html body\.app-shell main\.dashboard \.order-card__actions button\[data-elimina\]\s*\{[^}]*width:\s*56px;[^}]*border-color:\s*var\(--theme-red\);[^}]*background:\s*#fff;/);
+    assert.match(theme, /html body\.app-shell main\.dashboard \.order-card__actions a\[data-modifica\],[\s\S]*?background:\s*var\(--theme-green\);[^}]*color:\s*#fff;/);
+    assert.match(theme, /button\.pericolo:not\(\.app-reset\):not\(\[data-elimina\]\)\s*\{/);
+    assert.match(theme, /\.order-card__detail-status\s*\{\s*display:\s*flex;/);
+    assert.match(theme, /\.order-card__product-row\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*32px minmax\(0,\s*1fr\) auto;/);
     assert.match(theme, /\.dashboard > #stato\s*\{\s*min-height:\s*0;\s*margin:\s*0 0 6px;/);
 });
 
-test("order date and service time remain together in their shared aligned row", () => {
+test("requested service time appears beside payment without duplicate order metadata", () => {
     const html = render({
         tipo: "consegna",
         dataOra: "2026-10-26T11:54:10.000Z",
         orario: "22:47",
+        indirizzoConsegna: "Via Roma",
         statoPagamento: "pos"
     });
-    const heading = html.match(/<div class="order-card__heading">([\s\S]*?)<\/div>/)?.[1];
-    const styles = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
-        "utf8"
-    );
-
-    assert.ok(heading);
-    assert.doesNotMatch(heading, /order-card__date/);
-    assert.match(html, /class="order-card__date">[^<]*\| Orario: 22:47<\/p>/);
-    assert.match(styles, /\.order-card__date\s*\{[^}]*white-space:\s*nowrap;/);
-    assert.match(styles, /\.dashboard \.order-card__date \{\s*padding:\s*0 14px;/);
-    assert.match(styles.slice(styles.indexOf("@supports not (grid-template-rows: subgrid)"), -1), /\.dashboard \.order-card__date \{ min-height:\s*36px; \}/);
+    const status = html.match(/<div class="order-card__detail-status">([\s\S]*?)<\/div>/)?.[1];
+    assert.ok(status);
+    assert.match(status, /stato-pagamento[\s\S]*?Orario richiesto 22:47/);
+    assert.doesNotMatch(html, /order-card__expanded-meta|class="order-card__number"|class="order-card__total"/);
 });
 
 test("all order-list pages use the same source header and navigation shell", () => {
@@ -554,16 +586,28 @@ test("all order-list pages use the same source header and navigation shell", () 
 test("wide desktop layouts use the space beside the sidebar", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
+    const listStyles = fs.readFileSync(path.join(directory, "gestionale.css"), "utf8");
+    const homeStyles = fs.readFileSync(path.join(directory, "home.css"), "utf8");
     const orderStyles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
 
-    assert.match(navigation, /@media \(min-width: 1440px\)[\s\S]*?body\.app-shell main\.dashboard\s*\{[^}]*width: min\(1808px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 2048px\) \/ 2\)\);[^}]*padding: 24px;/);
-    assert.match(navigation, /body\.app-shell main\.container\s*\{[^}]*width: min\(1400px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1640px\) \/ 2\)\);/);
-    assert.match(navigation, /body\.app-shell main\.home\s*\{[^}]*width: min\(1100px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1340px\) \/ 2\)\);/);
-    assert.match(navigation, /body\.app-shell main\.dashboard \.lista-ordini,\s*body\.app-shell main\.dashboard \.lista-consegne\s*\{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(340px, 1fr\)\);/);
+    assert.match(navigation, /@media \(min-width: 1025px\)[\s\S]*?body\.app-shell main\.dashboard,\s*body\.app-shell main\.container,\s*body\.app-shell main\.home\s*\{[^}]*width: min\(1800px, calc\(100% - 260px\)\);[^}]*padding: 24px;/);
+    assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1024px\)[\s\S]*?body\.app-shell main\.dashboard,\s*body\.app-shell main\.container,\s*body\.app-shell main\.home\s*\{[^}]*width: calc\(100% - 112px\);[^}]*margin-left: 96px;[^}]*padding: 16px;/);
+    assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1024px\)[\s\S]*?main\.dashboard \.lista-ordini,\s*html body\.app-shell main\.dashboard \.lista-consegne\s*\{[^}]*minmax\(300px, 1fr\)/);
+    assert.match(homeStyles, /width: min\(1800px, 100%\)/);
+    assert.match(listStyles, /grid-template-columns: repeat\(auto-fill, minmax\(min\(100%, 360px\), 1fr\)\);[^}]*align-items: stretch;[^}]*gap: 10px;/);
+    assert.match(listStyles, /order-card--expanded\s*\{\s*grid-column: 1 \/ -1;/);
+    assert.match(listStyles, /grid-template-columns: minmax\(0, 720px\) auto/);
+    assert.match(listStyles, /main\.dashboard > #stato\s*\{\s*min-height: 0;\s*margin: 0;/);
+    assert.match(navigation, /@media \(min-width: 1200px\)[\s\S]*?lista-ordini,\s*html body\.app-shell main\.dashboard \.lista-consegne\s*\{[^}]*grid-auto-flow:\s*dense;/);
+    assert.match(navigation, /@media \(min-width: 1200px\)[\s\S]*?order-card--expanded\s*\{\s*grid-column:\s*span 2;/);
     assert.match(navigation, /body\.app-shell main\.dashboard \.metriche\s*\{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
     assert.match(navigation, /body\.app-shell main\.dashboard \.metriche > div:last-child\s*\{[^}]*grid-column: auto;/);
-    assert.match(navigation, /body\.app-shell main\.container \.composer-layout\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(320px, 420px\);/);
-    assert.match(orderStyles, /grid-template-rows: repeat\(3, 132px\)/);
+    assert.match(navigation, /body\.app-shell main\.container \.composer-layout\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) 380px;/);
+    assert.match(navigation, /@media \(min-width: 1180px\) and \(max-width: 1279px\)[\s\S]*?body\.app-shell main\.container \.composer-layout\s*\{[^}]*gap:\s*20px;/);
+    assert.match(orderStyles, /grid-template-columns: repeat\(auto-fill, minmax\(150px, 1fr\)\);/);
+    assert.match(orderStyles, /@media \(min-width: 768px\) and \(max-width: 1279px\)[\s\S]*?\.pagina-prodotti\s*\{\s*grid-template-columns:\s*repeat\(auto-fill, minmax\(145px, 1fr\)\);/);
+    assert.match(orderStyles, /@media \(min-width: 1280px\)[\s\S]*?\.pagina-prodotti\s*\{\s*grid-template-columns:\s*repeat\(auto-fill, minmax\(130px, 1fr\)\);/);
+    assert.match(orderStyles, /grid-template-rows: repeat\(3, minmax\(0, 1fr\)\)/);
     assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1024px\)/);
 });
 
@@ -579,7 +623,7 @@ test("mobile list headers keep the title and actions on one line", () => {
     assert.match(navigation, /body\.app-shell main\.home,\s*body\.app-shell main\.dashboard,\s*body\.app-shell main\.container\s*\{[^}]*padding-top:\s*0;/);
     assert.match(navigation, /body\.app-shell \.app-page-header \.app-header-actions\s*\{[^}]*min-width:\s*0;[^}]*margin-left:\s*auto;[^}]*justify-content:\s*flex-end;/);
     assert.match(theme, /@media \(max-width: 720px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 16px 24px;/);
-    assert.match(theme, /@media \(max-width: 420px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 12px 24px;/);
+    assert.match(theme, /@media \(max-width: 420px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 16px 24px;/);
     assert.match(theme, /\.dashboard-header:not\(\.app-page-header\)\s*\{[^}]*flex-wrap:\s*wrap;/);
     assert.match(theme, /\.dashboard-header:not\(\.app-page-header\) > div\s*\{[^}]*min-width:\s*min\(100%, 250px\);/);
 });
@@ -619,7 +663,7 @@ test("mobile navigation and checkout use one safe-area offset", () => {
     assert.doesNotMatch(orderStyles, /counter-reset:\s*order-items|counter-increment:\s*order-items|counter\(order-items\)/);
 });
 
-test("order summary rows keep a two-column remove action and omit empty extras", () => {
+test("order summary rows are grouped with a compact one-item remove action", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const page = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
     const styles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
@@ -627,8 +671,8 @@ test("order summary rows keep a two-column remove action and omit empty extras",
 
     assert.match(page, /id="extra-intestazione" class="extra-intestazione" type="button" aria-expanded="false" aria-controls="extra-dettagli"/);
     assert.match(page, /id="extra-dettagli" class="extra-dettagli" hidden/);
-    assert.match(styles, /\.riepilogo-item\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto;[^}]*column-gap:\s*12px;[^}]*align-items:\s*start;/);
-    assert.match(styles, /\.riepilogo-item \.rimuovi\s*\{[^}]*min-height:\s*40px;[^}]*padding:\s*6px 10px;[^}]*border:\s*1px solid #F7C1C1;[^}]*border-radius:\s*8px;[^}]*background:\s*#FCEBEB;[^}]*color:\s*#A32D2D;[^}]*font-size:\s*13px;[^}]*font-weight:\s*600;[^}]*text-decoration:\s*none;[^}]*white-space:\s*nowrap;/);
+    assert.match(styles, /\.riepilogo-item\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*30px minmax\(0,\s*1fr\) auto 32px;/);
+    assert.match(styles, /\.riepilogo-item \.rimuovi\s*\{[^}]*width:\s*32px;[^}]*min-height:\s*32px;[^}]*background:\s*transparent;[^}]*font-size:\s*22px;/);
     assert.doesNotMatch(styles, /#riepilogo-items \.riepilogo-item\s*\{|#riepilogo-items \.rimuovi\s*\{/);
     assert.match(script, /const extra = nomiExtra\(riga\.extra\)\.join\(", "\);/);
     assert.match(script, /return `<div class="conferma-riga"><strong>\$\{quantitaTesto\}/);
@@ -675,7 +719,10 @@ test("portrait order summary sheet opens accessibly and removes rows through sha
     assert.doesNotMatch(styles, /riepilogo-sheet(?:-backdrop)?\.is-dragging|body\.riepilogo-sheet-aperto/);
     assert.match(script, /renderRigheRiepilogo\(riepilogo\);\s*renderRigheRiepilogo\(riepilogoSheetLista\);/);
     assert.match(script, /riepilogoSheetLista\.addEventListener\("click", rimuoviRigaRiepilogo\)/);
+    assert.match(script, /const indiceUltimaRiga = indici\[indici\.length - 1\];[\s\S]*?data-indice="\$\{escapeHtml\(indiceUltimaRiga\)\}" aria-label="Togli uno"/);
     assert.match(script, /function rimuoviRigaRiepilogo\(evento\)[\s\S]*?rimuoviProdotto\(stato\.righe, stato\.rigaAttiva, Number\(pulsante\.dataset\.indice\)\)[\s\S]*?renderRiepilogo\(\);/);
+    assert.match(script, /raggruppaRigheConferma\(stato\.righe\)\.forEach\(\(\{ riga, quantita, indici \}\)/);
+    assert.match(script, /<span class="riepilogo-quantita">\$\{quantita\}×<\/span>/);
     assert.match(script, /if \(!stato\.righe\.length\) contenitore\.innerHTML = "<p>Nessun prodotto selezionato<\/p>";/);
     assert.match(script, /barraConto\.addEventListener\("pointerdown", avviaTrascinamentoRiepilogo\)/);
     assert.match(script, /barraConto\.addEventListener\("pointercancel", terminaTrascinamentoRiepilogo\)/);
@@ -805,7 +852,7 @@ test("shared card escapes field, product, extra and note content", () => {
 
     assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
     assert.match(html, /<strong>&lt;script&gt;<\/strong>/);
-    assert.match(html, /Extra: &lt;b&gt;extra&lt;\/b&gt;/);
+    assert.match(html, /class="order-card__extra">\+ &lt;b&gt;extra&lt;\/b&gt;/);
     assert.match(html, /&lt;img src=x&gt;/);
     assert.doesNotMatch(html, /<script>|<img src=x>/);
 });

@@ -240,7 +240,14 @@ test("gestionale skips calculating the daily total for staff", async () => {
         window: {
             authReady: Promise.resolve(true),
             currentAccount: { admin: false, staff: true },
-            orderCard: { bindReprints() {}, bindDateFilter() {}, render() { return ""; } }
+            orderCard: {
+                bindReprints() {},
+                bindDateFilter() {},
+                createExpansionState() {
+                    return { isOpen() { return false; }, toggle() {} };
+                },
+                render() { return ""; }
+            }
         },
         fetch: async url => ({
             ok: true,

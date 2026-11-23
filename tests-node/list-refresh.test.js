@@ -13,6 +13,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
     const renderCounts = new Map();
     const renderedCards = [];
     const renderedMarkup = new Map();
+    const renderedOptions = [];
     let nextIntervalId = 0;
     let clock = 1_000;
 
@@ -77,7 +78,21 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         window: {
             authReady: Promise.resolve(true),
             currentAccount,
-            orderCard: { bindReprints() {}, bindDateFilter() {}, render(order) { return `|#${order.numero}|`; } }
+            orderCard: {
+                bindReprints() {},
+                bindDateFilter() {},
+                createExpansionState() {
+                    let openOrder = null;
+                    return {
+                        isOpen(number) { return openOrder === String(number); },
+                        toggle(number) { openOrder = openOrder === String(number) ? null : String(number); }
+                    };
+                },
+                render(order, options) {
+                    renderedOptions.push(options);
+                    return `|#${order.numero}|`;
+                }
+            }
         },
         fetch: async url => {
             requests.push(String(url));
@@ -113,6 +128,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         renderCounts,
         renderedCards,
         renderedMarkup,
+        renderedOptions,
         element,
         advance(milliseconds) {
             clock += milliseconds;
@@ -157,6 +173,31 @@ test("the delivery list sorts active deliveries by requested time and completed 
         "2 da consegnare · 1 in consegna · 2 consegnate"
     );
 });
+
+for (const [page, listId] of [
+    ["gestionale.js", "lista-ordini"],
+    ["consegne.js", "lista-consegne"]
+]) {
+    test(`${page} preserves the expanded card across a manual refresh`, async () => {
+        const scriptPath = path.join(__dirname, "../src/main/resources/static", page);
+        const state = createPageContext(fs.readFileSync(scriptPath, "utf8"), undefined, [
+            { numero: 42, tipo: "tavolo", totale: 5, righe: [] }
+        ]);
+        await flushPagePromises();
+        const expansionState = state.renderedOptions[0]?.expansionState;
+        assert.ok(expansionState);
+        expansionState.toggle(42);
+
+        for (const listener of state.elementListeners.get("aggiorna")?.get("click") || []) listener();
+        await flushPagePromises();
+
+        assert.ok(state.renderedOptions.length >= 2);
+        const refreshedOptions = state.renderedOptions[state.renderedOptions.length - 1];
+        assert.equal(refreshedOptions.expansionState, expansionState);
+        assert.equal(refreshedOptions.expansionState.isOpen(42), true);
+        assert.equal(state.renderedMarkup.get(listId).includes("|#42|"), true);
+    });
+}
 
 for (const [page, endpoint, interval, listId] of [
     ["gestionale.js", "/api/ordini", 15_000, "lista-ordini"],
