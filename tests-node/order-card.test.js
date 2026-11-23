@@ -487,6 +487,51 @@ test("product names wrap only between words and clamp to two lines", () => {
     assert.doesNotMatch(regolaNomeProdotto[1], /word-break:\s*break-(?:all|word)|hyphens:\s*auto/);
 });
 
+test("portrait tablet checkout avoids the sidebar and bottom navigation offsets", () => {
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.css"),
+        "utf8"
+    );
+    const indiceTabletPortrait = styles.indexOf(
+        "@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait)"
+    );
+    const fineRegoleTabletPortrait = styles.indexOf("\n@media", indiceTabletPortrait);
+
+    assert.notEqual(indiceTabletPortrait, -1);
+    assert.notEqual(fineRegoleTabletPortrait, -1);
+    const regoleTabletPortrait = styles.slice(indiceTabletPortrait, fineRegoleTabletPortrait);
+    assert.match(regoleTabletPortrait, /--app-mobile-checkout-height:\s*80px;/);
+    assert.match(
+        regoleTabletPortrait,
+        /\.app-shell \.container\s*\{[^}]*padding-bottom:\s*calc\(var\(--app-mobile-checkout-height\) \+ env\(safe-area-inset-bottom\)\);/
+    );
+    assert.match(
+        regoleTabletPortrait,
+        /\.composer-summary > \.barra-conto\s*\{[^}]*right:\s*0;[^}]*bottom:\s*env\(safe-area-inset-bottom\);[^}]*left:\s*80px;/
+    );
+    assert.match(
+        regoleTabletPortrait,
+        /\.riepilogo-sheet-backdrop\s*\{[^}]*right:\s*0;[^}]*bottom:\s*env\(safe-area-inset-bottom\);[^}]*left:\s*80px;/
+    );
+});
+
+test("table and people buttons use fixed heights and readable numbers", () => {
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.css"),
+        "utf8"
+    );
+
+    assert.match(
+        styles,
+        /\.opzione-tavolo,\s*\.opzione-persone\s*\{[^}]*height:\s*48px;[^}]*min-height:\s*48px;[^}]*font-size:\s*18px;/
+    );
+    assert.match(
+        styles,
+        /@media \(min-width: 768px\)\s*\{[^}]*\.opzione-tavolo,\s*\.opzione-persone\s*\{[^}]*height:\s*52px;[^}]*min-height:\s*52px;/
+    );
+    assert.doesNotMatch(styles, /\.opzione-tavolo,\s*\.opzione-persone\s*\{[^}]*aspect-ratio:/);
+});
+
 test("mobile filters keep the date input inside its row and show the search full-width", () => {
     const styles = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),

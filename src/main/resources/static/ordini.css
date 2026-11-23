@@ -1239,8 +1239,8 @@ button {
 .opzione-persone {
     width: 100%;
     min-width: 44px;
+    height: 48px;
     min-height: 48px;
-    aspect-ratio: 1;
     border: 1px solid var(--theme-line);
     border-radius: 10px;
     background: #fff;
@@ -1250,6 +1250,14 @@ button {
     font-weight: 600;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 768px) {
+    .opzione-tavolo,
+    .opzione-persone {
+        height: 52px;
+        min-height: 52px;
+    }
 }
 
 .persone-personalizzate {
@@ -2213,6 +2221,29 @@ button {
     .riepilogo-sheet-backdrop,
     .riepilogo-sheet {
         transition-duration: .01ms;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+    :root {
+        --app-mobile-checkout-height: 80px;
+    }
+
+    .app-shell .container {
+        padding-bottom: calc(var(--app-mobile-checkout-height) + env(safe-area-inset-bottom));
+    }
+
+    .composer-summary > .barra-conto {
+        right: 0;
+        bottom: env(safe-area-inset-bottom);
+        left: 80px;
+    }
+
+    .riepilogo-sheet-backdrop {
+        top: 0;
+        right: 0;
+        bottom: env(safe-area-inset-bottom);
+        left: 80px;
     }
 }
 
