@@ -22,29 +22,32 @@
 <body>
 <main class="home">
     <h1>CIVICO7</h1>
-    <nav class="home-links" aria-label="Navigazione rapida">
-        <a href="/ordini.html"><strong>Nuova comanda</strong></a>
-        <a href="/gestionale.html"><strong>Tutti gli ordini</strong></a>
-        <a href="/consegne.html"><strong>Consegne</strong></a>
-        <a href="/ritiri.html"><strong>Ritiri</strong></a>
-        <a href="/banco.html"><strong>Banco</strong></a>
-        <a href="/tavoli.html"><strong>Tavoli</strong></a>
+    <nav class="home-actions" aria-label="Nuovo ordine">
+        <a class="home-new-order" href="/ordini.html">
+            <span aria-hidden="true">+</span>
+            <strong>Nuova comanda</strong>
+        </a>
     </nav>
     <section class="serata-grid" aria-label="Riepilogo della serata">
         <a class="serata-tile" id="riepilogo-tavoli" href="/tavoli.html">
-            <strong id="tavoli-summary">Tavoli — · coperti —</strong>
+            <strong class="serata-value" id="tavoli-value">—</strong>
+            <span class="serata-label" id="tavoli-label">Tavoli · — coperti</span>
         </a>
         <a class="serata-tile" id="riepilogo-consegne" href="/consegne.html">
-            <strong id="consegne-summary">Consegne da fare — (in giro —)</strong>
+            <strong class="serata-value" id="consegne-value">—</strong>
+            <span class="serata-label" id="consegne-label">Consegne da fare · — in giro</span>
         </a>
         <a class="serata-tile" id="riepilogo-ritiri" href="/ritiri.html">
-            <strong id="ritiri-summary">Ritiri —</strong>
+            <strong class="serata-value" id="ritiri-value">—</strong>
+            <span class="serata-label" id="ritiri-label">Ritiri</span>
         </a>
         <a class="serata-tile" id="riepilogo-banco" href="/banco.html">
-            <strong id="banco-summary">Banco —</strong>
+            <strong class="serata-value" id="banco-value">—</strong>
+            <span class="serata-label" id="banco-label">Banco</span>
         </a>
         <a class="serata-tile" id="riepilogo-incasso" href="/gestionale.html">
-            <strong id="incasso-summary">Incasso oggi — · — ordini</strong>
+            <strong class="serata-value" id="incasso-value">—</strong>
+            <span class="serata-label" id="incasso-label">Incasso · — ordini</span>
         </a>
     </section>
     <section class="printer-panel" aria-labelledby="printer-title">

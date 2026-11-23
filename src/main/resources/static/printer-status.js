@@ -6,13 +6,28 @@
     const listElement = document.getElementById("printer-list");
     const retryButton = document.getElementById("printer-retry");
     const summaryElements = {
-        tavoli: document.getElementById("tavoli-summary"),
-        consegne: document.getElementById("consegne-summary"),
-        ritiri: document.getElementById("ritiri-summary"),
-        banco: document.getElementById("banco-summary"),
-        incasso: document.getElementById("incasso-summary")
+        tavoli: {
+            value: document.getElementById("tavoli-value"),
+            label: document.getElementById("tavoli-label")
+        },
+        consegne: {
+            value: document.getElementById("consegne-value"),
+            label: document.getElementById("consegne-label")
+        },
+        ritiri: {
+            value: document.getElementById("ritiri-value"),
+            label: document.getElementById("ritiri-label")
+        },
+        banco: {
+            value: document.getElementById("banco-value"),
+            label: document.getElementById("banco-label")
+        },
+        incasso: {
+            value: document.getElementById("incasso-value"),
+            label: document.getElementById("incasso-label")
+        }
     };
-    if (Object.values(summaryElements).some(element => !element)
+    if (Object.values(summaryElements).some(summary => !summary.value || !summary.label)
         || !statusElement || !queueElement || !warningElement || !agentElement || !listElement || !retryButton) {
         return;
     }
@@ -30,13 +45,16 @@
     });
 
     function updateSummary(today) {
-        summaryElements.tavoli.textContent = `Tavoli ${today.tavoli} · coperti ${today.coperti}`;
-        summaryElements.consegne.textContent =
-            `Consegne da fare ${today.consegneDaFare} (in giro ${today.consegneInCorso})`;
-        summaryElements.ritiri.textContent = `Ritiri ${today.ritiri}`;
-        summaryElements.banco.textContent = `Banco ${today.banco}`;
-        summaryElements.incasso.textContent =
-            `Incasso oggi ${euro.format(today.totale)} · ${today.ordini} ordini`;
+        summaryElements.tavoli.value.textContent = today.tavoli;
+        summaryElements.tavoli.label.textContent = `Tavoli · ${today.coperti} coperti`;
+        summaryElements.consegne.value.textContent = today.consegneDaFare;
+        summaryElements.consegne.label.textContent = `Consegne da fare · ${today.consegneInCorso} in giro`;
+        summaryElements.ritiri.value.textContent = today.ritiri;
+        summaryElements.ritiri.label.textContent = "Ritiri";
+        summaryElements.banco.value.textContent = today.banco;
+        summaryElements.banco.label.textContent = "Banco";
+        summaryElements.incasso.value.textContent = euro.format(today.totale);
+        summaryElements.incasso.label.textContent = `Incasso · ${today.ordini} ordini`;
     }
 
     function updatePrinter(stampa, oggi) {
