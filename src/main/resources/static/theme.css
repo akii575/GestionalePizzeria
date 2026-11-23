@@ -108,7 +108,7 @@ button, input, select, textarea { font-family: inherit; font-size: 16px; }
 button { position: relative; min-height: 48px; overflow: hidden; transition: background var(--theme-fast), border-color var(--theme-fast), color var(--theme-fast); }
 button:active:not(:disabled) { transform: scale(.98); }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(228, 176, 52, .3); outline-offset: 3px; }
-:where(.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .order-card, .home-links a, .printer-panel, .riga-edit, .login-card, .order-card__field, .conferma-contenuto, .order-card__details) {
+:where(.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .order-card, .home-links a, .printer-panel, .riga-edit, .login-card, .order-card__field, .conferma-contenuto) {
     background: var(--theme-surface);
     border: var(--theme-surface-border);
     border-radius: var(--theme-radius);
@@ -133,7 +133,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 :where(.tavolo-input, .extra-section, .riepilogo, .metriche div, .ordine, .order-card,
     .home-links a, .printer-panel, .riga-edit, .login-card, .order-card__field,
-    .conferma-contenuto, .order-card__details) {
+        .conferma-contenuto) {
     border-color: var(--theme-line) !important;
     border-radius: var(--theme-radius) !important;
     box-shadow: var(--theme-shadow);
@@ -510,18 +510,16 @@ html body.app-shell main.dashboard .order-card__number {
 
 html body.app-shell main.dashboard .order-card__details {
     margin: 0 12px 8px;
-    padding: 4px 0;
+    padding: 0;
     border: 0;
-    border-top: 1px dashed var(--theme-line);
-    border-bottom: 1px dashed var(--theme-line);
-    background: #fff;
+    background: transparent;
 }
 
 .order-card__products { margin: 0; padding: 0; list-style: none; }
-.order-card__products li { padding: 8px 0; border-bottom: 1px solid #eef0f2; }
-.order-card__products li:last-child { border-bottom: 0; }
-.order-card__product-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 8px; }
-.order-card__product-quantity { color: var(--theme-muted); font-size: 13px; font-weight: 700; }
+.order-card__products li { padding: 8px 0; }
+.order-card__products li:first-child { border-top: 1px solid #eef0f2; }
+.order-card__product-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 0; }
+.order-card__product-quantity { justify-self: end; color: var(--theme-muted); font-size: 13px; font-weight: 700; text-align: right; }
 .order-card__product-name { display: grid; min-width: 0; gap: 2px; }
 .order-card__product-name strong { font-size: 14px; }
 .order-card__product-price { font-size: 13px; font-weight: 700; text-align: right; white-space: nowrap; }
@@ -583,6 +581,7 @@ html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
     display: grid;
     gap: 6px;
     margin: 0 12px 8px;
+    font-size: 13px;
 }
 
 .order-card__delivery-contact {
@@ -610,6 +609,33 @@ html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
     font-size: 13px;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.order-card__delivery-action {
+    display: inline-flex;
+    height: 40px;
+    min-height: 40px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    border: 1px solid #1a5ea9;
+    border-radius: 10px;
+    background: #fff;
+    color: #1a5ea9;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.order-card__delivery-action:focus-visible {
+    outline: 3px solid rgba(228, 176, 52, .5);
+    outline-offset: 2px;
 }
 
 html body.app-shell main.dashboard .order-card__actions a[data-modifica],
@@ -646,4 +672,6 @@ html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
     .order-card__reference { font-size: 13px; }
     .order-card__meta { font-size: 10px; }
     .order-card__total { font-size: 20px; }
+    .order-card__contacts { margin-inline: 8px; }
+    .order-card__delivery-contact { gap: 5px; }
 }

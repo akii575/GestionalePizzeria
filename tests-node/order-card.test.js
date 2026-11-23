@@ -415,16 +415,36 @@ test("delivery contact rows place icons and values before their secondary action
         telefonoConsegna: "3331234567",
         indirizzoConsegna: "Via Roma 12, Napoli"
     });
-    const styles = fs.readFileSync(
+    const theme = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
+        "utf8"
+    );
+    const deliveryStyles = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "consegne.css"),
         "utf8"
     );
 
     assert.match(html, /order-card__delivery-icon[\s\S]*?order-card__delivery-value">3331234567<\/span><a class="order-card__delivery-action order-card__delivery-action--call" href="tel:3331234567">Chiama<\/a>/);
     assert.match(html, /order-card__delivery-icon[\s\S]*?order-card__delivery-value">Via Roma 12, Napoli<\/span><button class="order-card__delivery-action order-card__delivery-action--map"[^>]*data-indirizzo="Via Roma 12, Napoli"[^>]*>Mappa<\/button>/);
-    assert.match(styles, /\.order-card__delivery-contact\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*20px minmax\(0,\s*1fr\) auto;/);
-    assert.match(styles, /\.order-card__delivery-action\s*\{[^}]*min-height:\s*40px;[^}]*border:\s*1px solid #1a5ea9;[^}]*background:\s*#fff;/);
-    assert.match(styles, /\.order-card__delivery-action--call,\s*\.order-card__delivery-action--map\s*\{\s*background:\s*#fff;/);
+    assert.match(theme, /\.order-card__delivery-contact\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*20px minmax\(0,\s*1fr\) auto;/);
+    assert.match(theme, /\.order-card__delivery-action\s*\{[^}]*height:\s*40px;[^}]*min-height:\s*40px;[^}]*border:\s*1px solid #1a5ea9;[^}]*border-radius:\s*10px;[^}]*background:\s*#fff;[^}]*text-decoration:\s*none;/);
+    assert.doesNotMatch(deliveryStyles, /\.order-card__delivery-action\s*\{/);
+});
+
+test("expanded product rows have a single top separator and align quantity beside the name", () => {
+    const theme = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
+        "utf8"
+    );
+    const detailsStyles = theme.match(/html body\.app-shell main\.dashboard \.order-card__details\s*\{[^}]*\}/);
+    const productRowStyles = theme.match(/\.order-card__product-row\s*\{[^}]*\}/);
+    const quantityStyles = theme.match(/\.order-card__product-quantity\s*\{[^}]*\}/);
+
+    assert.ok(detailsStyles);
+    assert.doesNotMatch(detailsStyles[0], /dashed/);
+    assert.match(theme, /\.order-card__products li:first-child\s*\{\s*border-top:\s*1px solid #eef0f2;/);
+    assert.match(productRowStyles[0], /gap:\s*0;/);
+    assert.match(quantityStyles[0], /justify-self:\s*end;/);
 });
 
 test("delivery surcharge is included in order details only when present", () => {
