@@ -333,6 +333,34 @@ const prodottiUI = (() => {
         return nota.length > lunghezza ? `${nota.slice(0, lunghezza)}…` : nota;
     }
 
+    function notaContiene(testo, nota) {
+        const ricerca = String(nota ?? "").trim();
+        if (!ricerca) return false;
+        const notaNormalizzata = ricerca.toLocaleLowerCase("it-IT");
+        return String(testo ?? "").split(",").some(voce =>
+            voce.trim().toLocaleLowerCase("it-IT") === notaNormalizzata
+        );
+    }
+
+    function aggiungiNotaRapida(testo, nota) {
+        const valoreNota = String(nota ?? "").trim();
+        const valoreTesto = String(testo ?? "");
+        if (!valoreNota || notaContiene(valoreTesto, valoreNota)) return valoreTesto;
+        return valoreTesto.trim() ? `${valoreTesto.trimEnd()}, ${valoreNota}` : valoreNota;
+    }
+
+    function togliNotaRapida(testo, nota) {
+        const valoreNota = String(nota ?? "").trim();
+        const valoreTesto = String(testo ?? "");
+        if (!valoreNota) return valoreTesto;
+        const notaNormalizzata = valoreNota.toLocaleLowerCase("it-IT");
+        return valoreTesto.split(",")
+            .filter(voce => voce.trim().toLocaleLowerCase("it-IT") !== notaNormalizzata)
+            .join(", ")
+            .replace(/ {2,}/g, " ")
+            .trim();
+    }
+
     return {
         LIMITE_RIGHE_ORDINE,
         leggiCacheMenu,
@@ -363,7 +391,10 @@ const prodottiUI = (() => {
         datiObbligatoriMancanti,
         datiOrdineCompleti,
         riepilogoIntestazione,
-        anteprimaNota
+        anteprimaNota,
+        aggiungiNotaRapida,
+        togliNotaRapida,
+        notaContiene
     };
 })();
 

@@ -1291,6 +1291,46 @@ button {
     touch-action: manipulation;
 }
 
+.note-rapide {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    overflow-x: hidden;
+}
+
+.note-chip {
+    box-sizing: border-box;
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 1px solid #E5E7EB;
+    border-radius: 999px;
+    background: #fff;
+    color: #1F2937;
+    font-size: 13px;
+    line-height: 1.2;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.note-chip[hidden] {
+    display: none;
+}
+
+.note-chip.selezionato {
+    border-color: #E4B034;
+    background: #FFF6DF;
+    color: #6B4E00;
+}
+
+.note-chip.selezionato::after {
+    content: " ✓";
+}
+
+.note-chip:focus:not(:focus-visible) {
+    outline: none;
+}
+
 .note-editor {
     margin-top: 10px;
 }

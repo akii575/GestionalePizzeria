@@ -196,11 +196,22 @@
                     </button>
                 </div>
                 <section class="note-input">
-                        <button id="note-toggle" class="note-toggle" type="button" aria-expanded="false" aria-controls="note-editor">+ Nota</button>
-                        <div id="note-editor" class="note-editor visually-hidden">
-                            <label for="note">Note</label>
-                            <textarea id="note" placeholder="Aggiungi una nota..."></textarea>
-                        </div>
+                    <button id="note-toggle" class="note-toggle" type="button" aria-expanded="false" aria-controls="note-editor">+ Nota</button>
+                    <div id="note-rapide" class="note-rapide" role="group" aria-label="Note rapide">
+                        <button class="note-chip" type="button" data-note-rapida="Ben cotta" aria-pressed="false">Ben cotta</button>
+                        <button class="note-chip" type="button" data-note-rapida="Poco cotta" aria-pressed="false">Poco cotta</button>
+                        <button class="note-chip" type="button" data-note-rapida="Tagliata" aria-pressed="false">Tagliata</button>
+                        <button class="note-chip" type="button" data-note-rapida="Senza glutine" aria-pressed="false">Senza glutine</button>
+                        <button class="note-chip" type="button" data-note-rapida="Senza lattosio" aria-pressed="false">Senza lattosio</button>
+                        <button class="note-chip" type="button" data-note-rapida="Da dividere" aria-pressed="false">Da dividere</button>
+                        <button class="note-chip" type="button" data-note-rapida="Urgente" aria-pressed="false">Urgente</button>
+                        <button class="note-chip" type="button" data-note-rapida="Citofonare" data-note-rapida-consegna aria-pressed="false" hidden>Citofonare</button>
+                        <button class="note-chip" type="button" data-note-rapida="Chiamare all'arrivo" data-note-rapida-consegna aria-pressed="false" hidden>Chiamare all'arrivo</button>
+                    </div>
+                    <div id="note-editor" class="note-editor visually-hidden">
+                        <label for="note">Note</label>
+                        <textarea id="note" placeholder="Aggiungi una nota..."></textarea>
+                    </div>
                 </section>
                     </section>
                     <nav class="tab-container" aria-label="Categorie">

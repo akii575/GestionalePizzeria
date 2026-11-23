@@ -26,7 +26,10 @@ const {
     datiObbligatoriMancanti,
     datiOrdineCompleti,
     riepilogoIntestazione,
-    anteprimaNota
+    anteprimaNota,
+    aggiungiNotaRapida,
+    togliNotaRapida,
+    notaContiene
 } = require("../src/main/resources/static/prodotti-ui");
 
 const nomi = prodotti => prodotti.map(prodotto => prodotto.nome);
@@ -101,6 +104,31 @@ test("order header summaries and note previews use the compact UI labels", () =>
     assert.equal(anteprimaNota("12345678901234567890123456789012345678901"), "1234567890123456789012345678901234567890…");
 });
 
+test("quick notes append with a separator and preserve manually written text", () => {
+    assert.equal(aggiungiNotaRapida("", "Ben cotta"), "Ben cotta");
+    assert.equal(aggiungiNotaRapida("senza cipolla", "Ben cotta"), "senza cipolla, Ben cotta");
+    assert.equal(aggiungiNotaRapida("  senza cipolla  ", "Ben cotta"), "  senza cipolla, Ben cotta");
+});
+
+test("quick notes are not added twice and match regardless of case", () => {
+    assert.equal(notaContiene("BEN COTTA, tagliata", "Ben cotta"), true);
+    assert.equal(aggiungiNotaRapida("BEN COTTA, tagliata", "Ben cotta"), "BEN COTTA, tagliata");
+    assert.equal(notaContiene("Da dividere", ""), false);
+});
+
+test("quick note toggles do not remove matching words from manual text", () => {
+    const testoManuale = "Non ben cotta";
+    assert.equal(notaContiene(testoManuale, "Ben cotta"), false);
+    assert.equal(aggiungiNotaRapida(testoManuale, "Ben cotta"), "Non ben cotta, Ben cotta");
+    assert.equal(togliNotaRapida("Non ben cotta, Ben cotta", "Ben cotta"), testoManuale);
+});
+
+test("removing a quick note cleans duplicate commas and spaces", () => {
+    assert.equal(togliNotaRapida("Senza cipolla, Ben cotta, extra", "ben cotta"), "Senza cipolla, extra");
+    assert.equal(togliNotaRapida("Ben cotta, Poco cotta", "Ben cotta"), "Poco cotta");
+    assert.equal(togliNotaRapida("Ben cotta", "Ben cotta"), "");
+});
+
 test("order entry wires selector events, first-product collapse, reset and note toggle", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
@@ -112,6 +140,9 @@ test("order entry wires selector events, first-product collapse, reset and note 
     assert.match(script, /primoProdotto && datiOrdineCompleti\(tipoOrdine\.value, datiIntestazioneCorrenti\(\)\)/);
     assert.match(script, /intestazioneCompatta\.addEventListener\("click", apriIntestazione\)/);
     assert.match(script, /noteToggle\.addEventListener\("click"/);
+    assert.match(script, /note\.dispatchEvent\(new Event\("input", \{ bubbles: true \}\)\)/);
+    assert.match(script, /bottone\.hidden = !consegna/);
+    assert.match(html, /data-note-rapida-consegna/);
     assert.match(script, /ripristinaIntestazioneComanda\(\)/);
     assert.match(html, /id="tavolo" class="visually-hidden" required/);
     assert.match(html, /id="numero-persone" class="visually-hidden" type="number"[^>]*required/);
