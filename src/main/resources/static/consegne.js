@@ -10,6 +10,7 @@ const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR"
 const lista = document.getElementById("lista-consegne");
 const statoPagina = document.getElementById("stato");
 window.orderCard.bindReprints(lista);
+window.orderCard.bindDateFilter(document.getElementById("data"), document.getElementById("apri-data"));
 
 function mostraStato(testo, classe = "") {
     statoPagina.textContent = testo;
@@ -30,6 +31,7 @@ function ordiniFiltrati() {
 function render() {
     const ordini = ordiniFiltrati();
     document.getElementById("numero-consegne").textContent = ordini.length;
+    document.getElementById("etichetta-consegne").textContent = ordini.length === 1 ? "consegna" : "consegne";
     document.getElementById("totale-consegne").textContent = euro.format(
         ordini.reduce((somma, ordine) => somma + Number(ordine.totale || 0), 0)
     );
@@ -42,6 +44,7 @@ function render() {
     ordini.forEach(ordine => {
         lista.insertAdjacentHTML("beforeend", window.orderCard.render(ordine, {
             canEdit: window.currentAccount.admin === true || window.currentAccount.staff === true,
+            hideTotalForStaff: false,
             menu: stato.menu
         }));
     });

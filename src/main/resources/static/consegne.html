@@ -36,12 +36,18 @@
     </header>
     <section class="filtri" aria-label="Filtri consegne">
         <label for="filtro">Cerca indirizzo o telefono<input id="filtro" type="search" placeholder="Via o numero..."></label>
-        <label for="data">Data ordine<input id="data" type="date"></label>
+        <div class="filtro-data">
+            <button id="apri-data" class="filtro-data__button" type="button" aria-label="Seleziona la data di oggi">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 3v4M17 3v4M3 10h18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 14h2m3 0h2m3 0h1M7 18h2m3 0h2" stroke="currentColor" stroke-width="2"/></svg>
+                <span data-date-label>Oggi</span>
+            </button>
+            <input id="data" class="filtro-data__input" type="date" aria-label="Data consegne" tabindex="-1" aria-hidden="true">
+        </div>
     </section>
     <section class="metriche" aria-label="Riepilogo consegne">
-        <div><span>Consegne visualizzate</span><strong id="numero-consegne">0</strong></div>
-        <div><span>Totale consegne</span><strong id="totale-consegne">0,00 EUR</strong></div>
-        <div><span>Ultimo aggiornamento</span><strong id="ultimo-aggiornamento">--:--</strong></div>
+        <span class="metriche__conteggio" aria-label="Consegne visualizzate"><strong id="numero-consegne">0</strong><span id="etichetta-consegne">consegne</span></span>
+        <span class="metriche__totale" aria-label="Totale consegne"><span aria-hidden="true">· </span><strong id="totale-consegne">0,00 €</strong></span>
+        <span class="metriche__aggiornamento"><span aria-hidden="true">· agg. </span><strong id="ultimo-aggiornamento" aria-label="Ultimo aggiornamento">--:--</strong></span>
     </section>
     <p id="stato" role="status" aria-live="polite"></p>
     <section id="lista-consegne" class="lista-consegne" aria-live="polite"></section>

@@ -6,6 +6,21 @@ const orderCard = (() => {
         ritiro: "Ritiro",
         tavolo: "Tavolo"
     };
+    const expandedOrderState = createExpansionState();
+
+    function createExpansionState() {
+        let openOrderNumber = null;
+        return {
+            isOpen(number) {
+                return openOrderNumber !== null && openOrderNumber === String(number);
+            },
+            toggle(number) {
+                const normalized = String(number);
+                openOrderNumber = openOrderNumber === normalized ? null : normalized;
+                return openOrderNumber;
+            }
+        };
+    }
 
     function escapeHtml(value) {
         return String(value == null ? "" : value).replace(/[&<>"']/g, character => ({
@@ -19,6 +34,71 @@ const orderCard = (() => {
 
     function normalizeType(type) {
         return type === "sala" ? "tavolo" : type || "tavolo";
+    }
+
+    function orderReference(order, type) {
+        if (type === "tavolo") {
+            const table = String(order.tavoloOCliente || "").trim();
+            if (!table) return "Tavolo";
+            return /^tavolo\b/i.test(table) ? table : `Tavolo ${table}`;
+        }
+        if (type === "banco") return String(order.cognomeBanco || "").trim() || "Banco";
+        if (type === "ritiro") return String(order.tavoloOCliente || "").trim() || "Ritiro";
+        return String(order.indirizzoConsegna || "").trim() || "Consegna";
+    }
+
+    function expandedHeading(order, type) {
+        const reference = orderReference(order, type);
+        let heading = reference;
+        if (type === "consegna") heading = "Consegna";
+        else if (type !== "tavolo" && reference !== serviceNames[type]) {
+            heading = `${serviceNames[type] || serviceNames.tavolo} ${reference}`;
+        }
+        return `${heading} · ordine #${Number(order.numero)}`;
+    }
+
+    function formatTime(value) {
+        const date = new Date(value);
+        return Number.isNaN(date.valueOf())
+            ? "—"
+            : date.toLocaleTimeString("it-IT", {
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: "Europe/Rome"
+            });
+    }
+
+    function compactPrintStatus(order) {
+        const message = String(order.messaggioStampa || "").trim();
+        const normalizedMessage = message.toLocaleLowerCase("it");
+        if (/errore|non riusc|fallit/.test(normalizedMessage)) {
+            return { state: "error", icon: "!", label: message || "Errore di stampa" };
+        }
+        if (order.stampaInCoda) {
+            return { state: "queued", icon: "◷", label: message || "In coda" };
+        }
+        if (order.stampaCompletata) {
+            return { state: "printed", icon: "✓", label: message || "Stampata" };
+        }
+        if (/aggiunta|ristampa/.test(normalizedMessage)) {
+            return { state: "queued", icon: "◷", label: message };
+        }
+        return null;
+    }
+
+    function renderCompactPrintStatus(order) {
+        const status = compactPrintStatus(order);
+        if (!status) return "";
+        return `<span class="order-card__compact-print order-card__compact-print--${status.state}" role="img" aria-label="${escapeHtml(status.label)}" title="${escapeHtml(status.label)}">${status.icon}</span>`;
+    }
+
+    function renderPaymentDot(order, type) {
+        if (!["ritiro", "consegna"].includes(type)) return "";
+        const state = order.statoPagamento === "pagato"
+            ? "paid"
+            : order.statoPagamento === "pos" ? "pos" : "unpaid";
+        const label = state === "paid" ? "Pagato" : state === "pos" ? "POS" : "Non pagato";
+        return `<span class="order-card__payment-dot order-card__payment-dot--${state}" role="img" aria-label="${label}" title="${label}"></span>`;
     }
 
     function fieldsForOrder(order, type) {
@@ -118,6 +198,36 @@ const orderCard = (() => {
         return `<div class="order-card__actions"><button type="button" data-modifica="${number}">Modifica ordine</button><button type="button" data-ristampa="${number}" aria-haspopup="dialog">Ristampa</button><button type="button" data-elimina="${number}" class="pericolo">Elimina</button></div>`;
     }
 
+    function currentDate() {
+        return new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Europe/Rome",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+        }).format(new Date());
+    }
+
+    function bindDateFilter(input, button) {
+        const label = button.querySelector("[data-date-label]");
+        if (!input.value) input.value = currentDate();
+        function aggiornaEtichetta() {
+            const today = currentDate();
+            const isToday = !input.value || input.value === today;
+            const [, month, day] = (input.value || today).split("-");
+            const dateLabel = isToday ? "Oggi" : `${day}/${month}`;
+            button.classList.toggle("selezionata", !isToday);
+            button.setAttribute("aria-label", isToday ? "Seleziona la data di oggi" : `Seleziona la data ${dateLabel}`);
+            button.title = isToday ? "Oggi" : dateLabel;
+            label.textContent = dateLabel;
+        }
+        button.addEventListener("click", () => {
+            if (typeof input.showPicker === "function") input.showPicker();
+            else input.click();
+        });
+        input.addEventListener("change", aggiornaEtichetta);
+        aggiornaEtichetta();
+    }
+
     function bindReprints(container) {
         let triggerButton = null;
         const dialog = document.createElement("dialog");
@@ -167,6 +277,19 @@ const orderCard = (() => {
         });
         document.body.append(dialog);
         container.addEventListener("click", event => {
+            const button = event.target.closest(".order-card__toggle");
+            if (!button || !container.contains(button)) return;
+            expandedOrderState.toggle(button.dataset.orderNumber);
+            container.querySelectorAll(".order-card").forEach(card => {
+                const toggle = card.querySelector(".order-card__toggle");
+                const expanded = card.querySelector(".order-card__expanded");
+                const isOpen = expandedOrderState.isOpen(card.dataset.orderNumber);
+                toggle.setAttribute("aria-expanded", String(isOpen));
+                expanded.hidden = !isOpen;
+                card.classList.toggle("order-card--expanded", isOpen);
+            });
+        });
+        container.addEventListener("click", event => {
             const button = event.target.closest("[data-ristampa]");
             if (!button || !container.contains(button)) return;
             triggerButton = button;
@@ -179,14 +302,30 @@ const orderCard = (() => {
 
     function render(order, options = {}) {
         const type = normalizeType(order.tipo);
-        const serviceName = serviceNames[type] || serviceNames.tavolo;
+        const reference = orderReference(order, type);
+        const heading = expandedHeading(order, type);
+        const orderNumber = String(order.numero ?? "");
+        const detailId = `order-detail-${escapeHtml(orderNumber)}`;
+        const expansionState = options.expansionState || expandedOrderState;
+        const expanded = expansionState.isOpen(order.numero);
         const date = new Date(order.dataOra);
         const dateText = Number.isNaN(date.valueOf()) ? "—" : date.toLocaleString("it-IT");
         const serviceTime = type !== "tavolo" && order.orario
             ? ` | Orario: ${escapeHtml(order.orario)}`
             : "";
+        const time = order.orario || formatTime(order.dataOra);
+        const people = type === "tavolo" && Number.isInteger(Number(order.numeroPersone))
+            && Number(order.numeroPersone) > 0
+            ? `${Number(order.numeroPersone)} pers`
+            : "";
+        const metadata = [`#${escapeHtml(orderNumber)}`, people, escapeHtml(time)].filter(Boolean).join(" · ");
         const menu = Array.isArray(options.menu) ? options.menu : [];
         const canEdit = options.canEdit === true;
+        const hideTotalForStaff = options.hideTotalForStaff === true;
+        const isStaff = typeof window !== "undefined" && window.currentAccount?.staff === true;
+        const compactTotalAttributes = hideTotalForStaff
+            ? ` data-hide-for-staff${isStaff ? " hidden" : ""}`
+            : "";
         const note = order.note
             ? `<p class="order-card__note"><strong>Note:</strong> ${escapeHtml(order.note)}</p>`
             : "";
@@ -199,32 +338,44 @@ const orderCard = (() => {
         const printStatus = renderPrintStatus(order);
 
         return `
-            <article class="order-card" data-order-type="${escapeHtml(type)}">
-                <header class="order-card__header">
-                    <div class="order-card__heading">
-                        <h2 class="order-card__number">${serviceName} #${Number(order.numero)}</h2>
-                    </div>
-                    <div class="order-card__totals">
-                        ${renderPayment(order, canEdit)}
-                        <div class="order-card__total">${euro.format(Number(order.totale || 0))}</div>
-                    </div>
-                </header>
-                ${printStatus}
-                <p class="order-card__date">${dateText}${serviceTime}</p>
-                ${renderFields(fieldsForOrder(order, type))}
-                <details class="order-card__details">
-                    <summary>Apri il dettaglio dell'ordine</summary>
-                    <ul class="order-card__products">${renderProducts(order.righe, menu)}</ul>
-                    ${coverCharge}
-                    ${deliveryFee}
-                    ${note}
-                </details>
-                ${renderActions(order, canEdit)}
+            <article class="order-card${expanded ? " order-card--expanded" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
+                <button class="order-card__toggle" type="button" data-order-number="${escapeHtml(orderNumber)}" aria-expanded="${String(expanded)}" aria-controls="${detailId}">
+                    <span class="order-card__compact-copy">
+                        <span class="order-card__reference">${escapeHtml(reference)}</span>
+                        <span class="order-card__meta">${metadata}</span>
+                    </span>
+                    <span class="order-card__compact-status">
+                        <span class="order-card__compact-total"${compactTotalAttributes}>${euro.format(Number(order.totale || 0))}</span>
+                        ${renderCompactPrintStatus(order)}
+                        ${renderPaymentDot(order, type)}
+                    </span>
+                </button>
+                <div class="order-card__expanded" id="${detailId}"${expanded ? "" : " hidden"}>
+                    <header class="order-card__header">
+                        <div class="order-card__heading">
+                            <h2 class="order-card__number">${escapeHtml(heading)}</h2>
+                        </div>
+                        <div class="order-card__totals">
+                            ${renderPayment(order, canEdit)}
+                            <div class="order-card__total">${euro.format(Number(order.totale || 0))}</div>
+                        </div>
+                    </header>
+                    ${printStatus}
+                    <p class="order-card__date">${dateText}${serviceTime}</p>
+                    ${renderFields(fieldsForOrder(order, type))}
+                    <section class="order-card__details">
+                        <ul class="order-card__products">${renderProducts(order.righe, menu)}</ul>
+                        ${coverCharge}
+                        ${deliveryFee}
+                        ${note}
+                    </section>
+                    ${renderActions(order, canEdit)}
+                </div>
             </article>
         `;
     }
 
-    return Object.freeze({ bindReprints, render });
+    return Object.freeze({ bindDateFilter, bindReprints, createExpansionState, render });
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = orderCard;

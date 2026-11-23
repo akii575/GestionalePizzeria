@@ -32,7 +32,6 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
                 },
                 className: "",
                 value: "",
-                checked: id === "autoAggiorna"
             };
             Object.defineProperty(value, "innerHTML", {
                 get() { return ""; },
@@ -68,7 +67,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         window: {
             authReady: Promise.resolve(true),
             currentAccount,
-            orderCard: { bindReprints() {}, render() { return ""; } }
+            orderCard: { bindReprints() {}, bindDateFilter() {}, render() { return ""; } }
         },
         fetch: async url => {
             requests.push(String(url));
@@ -162,14 +161,16 @@ for (const [page, endpoint, interval, listId] of [
     });
 }
 
-test("gestionale reloads fully when returning to the page even with auto-refresh disabled", async () => {
+test("gestionale always polls while visible and pauses only while hidden", async () => {
     const scriptPath = path.join(__dirname, "../src/main/resources/static/gestionale.js");
     const state = createPageContext(fs.readFileSync(scriptPath, "utf8"));
     await flushPagePromises();
-    state.element("autoAggiorna").checked = false;
+    assert.equal(state.intervals.size, 1);
+    assert.doesNotMatch(fs.readFileSync(scriptPath, "utf8"), /autoAggiorna/);
 
     state.document.visibilityState = "hidden";
     for (const listener of state.listeners.get("visibilitychange") || []) listener();
+    assert.equal(state.intervals.size, 0);
     state.document.visibilityState = "visible";
     for (const listener of state.listeners.get("visibilitychange") || []) listener();
     await flushPagePromises();
@@ -177,7 +178,7 @@ test("gestionale reloads fully when returning to the page even with auto-refresh
     const orderRequests = state.requests.filter(url => url.startsWith("/api/ordini"));
     assert.equal(orderRequests.length, 2);
     assert.doesNotMatch(orderRequests[1], /versione=/);
-    assert.equal(state.intervals.size, 0);
+    assert.equal(state.intervals.size, 1);
 });
 
 test("delivery accounts do not request the staff-only menu API", async () => {

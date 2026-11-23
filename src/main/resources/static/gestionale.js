@@ -12,6 +12,7 @@ const statoPagina = document.getElementById("stato");
 const eliminazioniInCorso = new Set();
 const tipoServizio = document.body.dataset.serviceType || "";
 window.orderCard.bindReprints(lista);
+window.orderCard.bindDateFilter(document.getElementById("data"), document.getElementById("apri-data"));
 
 function mostraStato(testo, classe) { statoPagina.textContent = testo; statoPagina.className = classe || ""; }
 function tipoNormalizzato(tipo) { return tipo === "sala" ? "tavolo" : tipo || "tavolo"; }
@@ -30,6 +31,10 @@ function ordiniFiltrati() {
 function render() {
     const ordini = ordiniFiltrati();
     document.getElementById("numero-ordini").textContent = ordini.length;
+    const etichettaOrdini = tipoServizio === "ritiro"
+        ? (ordini.length === 1 ? "ritiro" : "ritiri")
+        : (ordini.length === 1 ? "ordine" : "ordini");
+    document.getElementById("etichetta-ordini").textContent = etichettaOrdini;
     if (window.currentAccount?.staff !== true) {
         document.getElementById("totale-ordini").textContent = euro.format(ordini.reduce((somma, ordine) => somma + Number(ordine.totale), 0));
     }
@@ -38,6 +43,7 @@ function render() {
     ordini.slice().reverse().forEach(ordine => {
         lista.insertAdjacentHTML("beforeend", window.orderCard.render(ordine, {
             canEdit: window.currentAccount?.admin === true || window.currentAccount?.staff === true,
+            hideTotalForStaff: true,
             menu: stato.menu
         }));
     });
@@ -115,14 +121,13 @@ async function caricaOrdini({ completa = true } = {}) {
 function configuraAggiornamento() {
     if (stato.timer) clearInterval(stato.timer);
     stato.timer = null;
-    if (document.getElementById("autoAggiorna").checked && document.visibilityState === "visible") {
+    if (document.visibilityState === "visible") {
         stato.timer = setInterval(aggiornaOrdiniAutomaticamente, 15000);
     }
 }
 document.getElementById("aggiorna").addEventListener("click", caricaOrdini);
 document.getElementById("filtro").addEventListener("input", render);
 document.getElementById("data").addEventListener("change", caricaOrdini);
-document.getElementById("autoAggiorna").addEventListener("change", configuraAggiornamento);
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") caricaOrdini({ completa: true });
     configuraAggiornamento();

@@ -47,10 +47,10 @@ test("all order services use the same card structure and field styling", () => {
 
 test("order heading shows only the service name and number without truncation", () => {
     const orders = [
-        { tipo: "consegna", title: "Consegna #8" },
-        { tipo: "ritiro", title: "Ritiro #8" },
-        { tipo: "banco", title: "Banco #8" },
-        { tipo: "tavolo", title: "Tavolo #8" }
+        { tipo: "consegna", title: "Consegna · ordine #8", indirizzoConsegna: "Via Roma 12" },
+        { tipo: "ritiro", title: "Ritiro Rossi · ordine #8", tavoloOCliente: "Rossi" },
+        { tipo: "banco", title: "Banco Bianchi · ordine #8", cognomeBanco: "Bianchi" },
+        { tipo: "tavolo", title: "Tavolo 1 · ordine #8", tavoloOCliente: "Tavolo 1" }
     ];
     const styles = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "gestionale.css"),
@@ -59,12 +59,93 @@ test("order heading shows only the service name and number without truncation", 
 
     for (const order of orders) {
         const html = render(order);
-        assert.match(html, new RegExp(`<h2 class="order-card__number">${order.title}<\\/h2>`));
+        assert.match(html, new RegExp(`<h2 class="order-card__number">${order.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
         assert.doesNotMatch(html, /order-card__title|Dettagli (consegna|ritiro|banco|tavolo)/);
     }
 
     assert.match(styles, /\.order-card__number\s*\{[^}]*font-size:\s*18px;[^}]*font-weight:\s*600;[^}]*white-space:\s*nowrap;/);
     assert.doesNotMatch(styles, /\.order-card__number\s*\{[^}]*text-overflow:\s*ellipsis/);
+});
+
+test("compact rows show the reference, order number, total, and print state", () => {
+    const html = render({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        numeroPersone: 4,
+        stampaCompletata: true
+    });
+
+    assert.match(html, /class="order-card__reference">Tavolo 1<\/span>/);
+    assert.match(html, /class="order-card__meta">#8 · 4 pers ·/);
+    assert.match(html, /class="order-card__compact-total">31,00\s*€/);
+    assert.match(html, /order-card__compact-print--printed[^>]*aria-label="Stampata"/);
+    assert.match(html, /aria-expanded="false"/);
+});
+
+test("only one compact row is expanded and its state survives rerendering", () => {
+    const expansionState = orderCard.createExpansionState();
+    const first = { tipo: "tavolo", tavoloOCliente: "Tavolo 1" };
+    const second = { tipo: "tavolo", tavoloOCliente: "Tavolo 2", numero: 9 };
+
+    expansionState.toggle(8);
+    assert.match(render(first, { expansionState }), /aria-expanded="true"/);
+    expansionState.toggle(9);
+    assert.match(render(first, { expansionState }), /aria-expanded="false"/);
+    assert.match(render(second, { expansionState }), /aria-expanded="true"/);
+    assert.match(render(second, { expansionState }), /class="order-card__expanded"[^>]*>/);
+});
+
+test("staff compact totals stay hidden only on pages that hide the daily total", () => {
+    const previousWindow = global.window;
+    global.window = { currentAccount: { staff: true }, paymentUI };
+    try {
+        const hidden = orderCard.render({
+            numero: 8,
+            tipo: "tavolo",
+            tavoloOCliente: "Tavolo 1",
+            totale: 31
+        }, { hideTotalForStaff: true });
+        const visible = orderCard.render({
+            numero: 8,
+            tipo: "consegna",
+            indirizzoConsegna: "Via Roma 12",
+            totale: 31
+        }, { hideTotalForStaff: false });
+
+        assert.match(hidden, /order-card__compact-total" data-hide-for-staff hidden>/);
+        assert.match(visible, /order-card__compact-total">31,00\s*€/);
+    } finally {
+        if (previousWindow === undefined) delete global.window;
+        else global.window = previousWindow;
+    }
+});
+
+test("date filter defaults to today and opens a selectable date", () => {
+    const listeners = new Map();
+    const buttonAttributes = new Map();
+    const input = {
+        value: "2026-11-18",
+        addEventListener(name, callback) { listeners.set(name, callback); },
+        showPicker() { this.pickerOpened = true; }
+    };
+    const label = { textContent: "" };
+    const button = {
+        classList: { toggle(name, enabled) { this[name] = enabled; } },
+        querySelector() { return label; },
+        addEventListener(name, callback) { listeners.set(`button-${name}`, callback); },
+        setAttribute(name, value) { buttonAttributes.set(name, value); }
+    };
+
+    orderCard.bindDateFilter(input, button);
+    assert.equal(label.textContent, "18/11");
+    assert.equal(button.classList.selezionata, true);
+    assert.equal(buttonAttributes.get("aria-label"), "Seleziona la data 18/11");
+    listeners.get("button-click")();
+    assert.equal(input.pickerOpened, true);
+
+    input.value = "2026-11-19";
+    listeners.get("change")();
+    assert.equal(label.textContent, "19/11");
 });
 
 test("reprint controls are available only on editable order cards", () => {
@@ -255,6 +336,16 @@ test("every order-list page loads the shared card renderer before its page scrip
     ]) {
         const html = fs.readFileSync(path.join(directory, page), "utf8");
         assert.ok(html.indexOf("/order-card.js") < html.indexOf(`/${renderer}`), `${page} must load the shared renderer first`);
+    }
+});
+
+test("order-list pages use the calendar filter and have no auto-refresh checkbox", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    for (const pageName of ["tavoli.html", "ritiri.html", "banco.html", "gestionale.html", "consegne.html"]) {
+        const page = fs.readFileSync(path.join(directory, pageName), "utf8");
+        assert.match(page, /id="apri-data"[^>]*type="button"/, pageName);
+        assert.match(page, /id="data"[^>]*type="date"/, pageName);
+        assert.doesNotMatch(page, /autoAggiorna|Aggiorna ogni 15 secondi/, pageName);
     }
 });
 
