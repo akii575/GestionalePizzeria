@@ -56,7 +56,9 @@
     };
 
     function showMessage(title, description, canLogout) {
+        const networkBanner = document.querySelector(".civico7-network-banner");
         document.body.replaceChildren();
+        if (networkBanner) document.body.append(networkBanner);
         document.documentElement.classList.remove("auth-loading");
         const main = document.createElement("main");
         main.className = "auth-feedback";
@@ -75,8 +77,17 @@
         button.className = "auth-logout";
         button.textContent = "Esci";
         button.addEventListener("click", async () => {
-            await nativeFetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
-            window.location.replace("/login.html");
+            button.disabled = true;
+            try {
+                const response = await nativeFetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+                if (!response.ok) throw new Error("Impossibile terminare la sessione.");
+                await window.civico7ClearOfflineCaches();
+                window.location.replace("/login.html");
+            } catch (error) {
+                console.error("Logout failed:", error);
+                button.disabled = false;
+                button.textContent = "Esci (errore)";
+            }
         });
         return button;
     }

@@ -251,6 +251,9 @@ async function avvia() {
 document.getElementById("aggiorna").addEventListener("click", caricaConsegne);
 document.getElementById("filtro").addEventListener("input", render);
 document.getElementById("data").addEventListener("change", caricaConsegne);
+document.addEventListener("civico7:online", () => {
+    void caricaConsegne({ completa: true });
+});
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") caricaConsegne({ completa: true });
     configuraAggiornamento();

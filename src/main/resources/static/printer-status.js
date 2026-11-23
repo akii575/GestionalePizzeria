@@ -164,6 +164,9 @@
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") void refreshStatus();
     });
+    document.addEventListener("civico7:online", () => {
+        void refreshStatus();
+    });
     void refreshStatus();
     window.setInterval(() => {
         if (document.visibilityState === "visible") void refreshStatus();

@@ -596,3 +596,31 @@ body.app-shell nav.app-bottom-nav {
         overflow: hidden;
     }
 }
+
+.civico7-network-banner {
+    position: sticky;
+    z-index: 1200;
+    top: 0;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    background: var(--theme-red);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.civico7-network-banner.is-online { background: #198754; }
+
+body.has-civico7-network-banner .app-page-header {
+    top: var(--civico7-banner-height, 44px);
+}
+
+@media (max-width: 767px) {
+    .civico7-network-banner {
+        padding-top: calc(10px + env(safe-area-inset-top));
+    }
+}

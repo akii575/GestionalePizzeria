@@ -28,8 +28,15 @@ function mostraAccessoNegato() {
     logout.type = "button";
     logout.textContent = "Esci";
     logout.addEventListener("click", async () => {
-        await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
-        window.location.replace("/login.html");
+        try {
+            const response = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+            if (!response.ok) throw new Error("Impossibile terminare la sessione.");
+            await window.civico7ClearOfflineCaches();
+            window.location.replace("/login.html");
+        } catch (error) {
+            status.className = "error";
+            status.textContent = error.message;
+        }
     });
     status.after(logout);
 }

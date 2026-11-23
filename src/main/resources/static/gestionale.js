@@ -129,6 +129,9 @@ function configuraAggiornamento() {
 document.getElementById("aggiorna").addEventListener("click", caricaOrdini);
 document.getElementById("filtro").addEventListener("input", render);
 document.getElementById("data").addEventListener("change", caricaOrdini);
+document.addEventListener("civico7:online", () => {
+    void caricaOrdini({ completa: true });
+});
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") caricaOrdini({ completa: true });
     configuraAggiornamento();

@@ -286,11 +286,89 @@
         button.className = "auth-logout";
         button.textContent = "Esci";
         button.addEventListener("click", async () => {
-            await window.fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
-            window.location.replace("/login.html");
+            button.disabled = true;
+            try {
+                const response = await window.fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+                if (!response.ok) throw new Error("Impossibile terminare la sessione.");
+                await window.civico7ClearOfflineCaches();
+                window.location.replace("/login.html");
+            } catch (error) {
+                console.error("Logout failed:", error);
+                button.disabled = false;
+                button.textContent = "Esci (errore)";
+            }
         });
         return button;
     }
 
-    void initializeNavigation();
+    function setupOfflineBanner() {
+        let banner = null;
+        let dismissTimer = null;
+        function removeBanner() {
+            if (banner) banner.remove();
+            banner = null;
+            document.body.classList.remove("has-civico7-network-banner");
+            document.documentElement.style.removeProperty("--civico7-banner-height");
+        }
+        function showBanner(message, online = false) {
+            if (dismissTimer) window.clearTimeout(dismissTimer);
+            if (!banner) {
+                banner = document.createElement("div");
+                banner.className = "civico7-network-banner";
+                banner.setAttribute("role", "status");
+                banner.setAttribute("aria-live", "polite");
+                document.body.prepend(banner);
+                document.body.classList.add("has-civico7-network-banner");
+            }
+            banner.classList.toggle("is-online", online);
+            banner.textContent = message;
+            window.requestAnimationFrame(() => {
+                if (banner) {
+                    document.documentElement.style.setProperty(
+                        "--civico7-banner-height",
+                        `${banner.getBoundingClientRect().height}px`
+                    );
+                }
+            });
+        }
+
+        window.addEventListener("offline", () => {
+            showBanner("Nessuna connessione internet — le comande non vengono inviate");
+        });
+        window.addEventListener("online", () => {
+            showBanner("Connessione tornata", true);
+            document.dispatchEvent(new CustomEvent("civico7:online"));
+            dismissTimer = window.setTimeout(removeBanner, 3000);
+        });
+        window.addEventListener("resize", () => {
+            if (banner) {
+                document.documentElement.style.setProperty(
+                    "--civico7-banner-height",
+                    `${banner.getBoundingClientRect().height}px`
+                );
+            }
+        });
+        if (navigator.onLine === false) {
+            showBanner("Nessuna connessione internet — le comande non vengono inviate");
+        }
+    }
+
+    window.civico7ClearOfflineCaches = async () => {
+        if (!("caches" in window)) return;
+        const cacheNames = await window.caches.keys();
+        await Promise.all(cacheNames
+            .filter(name => name.startsWith("civico7-"))
+            .map(name => window.caches.delete(name)));
+    };
+
+    setupOfflineBanner();
+    window.addEventListener("load", () => {
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/sw.js").catch(error => {
+                console.error("Service worker registration failed:", error);
+            });
+        }
+    }, { once: true });
+
+    if (window.location.pathname !== "/login.html") void initializeNavigation();
 })();

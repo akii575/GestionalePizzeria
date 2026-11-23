@@ -340,11 +340,21 @@ document.getElementById("salva").onclick = async () => {
             senza: JSON.parse(riga.dataset.senza || "[]")
         }))
     };
-    const risposta = await fetch(`/api/ordini/${numero}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
+    let risposta;
+    try {
+        if (navigator.onLine === false) throw new TypeError("offline");
+        risposta = await fetch(`/api/ordini/${numero}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+    } catch (errore) {
+        pulsante.disabled = false;
+        stato(navigator.onLine === false || errore instanceof TypeError
+            ? "Comanda NON inviata: manca la connessione. Riprova appena torna internet."
+            : errore.message);
+        return;
+    }
     if (!risposta.ok) {
         const errore = await risposta.json();
         pulsante.disabled = false;
