@@ -1194,6 +1194,12 @@ button {
     -webkit-tap-highlight-color: transparent;
 }
 
+.opzione-tipo-ordine span {
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+}
+
 .opzione-tipo-ordine.selezionato,
 .opzione-tavolo.selezionato,
 .opzione-persone.selezionato {
@@ -1233,8 +1239,8 @@ button {
 .opzione-persone {
     width: 100%;
     min-width: 44px;
+    height: 48px;
     min-height: 48px;
-    aspect-ratio: 1;
     border: 1px solid var(--theme-line);
     border-radius: 10px;
     background: #fff;
@@ -1244,6 +1250,14 @@ button {
     font-weight: 600;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 768px) {
+    .opzione-tavolo,
+    .opzione-persone {
+        height: 52px;
+        min-height: 52px;
+    }
 }
 
 .persone-personalizzate {
@@ -1452,6 +1466,10 @@ button {
     font-size: 15px;
     font-weight: 600;
     line-height: 1.2;
+    overflow-wrap: normal;
+    text-overflow: ellipsis;
+    word-break: normal;
+    hyphens: none;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
 }
@@ -1744,7 +1762,7 @@ button {
     }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
     .app-shell .container {
         padding: 0 12px calc(var(--app-mobile-checkout-height) + var(--app-mobile-nav-height));
     }
@@ -1785,7 +1803,7 @@ button {
     }
 
     .opzione-tipo-ordine {
-        font-size: 11px;
+        font-size: clamp(9px, 3.1vw, 11px);
     }
 
     #campo-tavolo {
@@ -1997,7 +2015,7 @@ button {
     }
 }
 
-@media (max-width: 767px) and (orientation: portrait) {
+@media (max-width: 1023px) and (orientation: portrait) {
     .barra-conto {
         touch-action: none;
     }
@@ -2199,10 +2217,33 @@ button {
 
 }
 
-@media (max-width: 767px) and (orientation: portrait) and (prefers-reduced-motion: reduce) {
+@media (max-width: 1023px) and (orientation: portrait) and (prefers-reduced-motion: reduce) {
     .riepilogo-sheet-backdrop,
     .riepilogo-sheet {
         transition-duration: .01ms;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+    :root {
+        --app-mobile-checkout-height: 80px;
+    }
+
+    .app-shell .container {
+        padding-bottom: calc(var(--app-mobile-checkout-height) + env(safe-area-inset-bottom));
+    }
+
+    .composer-summary > .barra-conto {
+        right: 0;
+        bottom: env(safe-area-inset-bottom);
+        left: 80px;
+    }
+
+    .riepilogo-sheet-backdrop {
+        top: 0;
+        right: 0;
+        bottom: env(safe-area-inset-bottom);
+        left: 80px;
     }
 }
 
