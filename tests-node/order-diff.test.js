@@ -93,3 +93,17 @@ test("treats removed ingredients as part of row identity", () => {
         rimosse: [withoutBasilico]
     });
 });
+
+test("treats changed pizza notes as row changes and ignores note ordering", () => {
+    const plain = { ...margherita, note: [] };
+    const withNote = { ...margherita, note: ["Ben cotta"] };
+
+    assert.deepEqual(diffRighe([plain], [withNote]), {
+        aggiunte: [withNote],
+        rimosse: [plain]
+    });
+    assert.deepEqual(diffRighe(
+        [{ ...margherita, note: ["Ben cotta", "Tagliata"] }],
+        [{ ...margherita, note: ["Tagliata", "Ben cotta"] }]
+    ), { aggiunte: [], rimosse: [] });
+});

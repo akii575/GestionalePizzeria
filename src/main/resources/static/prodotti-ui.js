@@ -1,5 +1,12 @@
 const prodottiUI = (() => {
     const LIMITE_RIGHE_ORDINE = 100;
+    const NOTE_RIGA = Object.freeze([
+        "Ben cotta",
+        "Poco cotta",
+        "Tagliata",
+        "Senza glutine",
+        "Senza lattosio"
+    ]);
     const menuCacheKey = "civico7-menu-v1";
 
     function leggiCacheMenu(storage) {
@@ -146,7 +153,8 @@ const prodottiUI = (() => {
             ingredienti: prodotto.ingredienti || [],
             ammetteExtra: conExtra,
             extra: [],
-            senza: []
+            senza: [],
+            note: []
         };
     }
 
@@ -177,6 +185,7 @@ const prodottiUI = (() => {
                     ammetteExtra: prodotto?.ammetteExtra === true,
                     extra,
                     senza: normalizzaSenzaIngredienti(riga.senza, ingredienti),
+                    note: normalizzaNoteRiga(riga.note),
                     nonDisponibile: !prodotto
                         || prodotto.disponibile === false
                         || prodotto.archiviato === true
@@ -205,7 +214,8 @@ const prodottiUI = (() => {
             righe: righe.map(riga => ({
                 prodotto: riga.prodotto,
                 extra: Array.isArray(riga.extra) ? riga.extra : [],
-                senza: Array.isArray(riga.senza) ? riga.senza : []
+                senza: Array.isArray(riga.senza) ? riga.senza : [],
+                note: Array.isArray(riga.note) ? [...riga.note] : []
             }))
         };
     }
@@ -255,7 +265,8 @@ const prodottiUI = (() => {
                 righe.push({
                     prodotto,
                     extra,
-                    senza: normalizzaSenzaIngredienti(voce.senza, prodotto.ingredienti)
+                    senza: normalizzaSenzaIngredienti(voce.senza, prodotto.ingredienti),
+                    note: normalizzaNoteRiga(voce.note)
                 });
             }
         }
@@ -276,8 +287,10 @@ const prodottiUI = (() => {
                 .map(elemento => typeof elemento === "string" ? elemento : elemento?.id || elemento?.nome || "")
                 .sort();
             const senza = (Array.isArray(riga.senza) ? riga.senza : []).slice().sort();
-            const nota = typeof riga.nota === "string" ? riga.nota : typeof riga.note === "string" ? riga.note : "";
-            const chiave = JSON.stringify([riga.prodotto, extra, senza, nota]);
+            const note = normalizzaNoteRiga(riga.note).sort((first, second) =>
+                first.localeCompare(second, "it-IT")
+            );
+            const chiave = JSON.stringify([riga.prodotto, extra, senza, note]);
             const gruppo = gruppi.get(chiave);
             if (gruppo) {
                 gruppo.quantita++;
@@ -344,6 +357,23 @@ const prodottiUI = (() => {
         }, []);
     }
 
+    function normalizzaNoteRiga(note) {
+        if (!Array.isArray(note)) return [];
+        const selezionate = new Set();
+        return note.reduce((risultato, valore) => {
+            if (typeof valore !== "string") return risultato;
+            const normalizzato = valore.trim().toLocaleLowerCase("it-IT");
+            const canonico = NOTE_RIGA.find(elemento =>
+                elemento.toLocaleLowerCase("it-IT") === normalizzato
+            );
+            if (canonico && !selezionate.has(normalizzato)) {
+                selezionate.add(normalizzato);
+                risultato.push(canonico);
+            }
+            return risultato;
+        }, []);
+    }
+
     function toggleSenza(righe, rigaAttiva, ingrediente) {
         const riga = righe[rigaAttiva];
         if (!riga || typeof ingrediente !== "string") return righe;
@@ -364,6 +394,24 @@ const prodottiUI = (() => {
                 ? senza.filter(item => typeof item !== "string"
                     || item.trim().toLocaleLowerCase("it-IT") !== chiaveIngrediente)
                 : [...senza, canonical]
+        });
+    }
+
+    function toggleNotaRiga(righe, rigaAttiva, valore) {
+        const riga = righe[rigaAttiva];
+        if (!riga || typeof valore !== "string") return righe;
+        const canonical = NOTE_RIGA.find(item =>
+            item.toLocaleLowerCase("it-IT") === valore.trim().toLocaleLowerCase("it-IT")
+        );
+        if (!canonical) return righe;
+        const notes = normalizzaNoteRiga(riga.note);
+        const normalized = canonical.toLocaleLowerCase("it-IT");
+        const presente = notes.some(item => item.toLocaleLowerCase("it-IT") === normalized);
+        return righe.map((elemento, indice) => indice !== rigaAttiva ? elemento : {
+            ...elemento,
+            note: presente
+                ? notes.filter(item => item.toLocaleLowerCase("it-IT") !== normalized)
+                : [...notes, canonical]
         });
     }
 
@@ -564,6 +612,7 @@ const prodottiUI = (() => {
 
     return {
         LIMITE_RIGHE_ORDINE,
+        NOTE_RIGA,
         leggiCacheMenu,
         salvaCacheMenu,
         caricaMenuConCache,
@@ -586,6 +635,8 @@ const prodottiUI = (() => {
         rimuoviProdotto,
         toggleExtra,
         toggleSenza,
+        toggleNotaRiga,
+        normalizzaNoteRiga,
         normalizzaSenzaIngredienti,
         intestazioneExtra,
         creaStatoMoltiplicatore,

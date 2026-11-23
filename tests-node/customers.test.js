@@ -128,9 +128,9 @@ test("customer profiles group order rows by product and extras and omit table co
         data: "2026-11-22T18:00:00.000Z",
         tipo: "consegna",
         righe: [
-            { prodotto: "Margherita", quantita: 2, extra: ["Bufala", "Olive"], senza: [] },
-            { prodotto: "Margherita", quantita: 1, extra: ["Bufala"], senza: [] },
-            { prodotto: "Margherita", quantita: 1, extra: [], senza: [] }
+            { prodotto: "Margherita", quantita: 2, extra: ["Bufala", "Olive"], senza: [], note: [] },
+            { prodotto: "Margherita", quantita: 1, extra: ["Bufala"], senza: [], note: [] },
+            { prodotto: "Margherita", quantita: 1, extra: [], senza: [], note: [] }
         ]
     });
     assert.equal("coperto" in profile, false);
@@ -146,15 +146,15 @@ test("customer repeat orders save removed ingredients and keep them separate fro
         tipo: "ritiro",
         telefonoRitiro: "3331234567",
         righe: [
-            { prodotto: "Margherita", extra: [], senza: [] },
-            { prodotto: "Margherita", extra: [], senza: ["Basilico"] },
-            { prodotto: "Margherita", extra: [], senza: ["Basilico"] }
+            { prodotto: "Margherita", extra: [], senza: [], note: ["Ben cotta"] },
+            { prodotto: "Margherita", extra: [], senza: ["Basilico"], note: [] },
+            { prodotto: "Margherita", extra: [], senza: ["Basilico"], note: [] }
         ]
     }, "2026-11-22T18:00:00.000Z");
 
     assert.deepEqual(profile.ultimoOrdine.righe, [
-        { prodotto: "Margherita", quantita: 1, extra: [], senza: [] },
-        { prodotto: "Margherita", quantita: 2, extra: [], senza: ["Basilico"] }
+        { prodotto: "Margherita", quantita: 1, extra: [], senza: [], note: ["Ben cotta"] },
+        { prodotto: "Margherita", quantita: 2, extra: [], senza: ["Basilico"], note: [] }
     ]);
 });
 
@@ -437,7 +437,8 @@ test("creating a delivery order updates the customer inside its order transactio
         prodotto: "Margherita",
         quantita: 2,
         extra: ["Bufala"],
-        senza: []
+        senza: [],
+        note: []
     }]);
     assert.equal(customerWrite.value.ultimoOrdine.data, response.body.dataOra);
     assert.equal("coperto" in customerWrite.value, false);

@@ -44,10 +44,13 @@ const extraIntestazione = document.getElementById("extra-intestazione");
 const extraProdotto = document.getElementById("extra-prodotto");
 const extraSenzaConteggio = document.getElementById("extra-senza-conteggio");
 const extraConteggio = document.getElementById("extra-conteggio");
+const noteRigaConteggio = document.getElementById("note-riga-conteggio");
 const extraFreccia = document.getElementById("extra-freccia");
 const extraDettagli = document.getElementById("extra-dettagli");
 const senzaIngredienti = document.getElementById("senza-ingredienti");
 const senzaIngredientiLista = document.getElementById("senza-ingredienti-lista");
+const noteRiga = document.getElementById("note-riga");
+const noteRigaLista = document.getElementById("note-riga-lista");
 const mediaGrigliaExtra = window.matchMedia("(max-width: 699px)");
 let extraAperto = false;
 let prodottoCoperto = null;
@@ -101,6 +104,7 @@ const paginaPrincipale = document.querySelector("main");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const { escapeHtml } = window.htmlUtils;
 const {
+    NOTE_RIGA,
     filtraProdotti,
     isCoperto,
     calcolaCoperto,
@@ -114,6 +118,8 @@ const {
     rimuoviProdotto,
     toggleExtra,
     toggleSenza,
+    toggleNotaRiga,
+    normalizzaNoteRiga,
     creaStatoMoltiplicatore,
     premiTastoMoltiplicatore,
     quantitaDaApplicare,
@@ -483,15 +489,17 @@ async function aggiornaCacheClienteDopoInvio(ordine, rispostaOrdine) {
         for (const riga of ordine.righe) {
             const extra = nomiExtra(riga.extra);
             const senza = Array.isArray(riga.senza) ? riga.senza : [];
+            const note = Array.isArray(riga.note) ? riga.note : [];
             const chiave = JSON.stringify([
                 riga.prodotto,
                 [...extra].sort((a, b) => a.localeCompare(b, "it-IT")),
-                [...senza].sort((a, b) => a.localeCompare(b, "it-IT"))
+                [...senza].sort((a, b) => a.localeCompare(b, "it-IT")),
+                [...note].sort((a, b) => a.localeCompare(b, "it-IT"))
             ]);
             const corrente = raggruppate.get(chiave);
             if (corrente) corrente.quantita++;
             else if (raggruppate.size < 30) {
-                raggruppate.set(chiave, { prodotto: riga.prodotto, quantita: 1, extra, senza });
+                raggruppate.set(chiave, { prodotto: riga.prodotto, quantita: 1, extra, senza, note });
             }
         }
         cacheClienti.set(telefono, Promise.resolve({
@@ -543,6 +551,7 @@ function ripetiUltimoOrdine(ultimoOrdine) {
         stato.rigaAttiva = aggiunta.rigaAttiva;
         stato.righe[stato.righe.length - 1].extra = voce.extra;
         stato.righe[stato.righe.length - 1].senza = voce.senza;
+        stato.righe[stato.righe.length - 1].note = voce.note;
     }
     renderRiepilogo();
     const messaggi = [];
@@ -823,17 +832,20 @@ function renderGrigliaExtra() {
         : 0;
     const rigaAttiva = stato.righe[stato.rigaAttiva];
     const ingredienti = Array.isArray(rigaAttiva?.ingredienti) ? rigaAttiva.ingredienti : [];
-    sezioneExtra.hidden = !stato.extra.length && !ingredienti.length;
+    const supportaNoteRiga = ingredienti.length > 0 || rigaAttiva?.ammetteExtra === true;
+    sezioneExtra.hidden = !stato.extra.length && !ingredienti.length && !supportaNoteRiga;
     const nomeProdotto = rigaAttiva?.prodotto || "Seleziona un prodotto";
     const conteggioSenza = Array.isArray(rigaAttiva?.senza) ? rigaAttiva.senza.length : 0;
     const conteggioExtra = Array.isArray(rigaAttiva?.extra) ? rigaAttiva.extra.length : 0;
+    const conteggioNote = Array.isArray(rigaAttiva?.note) ? rigaAttiva.note.length : 0;
     extraProdotto.textContent = nomeProdotto;
     extraSenzaConteggio.textContent = `Senza (${conteggioSenza})`;
     extraConteggio.textContent = `Extra (${conteggioExtra})`;
+    noteRigaConteggio.textContent = `Note (${conteggioNote})`;
     extraFreccia.textContent = extraAperto ? "▴" : "▾";
     extraIntestazione.setAttribute(
         "aria-label",
-        `${nomeProdotto} · Senza (${conteggioSenza}) · Extra (${conteggioExtra})`
+        `${nomeProdotto} · Senza (${conteggioSenza}) · Extra (${conteggioExtra}) · Note (${conteggioNote})`
     );
     extraIntestazione.setAttribute("aria-expanded", String(extraAperto));
     sezioneExtra.classList.toggle("extra-aperto", extraAperto);
@@ -870,6 +882,7 @@ function renderGrigliaExtra() {
         extraLista.scrollLeft = Math.min(paginaCorrente, extraLista.children.length - 1) * extraLista.clientWidth;
     }
     renderSenzaIngredienti(rigaAttiva, ingredienti);
+    renderNoteRiga(rigaAttiva, supportaNoteRiga);
 }
 function renderSenzaIngredienti(riga, ingredienti) {
     senzaIngredientiLista.replaceChildren();
@@ -889,6 +902,24 @@ function renderSenzaIngredienti(riga, ingredienti) {
         bottone.setAttribute("aria-pressed", String(attivo));
         bottone.dataset.senzaIngrediente = ingrediente;
         senzaIngredientiLista.appendChild(bottone);
+    });
+}
+function renderNoteRiga(riga, supportaNote) {
+    noteRigaLista.replaceChildren();
+    noteRiga.hidden = !riga || !supportaNote;
+    if (!riga || !supportaNote) return;
+    const selezionate = new Set(normalizzaNoteRiga(riga.note)
+        .map(valore => valore.toLocaleLowerCase("it-IT")));
+    NOTE_RIGA.forEach(valore => {
+        const bottone = document.createElement("button");
+        const attivo = selezionate.has(valore.toLocaleLowerCase("it-IT"));
+        bottone.type = "button";
+        bottone.className = "note-chip";
+        bottone.textContent = valore;
+        bottone.classList.toggle("selezionato", attivo);
+        bottone.setAttribute("aria-pressed", String(attivo));
+        bottone.dataset.notaRiga = valore;
+        noteRigaLista.appendChild(bottone);
     });
 }
 function renderProdotti() {
@@ -1070,11 +1101,14 @@ function renderRigheRiepilogo(contenitore) {
         const senza = Array.isArray(riga.senza) && riga.senza.length
             ? `<small class="riepilogo-senza">senza ${escapeHtml(riga.senza.join(", "))}</small>`
             : "";
+        const noteRiga = Array.isArray(riga.note) && riga.note.length
+            ? `<small class="riepilogo-note-riga">${escapeHtml(riga.note.map(valore => valore.toLocaleLowerCase("it-IT")).join(", "))}</small>`
+            : "";
         const nonDisponibile = riga.nonDisponibile
             ? '<small class="riepilogo-non-disponibile">Non più disponibile</small>'
             : "";
         const nomeRiga = `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indice)}">${escapeHtml(riga.prodotto)}</button>`;
-        voce.innerHTML = `<div>${nomeRiga}${nonDisponibile}${senza}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
+        voce.innerHTML = `<div>${nomeRiga}${nonDisponibile}${senza}${noteRiga}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
         contenitore.appendChild(voce);
     });
     if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
@@ -1364,8 +1398,11 @@ function apriConferma() {
             const senza = Array.isArray(riga.senza) && riga.senza.length
                 ? `<small class="conferma-senza">SENZA ${escapeHtml(riga.senza.join(", "))}</small>`
                 : "";
+            const note = normalizzaNoteRiga(riga.note)
+                .map(valore => `<small class="conferma-nota-riga">• ${escapeHtml(valore)}</small>`)
+                .join("");
             const quantitaTesto = quantita > 1 ? `${quantita}× ` : "";
-            return `<div class="conferma-riga"><strong>${quantitaTesto}${escapeHtml(riga.prodotto)} — ${escapeHtml(euro.format(prezzoRiga(riga) * quantita))}</strong>${extra ? `<small class="conferma-extra">+ ${escapeHtml(extra)}</small>` : ""}${senza}</div>`;
+            return `<div class="conferma-riga"><strong>${quantitaTesto}${escapeHtml(riga.prodotto)} — ${escapeHtml(euro.format(prezzoRiga(riga) * quantita))}</strong>${extra ? `<small class="conferma-extra">+ ${escapeHtml(extra)}</small>` : ""}${senza}${note}</div>`;
         })
         .join("");
     confermaTotale.textContent = `Totale: ${euro.format(totaleOrdine())}`;
@@ -1569,6 +1606,12 @@ senzaIngredientiLista.addEventListener("click", evento => {
         stato.rigaAttiva,
         bottone.dataset.senzaIngrediente
     );
+    renderRiepilogo();
+});
+noteRigaLista.addEventListener("click", evento => {
+    const bottone = evento.target.closest("[data-nota-riga]");
+    if (!bottone || !noteRigaLista.contains(bottone)) return;
+    stato.righe = toggleNotaRiga(stato.righe, stato.rigaAttiva, bottone.dataset.notaRiga);
     renderRiepilogo();
 });
 bottoneRicerca.addEventListener("click", apriRicerca);

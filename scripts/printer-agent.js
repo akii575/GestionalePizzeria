@@ -248,11 +248,15 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             const rowExtras = (row.extra || []).map(receiptExtra);
             const senza = (Array.isArray(row.senza) ? row.senza : [])
                 .filter(ingredient => typeof ingredient === "string" && ingredient.trim());
+            const notes = (Array.isArray(row.note) ? row.note : [])
+                .filter(note => typeof note === "string" && note.trim());
             const basePrice = receiptBasePrice(row);
             const key = JSON.stringify([
                 row.prodotto,
                 rowExtras.map(extra => [extra.name, extra.price]).sort((first, second) => first[0].localeCompare(second[0], "it")),
                 senza.map(ingredient => ingredient.trim().toLocaleLowerCase("it-IT"))
+                    .sort((first, second) => first.localeCompare(second, "it-IT")),
+                notes.map(note => note.trim().toLocaleLowerCase("it-IT"))
                     .sort((first, second) => first.localeCompare(second, "it-IT")),
                 basePrice
             ]);
@@ -260,10 +264,10 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             if (existing) {
                 existing.quantity++;
             } else {
-                groupedRows.set(key, { row, rowExtras, basePrice, quantity: 1 });
+                groupedRows.set(key, { row, rowExtras, basePrice, notes, quantity: 1 });
             }
         }
-        for (const { row, rowExtras, basePrice, quantity } of groupedRows.values()) {
+        for (const { row, rowExtras, basePrice, notes, quantity } of groupedRows.values()) {
             if (receiptOptions.profile === "cucina") {
                 lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, receiptWidth)
                     .map(line => `@@ITEM:${line}@@`));
@@ -286,6 +290,10 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
                     lines.push(...wrapReceiptPrefix("  - SENZA ", ingredient.toLocaleUpperCase("it-IT"), receiptWidth)
                         .map(line => `@@ITEM:${line}@@`));
                 }
+                for (const note of notes) {
+                    lines.push(...wrapReceiptPrefix("  ! ", note.toLocaleUpperCase("it-IT"), receiptWidth)
+                        .map(line => `@@ITEM:${line}@@`));
+                }
                 for (const extra of rowExtras) {
                     lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth)
                         .map(line => `@@ITEM:${line}@@`));
@@ -301,6 +309,13 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
                 const prefix = "  - senza ";
                 lines.push(...wrapReceiptText(
                     ingredient.toLocaleLowerCase("it-IT"),
+                    Math.max(1, receiptWidth - Array.from(prefix).length)
+                ).map(line => `${prefix}${line.toLocaleLowerCase("it-IT")}`));
+            }
+            for (const note of notes) {
+                const prefix = "  * ";
+                lines.push(...wrapReceiptText(
+                    note.toLocaleLowerCase("it-IT"),
                     Math.max(1, receiptWidth - Array.from(prefix).length)
                 ).map(line => `${prefix}${line.toLocaleLowerCase("it-IT")}`));
             }

@@ -328,6 +328,42 @@ test("receipt prints removed ingredients for kitchen and sala without grouping t
     assert.match(sala, /\x20{2}- senza basilico/);
 });
 
+test("receipt keeps a pizza with a note separate and prints note lines for kitchen and sala", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const plain = {
+        prodotto: "Margherita",
+        categoria: "pizze",
+        prezzoBase: 8,
+        totale: 8,
+        ingredienti: ["Pomodoro", "Basilico"]
+    };
+    const order = {
+        numero: 43,
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [
+            plain,
+            { ...plain, senza: ["Basilico"], note: ["Ben cotta"], extra: [{ nome: "Bufala", prezzo: 2 }], totale: 10 }
+        ],
+        totale: 18
+    };
+    const options = {
+        productIngredients: { Margherita: ["Pomodoro", "Basilico"] },
+        kitchenCategories: new Set(["pizze"])
+    };
+    const cucina = formatReceipt(order, 80, { ...options, profile: "cucina" });
+    const sala = formatReceipt(order, 80, { ...options, profile: "sala" });
+    const righeCucina = cucina.split(/\r?\n/);
+    const senza = righeCucina.findIndex(linea => linea.includes("- SENZA BASILICO"));
+    const nota = righeCucina.findIndex(linea => linea.includes("! BEN COTTA"));
+    const extra = righeCucina.findIndex(linea => linea.includes("+ BUFALA"));
+
+    assert.equal((cucina.match(/@@ITEM:1X MARGHERITA@@/g) || []).length, 2);
+    assert.ok(senza >= 0 && senza < nota && nota < extra);
+    assert.match(righeCucina[nota], /^@@ITEM: {2}! BEN COTTA@@$/);
+    assert.equal((sala.match(/@@ITEM:1X MARGHERITA/g) || []).length, 2);
+    assert.match(sala, /^ {2}\* ben cotta$/m);
+});
+
 test("receipt groups products in Firestore category order using prices stored in order rows", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const receipt = formatReceipt({
