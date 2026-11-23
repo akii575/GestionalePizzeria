@@ -1,92 +1,171 @@
 (() => {
     const statusElement = document.getElementById("printer-status");
+    const queueElement = document.getElementById("printer-queue");
+    const warningElement = document.getElementById("printer-warning");
     const agentElement = document.getElementById("printer-agent-status");
     const listElement = document.getElementById("printer-list");
-    const refreshButton = document.getElementById("printer-refresh");
     const retryButton = document.getElementById("printer-retry");
-    if (!statusElement || !agentElement || !listElement || !refreshButton || !retryButton) return;
-    const hintElement = document.querySelector(".printer-hint");
-    if (hintElement) {
-        hintElement.textContent = "Il servizio invia la stessa comanda alle stampanti di cucina e sala. Tieni il PC acceso e connesso a Internet; non serve installare driver Epson.";
+    const summaryElements = {
+        tavoli: {
+            value: document.getElementById("tavoli-value"),
+            label: document.getElementById("tavoli-label")
+        },
+        consegne: {
+            value: document.getElementById("consegne-value"),
+            label: document.getElementById("consegne-label")
+        },
+        ritiri: {
+            value: document.getElementById("ritiri-value"),
+            label: document.getElementById("ritiri-label")
+        },
+        banco: {
+            value: document.getElementById("banco-value"),
+            label: document.getElementById("banco-label")
+        },
+        incasso: {
+            value: document.getElementById("incasso-value"),
+            label: document.getElementById("incasso-label")
+        }
+    };
+    if (Object.values(summaryElements).some(summary => !summary.value || !summary.label)
+        || !statusElement || !queueElement || !warningElement || !agentElement || !listElement || !retryButton) {
+        return;
     }
 
-    async function refreshStatus() {
-        refreshButton.disabled = true;
-        statusElement.textContent = "Controllo delle stampanti Epson via Ethernet...";
-        listElement.replaceChildren();
+    let version;
+    let today;
+    let refreshing = false;
+    let refreshRequested = false;
+    const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+    const clock = new Intl.DateTimeFormat("it-IT", {
+        timeZone: "Europe/Rome",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+    });
+
+    function updateSummary(today) {
+        summaryElements.tavoli.value.textContent = today.tavoli;
+        summaryElements.tavoli.label.textContent = `Tavoli · ${today.coperti} coperti`;
+        summaryElements.consegne.value.textContent = today.consegneDaFare;
+        summaryElements.consegne.label.textContent = `Consegne da fare · ${today.consegneInCorso} in giro`;
+        summaryElements.ritiri.value.textContent = today.ritiri;
+        summaryElements.ritiri.label.textContent = "Ritiri";
+        summaryElements.banco.value.textContent = today.banco;
+        summaryElements.banco.label.textContent = "Banco";
+        summaryElements.incasso.value.textContent = euro.format(today.totale);
+        summaryElements.incasso.label.textContent = `Incasso · ${today.ordini} ordini`;
+    }
+
+    function updatePrinter(stampa, oggi) {
+        statusElement.classList.toggle("is-active", stampa.attiva);
+        statusElement.classList.toggle("is-inactive", !stampa.attiva);
+        statusElement.textContent = stampa.attiva
+            ? `Stampa attiva (ultimo contatto ${clock.format(new Date(stampa.ultimoContatto))})`
+            : "PC della stampa spento o non collegato: le comande restano in coda e usciranno appena si riaccende";
+        queueElement.textContent =
+            `In coda ${stampa.inCoda} · In stampa ${stampa.inStampa} · Non riuscite ${stampa.nonRiuscite}`;
+        retryButton.hidden = stampa.nonRiuscite === 0;
+        retryButton.textContent = `Riprova ${stampa.nonRiuscite} comande`;
+        warningElement.hidden = oggi.nonStampati === 0 || stampa.attiva;
+        warningElement.textContent = `Attenzione: ${oggi.nonStampati} comande non sono state stampate.`;
+    }
+
+    async function refreshLocalPrinters() {
         try {
             const response = await fetch("http://127.0.0.1:8765/status", {
                 cache: "no-store",
                 credentials: "omit",
-                signal: AbortSignal.timeout(8000)
+                signal: AbortSignal.timeout(3000)
             });
-            if (!response.ok) {
-                throw new Error("terminal-unavailable");
-            }
+            if (!response.ok) return;
             const result = await response.json();
-            if (result.printers.length === 0) {
-                statusElement.textContent = "Configurazione delle stampanti di rete non trovata.";
-            } else {
-                statusElement.textContent = "Stampanti di rete:";
-                for (const printer of result.printers) {
-                    const item = document.createElement("li");
-                    const state = {
-                        ready: "online e pronta",
-                        busy: "online, stampa in corso",
-                        unavailable: "non raggiungibile sulla rete",
-                        unknown: `stato non disponibile (${printer.status})`
-                    }[printer.state] || "stato sconosciuto";
-                    item.textContent = `${printer.name} — ${state}`;
-                    listElement.append(item);
-                }
-            }
+            if (!Array.isArray(result.printers)) return;
 
-            const agentMessages = {
-                ready: "Stampa automatica attiva; controllo ordini ogni 10 secondi.",
-                another_terminal_active: "Un altro terminale di stampa è già attivo.",
-                printer_unavailable: "Una o più stampanti Epson non sono raggiungibili; le comande restano in coda.",
-                cloud_unavailable: "Connessione alla coda online non disponibile; il terminale riproverà.",
-                paused: "Coda temporaneamente in pausa per un'operazione di gestione.",
-                starting: "Avvio del terminale di stampa..."
-            };
-            agentElement.textContent = agentMessages[result.agent.workerState] || "Terminale collegato.";
-            const queue = result.agent;
-            if (queue.queued || queue.printing || queue.failed) {
-                agentElement.textContent += ` In coda: ${queue.queued}; in stampa: ${queue.printing}; non riuscite: ${queue.failed}.`;
+            listElement.replaceChildren();
+            for (const printer of result.printers) {
+                const item = document.createElement("li");
+                const state = {
+                    ready: "online e pronta",
+                    busy: "online, stampa in corso",
+                    unavailable: "non raggiungibile sulla rete"
+                }[printer.state] || `stato non disponibile (${printer.status})`;
+                item.textContent = `${printer.name} — ${state}`;
+                listElement.append(item);
             }
-            retryButton.hidden = queue.failed === 0;
-            retryButton.textContent = queue.failed > 0
-                ? `Riprova ${queue.failed} comande non stampate`
-                : "Riprova comande non stampate";
-        } catch (error) {
-            statusElement.textContent = "Servizio di stampa locale non raggiungibile. Avvia `installa-stampa-automatica.bat` sul PC della pizzeria.";
-            agentElement.textContent = "Il servizio verrà avviato automaticamente all'accesso a Windows dopo l'installazione.";
-            retryButton.hidden = true;
-        } finally {
-            refreshButton.disabled = false;
+            listElement.hidden = result.printers.length === 0;
+            agentElement.textContent = result.agent?.workerState === "ready"
+                ? "Stampa automatica attiva (istantanea)."
+                : "";
+            agentElement.hidden = !agentElement.textContent;
+        } catch {
+            listElement.replaceChildren();
+            listElement.hidden = true;
+            agentElement.textContent = "";
+            agentElement.hidden = true;
         }
     }
 
-    refreshButton.addEventListener("click", refreshStatus);
+    async function refreshStatus() {
+        if (refreshing) {
+            refreshRequested = true;
+            return;
+        }
+        if (document.visibilityState !== "visible") return;
+        refreshRequested = false;
+        refreshing = true;
+        try {
+            const query = typeof version === "undefined" ? "" : `?versione=${encodeURIComponent(version)}`;
+            const response = await fetch(`/api/stato-serata${query}`, {
+                cache: "no-store",
+                credentials: "same-origin"
+            });
+            if (!response.ok) throw new Error("evening_status_unavailable");
+            const result = await response.json();
+            if (!result.invariato) {
+                today = result.oggi;
+                updateSummary(today);
+                version = result.versione;
+                updatePrinter(result.stampa, today);
+            } else {
+                updatePrinter(result.stampa, today);
+            }
+            void refreshLocalPrinters();
+        } catch {
+            statusElement.classList.remove("is-active", "is-inactive");
+            statusElement.textContent = "Impossibile aggiornare il riepilogo della serata.";
+        } finally {
+            refreshing = false;
+            if (refreshRequested) {
+                refreshRequested = false;
+                if (document.visibilityState === "visible") void refreshStatus();
+            }
+        }
+    }
+
     retryButton.addEventListener("click", async () => {
         retryButton.disabled = true;
         try {
-            const response = await fetch("http://127.0.0.1:8765/retry-failed", {
+            const response = await fetch("/api/stato-serata?azione=riprova", {
                 method: "POST",
                 cache: "no-store",
-                credentials: "omit",
-                signal: AbortSignal.timeout(8000)
+                credentials: "same-origin"
             });
             if (!response.ok) throw new Error("retry_failed");
             await refreshStatus();
         } catch {
-            agentElement.textContent = "Impossibile riprovare ora. Verifica che il servizio di stampa sia attivo sul PC.";
+            statusElement.classList.remove("is-active", "is-inactive");
+            statusElement.textContent = "Impossibile riprovare ora. Riprova tra poco.";
         } finally {
             retryButton.disabled = false;
         }
     });
-    refreshStatus();
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") void refreshStatus();
+    });
+    void refreshStatus();
     window.setInterval(() => {
-        if (document.visibilityState === "visible") refreshStatus();
-    }, 20000);
+        if (document.visibilityState === "visible") void refreshStatus();
+    }, 15000);
 })();

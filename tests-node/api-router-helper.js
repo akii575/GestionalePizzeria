@@ -5,6 +5,7 @@ const handlerPaths = [
     "../lib/handlers/menu",
     "../lib/handlers/menu-admin",
     "../lib/handlers/reset-numeri",
+    "../lib/handlers/stato-serata",
     "../lib/handlers/auth/logout",
     "../lib/handlers/auth/session",
     "../lib/handlers/auth/verify",
