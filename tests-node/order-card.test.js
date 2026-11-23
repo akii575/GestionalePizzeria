@@ -538,16 +538,23 @@ test("all order-list pages use the same source header and navigation shell", () 
 test("wide desktop layouts use the space beside the sidebar", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
+    const listStyles = fs.readFileSync(path.join(directory, "gestionale.css"), "utf8");
+    const homeStyles = fs.readFileSync(path.join(directory, "home.css"), "utf8");
     const orderStyles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
 
-    assert.match(navigation, /@media \(min-width: 1440px\)[\s\S]*?body\.app-shell main\.dashboard\s*\{[^}]*width: min\(1808px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 2048px\) \/ 2\)\);[^}]*padding: 24px;/);
-    assert.match(navigation, /body\.app-shell main\.container\s*\{[^}]*width: min\(1400px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1640px\) \/ 2\)\);/);
-    assert.match(navigation, /body\.app-shell main\.home\s*\{[^}]*width: min\(1100px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1340px\) \/ 2\)\);/);
-    assert.match(navigation, /body\.app-shell main\.dashboard \.lista-ordini,\s*body\.app-shell main\.dashboard \.lista-consegne\s*\{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(340px, 1fr\)\);/);
+    assert.match(navigation, /@media \(min-width: 1025px\)[\s\S]*?body\.app-shell main\.dashboard,\s*body\.app-shell main\.container,\s*body\.app-shell main\.home\s*\{[^}]*width: min\(1800px, calc\(100% - 260px\)\);[^}]*padding: 24px;/);
+    assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1024px\)[\s\S]*?body\.app-shell main\.dashboard,\s*body\.app-shell main\.container,\s*body\.app-shell main\.home\s*\{[^}]*width: calc\(100% - 112px\);[^}]*margin-left: 96px;[^}]*padding: 16px;/);
+    assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1024px\)[\s\S]*?main\.dashboard \.lista-ordini,\s*html body\.app-shell main\.dashboard \.lista-consegne\s*\{[^}]*minmax\(300px, 1fr\)/);
+    assert.match(homeStyles, /width: min\(1800px, 100%\)/);
+    assert.match(listStyles, /grid-template-columns: repeat\(auto-fill, minmax\(min\(100%, 360px\), 1fr\)\);[^}]*align-items: stretch;[^}]*gap: 10px;/);
+    assert.match(listStyles, /order-card--expanded\s*\{\s*grid-column: 1 \/ -1;/);
+    assert.match(listStyles, /grid-template-columns: minmax\(0, 720px\) auto/);
+    assert.match(listStyles, /main\.dashboard > #stato\s*\{\s*min-height: 0;\s*margin: 0;/);
     assert.match(navigation, /body\.app-shell main\.dashboard \.metriche\s*\{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
     assert.match(navigation, /body\.app-shell main\.dashboard \.metriche > div:last-child\s*\{[^}]*grid-column: auto;/);
-    assert.match(navigation, /body\.app-shell main\.container \.composer-layout\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(320px, 420px\);/);
-    assert.match(orderStyles, /grid-template-rows: repeat\(3, 132px\)/);
+    assert.match(navigation, /body\.app-shell main\.container \.composer-layout\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) 380px;/);
+    assert.match(orderStyles, /grid-template-columns: repeat\(auto-fill, minmax\(150px, 1fr\)\);/);
+    assert.match(orderStyles, /grid-template-rows: repeat\(3, minmax\(0, 1fr\)\)/);
     assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1024px\)/);
 });
 
@@ -563,7 +570,7 @@ test("mobile list headers keep the title and actions on one line", () => {
     assert.match(navigation, /body\.app-shell main\.home,\s*body\.app-shell main\.dashboard,\s*body\.app-shell main\.container\s*\{[^}]*padding-top:\s*0;/);
     assert.match(navigation, /body\.app-shell \.app-page-header \.app-header-actions\s*\{[^}]*min-width:\s*0;[^}]*margin-left:\s*auto;[^}]*justify-content:\s*flex-end;/);
     assert.match(theme, /@media \(max-width: 720px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 16px 24px;/);
-    assert.match(theme, /@media \(max-width: 420px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 12px 24px;/);
+    assert.match(theme, /@media \(max-width: 420px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 16px 24px;/);
     assert.match(theme, /\.dashboard-header:not\(\.app-page-header\)\s*\{[^}]*flex-wrap:\s*wrap;/);
     assert.match(theme, /\.dashboard-header:not\(\.app-page-header\) > div\s*\{[^}]*min-width:\s*min\(100%, 250px\);/);
 });

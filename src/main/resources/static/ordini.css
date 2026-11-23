@@ -19,7 +19,7 @@ body {
     margin: 0;
 }
 .container {
-    width: min(900px, 100%);
+    width: min(1800px, 100%);
     margin: 0 auto;
     padding: 18px;
 }
@@ -2480,6 +2480,8 @@ button {
 @media (min-width: 1024px) {
     .composer-layout {
         min-height: calc(100dvh - 180px);
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 24px;
         align-items: stretch;
     }
 
@@ -2501,6 +2503,7 @@ button {
 
     .pagina-prodotti {
         height: 100%;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         grid-template-rows: repeat(3, minmax(0, 1fr));
     }
 

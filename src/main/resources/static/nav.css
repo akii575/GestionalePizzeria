@@ -234,27 +234,21 @@ body.app-shell nav.app-bottom-nav {
     }
 }
 
-@media (min-width: 1440px) {
-    body.app-shell main.dashboard {
-        width: min(1808px, calc(100% - 260px));
+@media (min-width: 1025px) {
+    body.app-shell main.dashboard,
+    body.app-shell main.container,
+    body.app-shell main.home {
+        box-sizing: border-box;
+        width: min(1800px, calc(100% - 260px));
         margin-left: calc(240px + max(0px, (100% - 2048px) / 2));
         padding: 24px;
     }
 
-    body.app-shell main.container {
-        width: min(1400px, calc(100% - 260px));
-        margin-left: calc(240px + max(0px, (100% - 1640px) / 2));
-    }
-
-    body.app-shell main.home {
-        width: min(1100px, calc(100% - 260px));
-        margin-left: calc(240px + max(0px, (100% - 1340px) / 2));
-    }
-
     body.app-shell main.dashboard .lista-ordini,
     body.app-shell main.dashboard .lista-consegne {
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-        gap: 14px;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+        align-items: stretch;
+        gap: 10px;
     }
 
     body.app-shell main.dashboard .metriche {
@@ -267,11 +261,28 @@ body.app-shell nav.app-bottom-nav {
     }
 
     body.app-shell main.container .composer-layout {
-        grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 24px;
     }
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {
+    body.app-shell main.dashboard,
+    body.app-shell main.container,
+    body.app-shell main.home {
+        box-sizing: border-box;
+        width: calc(100% - 112px);
+        margin-left: 96px;
+        padding: 16px;
+    }
+
+    html body.app-shell main.dashboard .lista-ordini,
+    html body.app-shell main.dashboard .lista-consegne {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        align-items: stretch;
+        gap: 10px;
+    }
+
     .app-sidebar .app-brand {
         width: 44px;
         height: 44px;
@@ -318,6 +329,13 @@ body.app-shell nav.app-bottom-nav {
         width: 100%;
         margin: 0;
         padding-bottom: var(--app-mobile-nav-height);
+    }
+
+    body.app-shell main.dashboard,
+    body.app-shell main.container,
+    body.app-shell main.home {
+        padding-right: 16px;
+        padding-left: 16px;
     }
 
     body.app-shell main.home,
