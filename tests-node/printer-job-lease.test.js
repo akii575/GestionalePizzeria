@@ -32,6 +32,7 @@ require.cache[authPath] = {
             return error;
         },
         requireStaffAccess: async () => {},
+        requireDeliveryAccess: async () => ({}),
         requireSameOrigin: () => {}
     }
 };

@@ -101,11 +101,21 @@ const orderCard = (() => {
         return `<span class="order-card__payment-dot order-card__payment-dot--${state}" role="img" aria-label="${label}" title="${label}"></span>`;
     }
 
-    function fieldsForOrder(order, type) {
+    function fieldsForOrder(order, type, deliveryMode) {
         if (type === "consegna") {
             return [
-                { label: "Telefono", value: order.telefonoConsegna || "—", kind: "telephone" },
-                { label: "Indirizzo", value: order.indirizzoConsegna || "—", kind: "address" }
+                {
+                    label: "Telefono",
+                    value: order.telefonoConsegna || "—",
+                    kind: "telephone",
+                    deliveryAction: deliveryMode
+                },
+                {
+                    label: "Indirizzo",
+                    value: order.indirizzoConsegna || "—",
+                    kind: "address",
+                    deliveryAction: deliveryMode
+                }
             ];
         }
         if (type === "ritiro") {
@@ -129,9 +139,15 @@ const orderCard = (() => {
         const value = String(field.value ?? "—");
         if (field.kind === "telephone" && value !== "—") {
             const phone = value.replace(/[^\d+]/g, "");
+            if (field.deliveryAction) {
+                return `<div class="order-card__delivery-contact"><a class="order-card__delivery-action order-card__delivery-action--call" href="tel:${escapeHtml(phone)}">Chiama</a><small>${escapeHtml(value)}</small></div>`;
+            }
             return `<a class="order-card__field-link" href="tel:${escapeHtml(phone)}">${escapeHtml(value)}</a>`;
         }
         if (field.kind === "address" && value !== "—") {
+            if (field.deliveryAction) {
+                return `<div class="order-card__delivery-contact"><button class="order-card__delivery-action order-card__delivery-action--map" type="button" data-indirizzo="${escapeHtml(value)}" aria-haspopup="dialog" aria-label="Apri la mappa: ${escapeHtml(value)}">Apri mappa</button><small>${escapeHtml(value)}</small></div>`;
+            }
             return `<button class="order-card__field-action" type="button" data-indirizzo="${escapeHtml(value)}" aria-haspopup="dialog"><span title="${escapeHtml(value)}">${escapeHtml(value)}</span><span class="order-card__field-hint">Apri nelle mappe</span></button>`;
         }
         return escapeHtml(value);
@@ -213,6 +229,29 @@ const orderCard = (() => {
         if (!canEdit) return "";
         const number = Number(order.numero);
         return `<div class="order-card__actions"><button type="button" data-modifica="${number}">Modifica ordine</button><button type="button" data-ristampa="${number}" aria-haspopup="dialog">Ristampa</button><button type="button" data-elimina="${number}" class="pericolo">Elimina</button></div>`;
+    }
+
+    function deliveryStatus(order) {
+        return ["da_consegnare", "in_consegna", "consegnata"].includes(order.statoConsegna)
+            ? order.statoConsegna
+            : "da_consegnare";
+    }
+
+    function renderDeliveryCompactStatus(order) {
+        const status = deliveryStatus(order);
+        const numero = escapeHtml(order.numero);
+        if (status === "consegnata") {
+            const time = order.consegnataAlle ? ` ${formatTime(order.consegnataAlle)}` : "";
+            return `<span class="order-card__delivery-status order-card__delivery-status--consegnata" aria-label="Consegnata${escapeHtml(time)}"><span aria-hidden="true">✓</span><small>consegnata${escapeHtml(time)}</small></span>`;
+        }
+        const nextStatus = status === "da_consegnare" ? "in_consegna" : "consegnata";
+        const label = status === "da_consegnare" ? "Parti" : "Consegnata";
+        return `<button class="order-card__delivery-status order-card__delivery-status--${status}" type="button" data-stato-consegna="${nextStatus}" data-numero="${numero}">${label}</button>`;
+    }
+
+    function renderDeliveryUndo(order, deliveryMode) {
+        if (!deliveryMode || deliveryStatus(order) !== "consegnata") return "";
+        return `<button class="order-card__delivery-undo" type="button" data-stato-consegna="in_consegna" data-numero="${escapeHtml(order.numero)}">Annulla consegnata</button>`;
     }
 
     function currentDate() {
@@ -321,6 +360,8 @@ const orderCard = (() => {
         const detailId = `order-detail-${escapeHtml(orderNumber)}`;
         const expansionState = options.expansionState || expandedOrderState;
         const expanded = expansionState.isOpen(order.numero);
+        const deliveryMode = options.deliveryMode === true && type === "consegna";
+        const isRider = options.isRider === true;
         const serviceLabel = options.showServiceTypeLabel === true
             ? `<span class="order-card__type order-card__type--${escapeHtml(type)}">${escapeHtml(serviceNames[type] || serviceNames.tavolo)}</span>`
             : "";
@@ -334,7 +375,16 @@ const orderCard = (() => {
             && Number(order.numeroPersone) > 0
             ? `${Number(order.numeroPersone)} pers`
             : "";
-        const metadata = [`#${escapeHtml(orderNumber)}`, people, escapeHtml(time)].filter(Boolean).join(" · ");
+        const paymentState = order.statoPagamento === "pagato"
+            ? "Pagato"
+            : order.statoPagamento === "pos" ? "POS" : "Non pagato";
+        const deliveryAmount = isRider && order.statoPagamento === "pagato"
+            ? 0
+            : Number(order.totale || 0);
+        const metadata = deliveryMode
+            ? [`#${escapeHtml(orderNumber)}`, order.orario ? `ore ${escapeHtml(order.orario)}` : "", `${paymentState} ${euro.format(deliveryAmount)}`]
+                .filter(Boolean).join(" · ")
+            : [`#${escapeHtml(orderNumber)}`, people, escapeHtml(time)].filter(Boolean).join(" · ");
         const menu = Array.isArray(options.menu) ? options.menu : [];
         const canEdit = options.canEdit === true;
         const hideTotalForStaff = options.hideTotalForStaff === true;
@@ -352,21 +402,33 @@ const orderCard = (() => {
             ? `<p class="order-card__cover-charge">Coperto ${Number(order.coperto.persone)} × ${euro.format(Number(order.coperto.prezzoUnitario))}</p>`
             : "";
         const printStatus = renderPrintStatus(order);
-
-        return `
-            <article class="order-card${expanded ? " order-card--expanded" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
+        const compactRow = deliveryMode
+            ? `<div class="order-card__compact-row">
                 <button class="order-card__toggle" type="button" data-order-number="${escapeHtml(orderNumber)}" aria-expanded="${String(expanded)}" aria-controls="${detailId}">
                     <span class="order-card__compact-copy">
                         ${serviceLabel}
-                        <span class="order-card__reference">${escapeHtml(reference)}</span>
+                        <span class="order-card__reference order-card__reference--delivery">${escapeHtml(reference)}</span>
                         <span class="order-card__meta">${metadata}</span>
                     </span>
-                    <span class="order-card__compact-status">
-                        <span class="order-card__compact-total"${compactTotalAttributes}>${euro.format(Number(order.totale || 0))}</span>
-                        ${renderCompactPrintStatus(order)}
-                        ${renderPaymentDot(order, type)}
-                    </span>
                 </button>
+                <span class="order-card__compact-status">${renderDeliveryCompactStatus(order)}</span>
+            </div>`
+            : `<button class="order-card__toggle" type="button" data-order-number="${escapeHtml(orderNumber)}" aria-expanded="${String(expanded)}" aria-controls="${detailId}">
+                <span class="order-card__compact-copy">
+                    ${serviceLabel}
+                    <span class="order-card__reference">${escapeHtml(reference)}</span>
+                    <span class="order-card__meta">${metadata}</span>
+                </span>
+                <span class="order-card__compact-status">
+                    <span class="order-card__compact-total"${compactTotalAttributes}>${euro.format(Number(order.totale || 0))}</span>
+                    ${renderCompactPrintStatus(order)}
+                    ${renderPaymentDot(order, type)}
+                </span>
+            </button>`;
+
+        return `
+            <article class="order-card${expanded ? " order-card--expanded" : ""}${deliveryMode ? " order-card--delivery-mode" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
+                ${compactRow}
                 <div class="order-card__expanded" id="${detailId}"${expanded ? "" : " hidden"}>
                     <header class="order-card__header">
                         <div class="order-card__heading">
@@ -379,7 +441,8 @@ const orderCard = (() => {
                     </header>
                     ${printStatus}
                     <p class="order-card__date">${dateText}${serviceTime}</p>
-                    ${renderFields(fieldsForOrder(order, type))}
+                    ${renderFields(fieldsForOrder(order, type, deliveryMode))}
+                    ${renderDeliveryUndo(order, deliveryMode)}
                     <section class="order-card__details">
                         <ul class="order-card__products">${renderProducts(order.righe, menu)}</ul>
                         ${coverCharge}
