@@ -13,7 +13,7 @@ let numeroPersoneOriginale = null;
 let ordineCaricato = null;
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
-const { isCoperto, calcolaCoperto } = window.prodottiUI;
+const { isCoperto, calcolaCoperto, nomeTavoloDaNumero, numeroTavoloDaNome } = window.prodottiUI;
 const stato = testo => (document.getElementById("stato").textContent = testo);
 function oraLocale() {
     const adesso = new Date();
@@ -78,16 +78,18 @@ function aggiornaCampiConsegna() {
     const orario = document.getElementById("orario");
     document.getElementById("campo-banco").hidden = !banco;
     const destinazione = document.getElementById("tavolo");
-    document.getElementById("destinazione-label").hidden = !tavolo && !ritiro;
+    const numeroTavolo = document.getElementById("numero-tavolo");
+    document.getElementById("campo-numero-tavolo").hidden = !tavolo;
+    document.getElementById("destinazione-label").hidden = !ritiro;
     document.getElementById("campo-persone").hidden = !tavolo;
-    destinazione.required = tavolo || ritiro;
+    numeroTavolo.required = tavolo;
+    destinazione.required = ritiro;
     document.getElementById("campi-ritiro").hidden = !ritiro;
     document.getElementById("campi-consegna").hidden = !consegna;
     document.getElementById("campo-orario").hidden = tavolo;
     document.getElementById("campo-pagamento").hidden = !ritiro && !consegna;
     document.querySelector('#stato-pagamento option[value="pos"]').hidden = !consegna;
     orario.required = !tavolo;
-    document.querySelector("#destinazione-label span").textContent = ritiro ? "Nome cliente" : "Tavolo";
     document.getElementById("numero-persone").required = tavolo;
     document.getElementById("telefono-ritiro").required = ritiro;
     document.getElementById("cognome-banco").required = banco;
@@ -213,8 +215,11 @@ function mostraOrdine(ordine) {
                 ? "ritiro"
                 : "tavolo";
     tipoOrdineOriginale = ordine.tipo === "sala" ? "tavolo" : ordine.tipo || "tavolo";
-    document.getElementById("tavolo").value =
-        ordine.tipo === "consegna" || ordine.tipo === "banco" ? "" : ordine.tavoloOCliente || "";
+    document.getElementById("tavolo").value = ordine.tipo === "ritiro" ? ordine.tavoloOCliente || "" : "";
+    document.getElementById("numero-tavolo").value =
+        ordine.tipo === "consegna" || ordine.tipo === "banco"
+            ? ""
+            : numeroTavoloDaNome(ordine.tavoloOCliente);
     document.getElementById("numero-persone").value =
         Number.isInteger(ordine.numeroPersone) && ordine.numeroPersone > 0 ? ordine.numeroPersone : 1;
     numeroPersoneOriginale = Number(document.getElementById("numero-persone").value);
@@ -291,7 +296,10 @@ document.getElementById("salva").onclick = async () => {
     const banco = tipo === "banco";
     if (!tavolo && !document.getElementById("orario").reportValidity()) return;
     if (banco && !document.getElementById("cognome-banco").reportValidity()) return;
-    if ((tavolo || ritiro) && !document.getElementById("tavolo").reportValidity()) return;
+    const destinazione = document.getElementById("tavolo");
+    const numeroTavolo = document.getElementById("numero-tavolo");
+    if (tavolo && !numeroTavolo.reportValidity()) return;
+    if (ritiro && !destinazione.reportValidity()) return;
     if (ritiro && !document.getElementById("telefono-ritiro").reportValidity()) return;
     if (tavolo && !document.getElementById("numero-persone").reportValidity()) return;
     if (
@@ -307,7 +315,11 @@ document.getElementById("salva").onclick = async () => {
         orario: tavolo ? "" : document.getElementById("orario").value,
         statoPagamento: ritiro || consegna ? document.getElementById("stato-pagamento").value || null : null,
         cognomeBanco: banco ? document.getElementById("cognome-banco").value : "",
-        tavoloOCliente: tavolo || ritiro ? document.getElementById("tavolo").value : "",
+        tavoloOCliente: tavolo
+            ? nomeTavoloDaNumero(numeroTavolo.value)
+            : ritiro
+              ? destinazione.value
+              : "",
         numeroPersone: tavolo ? Number(document.getElementById("numero-persone").value) : null,
         indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
         telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",

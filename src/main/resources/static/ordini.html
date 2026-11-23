@@ -80,20 +80,22 @@
                     <label class="visually-hidden" for="tavolo">Tavolo</label>
                     <select id="tavolo" class="visually-hidden" required>
                         <option value="" selected disabled>Scegli un tavolo</option>
-                        <option value="Tavolo 1">Tavolo 1</option>
-                        <option value="Tavolo 2">Tavolo 2</option>
-                        <option value="Tavolo 3">Tavolo 3</option>
-                        <option value="Tavolo 4">Tavolo 4</option>
-                        <option value="Tavolo 5">Tavolo 5</option>
-                        <option value="Tavolo 6">Tavolo 6</option>
-                        <option value="Tavolo 7">Tavolo 7</option>
-                        <option value="Tavolo 8">Tavolo 8</option>
-                        <option value="Tavolo 9">Tavolo 9</option>
-                        <option value="Tavolo 10">Tavolo 10</option>
                     </select>
                     <section id="sezione-tavoli" class="sezione-selettore" aria-labelledby="titolo-selezione-tavolo">
                         <h2 id="titolo-selezione-tavolo">Tavolo</h2>
                         <div id="tavoli-griglia" class="tavoli-griglia" role="group" aria-label="Scegli il tavolo"></div>
+                        <div id="tavolo-personalizzato" class="tavolo-personalizzato" hidden>
+                            <label for="numero-tavolo-personalizzato">Numero tavolo</label>
+                            <input
+                                id="numero-tavolo-personalizzato"
+                                type="number"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                min="1"
+                                max="99"
+                                step="1"
+                            />
+                        </div>
                     </section>
                     <section id="sezione-persone" class="sezione-selettore" aria-labelledby="titolo-selezione-persone">
                         <h2 id="titolo-selezione-persone">Persone</h2>

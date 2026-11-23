@@ -39,7 +39,10 @@
             <input id="cognome-banco" autocomplete="family-name" maxlength="80" placeholder="Cognome">
         </label>
     </div>
-    <label id="destinazione-label" for="tavolo"><span>Tavolo</span>
+    <label id="campo-numero-tavolo" for="numero-tavolo" hidden>Numero tavolo
+        <input id="numero-tavolo" type="number" inputmode="numeric" pattern="[0-9]*" min="1" max="99" step="1" required>
+    </label>
+    <label id="destinazione-label" for="tavolo" hidden>Nome cliente
         <input id="tavolo" maxlength="120" required>
     </label>
     <label id="campo-persone" for="numero-persone">Numero persone

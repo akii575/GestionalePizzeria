@@ -23,6 +23,10 @@ const {
     aggiornaConteggioProdotti,
     controllaLimiteRighe,
     impostaValoreControllo,
+    normalizzaNumeroTavolo,
+    nomeTavoloDaNumero,
+    numeroTavoloDaNome,
+    creaGestoreTavoli,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
     riepilogoIntestazione,
@@ -96,12 +100,95 @@ test("table orders require both an explicit table and a valid people count", () 
 
 test("order header summaries and note previews use the compact UI labels", () => {
     assert.equal(riepilogoIntestazione("tavolo", { tavolo: "Tavolo 3", numeroPersone: 4 }), "Tavolo 3 · 4 persone");
+    assert.equal(riepilogoIntestazione("tavolo", { tavolo: "Tavolo 23", numeroPersone: 4 }), "Tavolo 23 · 4 persone");
     assert.equal(
         riepilogoIntestazione("consegna", { indirizzo: "Via De Sanctis 7/F", orario: "20:30" }),
         "Consegna · Via De Sanctis 7/F · 20:30"
     );
     assert.equal(anteprimaNota("  Una   nota breve  "), "Una nota breve");
     assert.equal(anteprimaNota("12345678901234567890123456789012345678901"), "1234567890123456789012345678901234567890…");
+});
+
+test("custom table selection accepts 1 through 99 and keeps its label in sync", () => {
+    const gestioneTavoli = creaGestoreTavoli();
+
+    assert.equal(gestioneTavoli.togglePersonalizzato().aperto, true);
+    const selezione = gestioneTavoli.impostaNumeroPersonalizzato("23");
+
+    assert.equal(selezione.tavolo, "Tavolo 23");
+    assert.equal(selezione.numeroPersonalizzato, "23");
+    assert.equal(selezione.numero, "23");
+    assert.equal(selezione.errore, "");
+});
+
+test("invalid custom table numbers show the required validation message", () => {
+    for (const valore of ["0", "100", "", "abc", "1.5"]) {
+        const gestioneTavoli = creaGestoreTavoli();
+        gestioneTavoli.togglePersonalizzato();
+        const selezione = gestioneTavoli.impostaNumeroPersonalizzato(valore);
+
+        assert.equal(selezione.tavolo, "");
+        assert.equal(selezione.errore, "Numero tavolo da 1 a 99");
+    }
+    assert.equal(normalizzaNumeroTavolo("1"), "1");
+    assert.equal(normalizzaNumeroTavolo("99"), "99");
+    assert.equal(normalizzaNumeroTavolo("100"), "");
+});
+
+test("choosing a quick table closes and clears a previous custom selection", () => {
+    const gestioneTavoli = creaGestoreTavoli();
+    gestioneTavoli.togglePersonalizzato();
+    gestioneTavoli.impostaNumeroPersonalizzato("23");
+
+    const selezione = gestioneTavoli.scegli(5);
+
+    assert.equal(selezione.tavolo, "Tavolo 5");
+    assert.equal(selezione.aperto, false);
+    assert.equal(selezione.numero, "");
+    assert.equal(selezione.numeroPersonalizzato, "");
+});
+
+test("reset clears the selected table and closes the custom field", () => {
+    const gestioneTavoli = creaGestoreTavoli();
+    gestioneTavoli.togglePersonalizzato();
+    gestioneTavoli.impostaNumeroPersonalizzato("23");
+
+    const selezione = gestioneTavoli.reset();
+
+    assert.equal(selezione.tavolo, "");
+    assert.equal(selezione.numero, "");
+    assert.equal(selezione.aperto, false);
+});
+
+test("new order and edit pages expose the custom table number controls", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+    const html = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
+    const editScript = fs.readFileSync(path.join(directory, "modifica.js"), "utf8");
+    const editHtml = fs.readFileSync(path.join(directory, "modifica.html"), "utf8");
+
+    assert.match(script, /for \(let numero = 1; numero <= 15; numero\+\+\)/);
+    assert.match(script, /dataset\.tavoloPersonalizzato = ""/);
+    assert.match(script, /setAttribute\("aria-label", "Altro tavolo"\)/);
+    assert.match(script, /gestioneTavoli\.togglePersonalizzato\(\)/);
+    assert.match(script, /gestioneTavoli\.impostaNumeroPersonalizzato\(numeroTavoloPersonalizzato\.value\)/);
+    assert.match(script, /bottonePersonalizzato\.textContent = selezione\.numeroPersonalizzato \|\| "\+"/);
+    assert.match(script, /gestioneTavoli\.reset\(\);\s*aggiornaSelettoreTavoli\(\)/);
+    assert.match(script, /tavolo\.add\(opzione\)/);
+    assert.match(html, /id="tavolo" class="visually-hidden" required>\s*<option value="" selected disabled/);
+    assert.doesNotMatch(html, /<option value="Tavolo \d+">/);
+    assert.match(
+        html,
+        /id="numero-tavolo-personalizzato"[\s\S]*type="number"[\s\S]*inputmode="numeric"[\s\S]*pattern="\[0-9\]\*"[\s\S]*min="1"[\s\S]*max="99"/
+    );
+    assert.match(
+        editHtml,
+        /id="numero-tavolo" type="number" inputmode="numeric" pattern="\[0-9\]\*" min="1" max="99"/
+    );
+    assert.equal(numeroTavoloDaNome("Tavolo 23"), "23");
+    assert.equal(nomeTavoloDaNumero("23"), "Tavolo 23");
+    assert.match(editScript, /numeroTavoloDaNome\(ordine\.tavoloOCliente\)/);
+    assert.match(editScript, /nomeTavoloDaNumero\(numeroTavolo\.value\)/);
 });
 
 test("quick notes append with a separator and preserve manually written text", () => {
@@ -135,7 +222,7 @@ test("order entry wires selector events, first-product collapse, reset and note 
     const html = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
 
     assert.match(script, /impostaValoreControllo\(tipoOrdine, bottone\.dataset\.tipoOrdine, "change"\)/);
-    assert.match(script, /impostaValoreControllo\(tavolo, opzione\.value, "change"\)/);
+    assert.match(script, /gestioneTavoli\.scegli\(numero\);\s*aggiornaSelettoreTavoli\(\)/);
     assert.match(script, /impostaValoreControllo\(numeroPersone, String\(persone\), "input"\)/);
     assert.match(script, /primoProdotto && datiOrdineCompleti\(tipoOrdine\.value, datiIntestazioneCorrenti\(\)\)/);
     assert.match(script, /intestazioneCompatta\.addEventListener\("click", apriIntestazione\)/);
