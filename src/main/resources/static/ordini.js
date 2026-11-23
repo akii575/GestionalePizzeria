@@ -11,6 +11,8 @@ const paginaRitornoModifica = originiModifica.has(parametriUrl.get("da"))
     ? `/${parametriUrl.get("da")}.html`
     : "/gestionale.html";
 let payloadOriginaleModifica = null;
+let caricamentoModificaInCorso = false;
+let erroreCaricamentoModifica = false;
 let tipoOrdineOriginale = null;
 let numeroPersoneOriginale = null;
 let copertoOrdine = null;
@@ -34,6 +36,7 @@ let trascinamentoChiusuraSheet = null;
 let timerNascondiRiepilogoSheet = 0;
 let overflowRadicePrecedente = null;
 const messaggio = document.getElementById("messaggio");
+const riprovaModifica = document.getElementById("riprova-modifica");
 const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
 const extraLista = document.getElementById("extra-lista");
@@ -103,6 +106,7 @@ const {
     calcolaCoperto,
     preparaRigheModifica,
     creaPayloadComanda,
+    puoSalvareModifica,
     aggiungiProdotti,
     preparaRipetizione,
     impostaRigaAttiva,
@@ -1022,13 +1026,33 @@ function renderRiepilogo() {
         document.getElementById("riepilogo-sheet-conteggio"),
         stato.righe.length
     );
-    invia.disabled = !stato.righe.length;
+    invia.disabled = !stato.righe.length
+        || (numeroModifica && !puoSalvareModifica(payloadOriginaleModifica));
     invia.textContent = stato.righe.length
         ? numeroModifica ? "Rivedi e salva" : "Rivedi e invia"
         : "Aggiungi prodotti";
     const inviaSheet = document.getElementById("riepilogo-sheet-invia");
-    inviaSheet.disabled = !stato.righe.length;
+    inviaSheet.disabled = invia.disabled;
     inviaSheet.textContent = invia.textContent;
+    aggiornaStatoCaricamentoModifica();
+}
+function aggiornaStatoCaricamentoModifica() {
+    if (!numeroModifica) return;
+    const ordineNonCaricato = !puoSalvareModifica(payloadOriginaleModifica);
+    composerMain.inert = ordineNonCaricato;
+    composerMain.setAttribute("aria-busy", String(ordineNonCaricato));
+    invia.disabled = ordineNonCaricato || !stato.righe.length;
+    document.getElementById("riepilogo-sheet-invia").disabled = invia.disabled;
+    document.getElementById("conferma-invio").disabled = ordineNonCaricato;
+    if (ordineNonCaricato) {
+        riepilogoSheetApri.setAttribute("aria-disabled", "true");
+        riepilogoSheetApri.removeAttribute("tabindex");
+    } else {
+        riepilogoSheetApri.removeAttribute("aria-disabled");
+        aggiornaAccessibilitaBarraSheet();
+    }
+    riprovaModifica.hidden = !erroreCaricamentoModifica;
+    riprovaModifica.disabled = caricamentoModificaInCorso;
 }
 function renderRigheRiepilogo(contenitore) {
     contenitore.replaceChildren();
@@ -1117,6 +1141,7 @@ function impostaStatoSheet(aperto) {
     }, durata);
 }
 function apriRiepilogoSheet() {
+    if (numeroModifica && !puoSalvareModifica(payloadOriginaleModifica)) return;
     if (!riepilogoSheetDisponibile()) return;
     impostaStatoSheet(true);
     riepilogoSheetChiudi.focus({ preventScroll: true });
@@ -1140,6 +1165,7 @@ function chiudiRiepilogoSheet(ripristinaFocus = true) {
     if (ripristinaFocus && riepilogoSheetDisponibile()) riepilogoSheetApri.focus({ preventScroll: true });
 }
 function avviaTrascinamentoRiepilogo(evento) {
+    if (numeroModifica && !puoSalvareModifica(payloadOriginaleModifica)) return;
     if (!riepilogoSheetDisponibile() || evento.button !== 0 || evento.target.closest("#btn-invia")) return;
     trascinamentoRiepilogo = {
         pointerId: evento.pointerId,
@@ -1302,6 +1328,7 @@ function validaDatiOrdine() {
     return true;
 }
 function apriConferma() {
+    if (numeroModifica && !puoSalvareModifica(payloadOriginaleModifica)) return;
     if (!stato.righe.length) return;
     const consegna = tipoOrdine.value === "consegna";
     const ritiro = tipoOrdine.value === "ritiro";
@@ -1377,6 +1404,7 @@ function creaPayloadCorrente() {
     }, stato.righe);
 }
 async function inviaOrdine() {
+    if (numeroModifica && !puoSalvareModifica(payloadOriginaleModifica)) return;
     chiudiConferma();
     invia.disabled = true;
     const ordine = creaPayloadCorrente();
@@ -1650,6 +1678,7 @@ extraIntestazione.addEventListener("click", () => {
     extraAperto = !extraAperto;
     renderRiepilogo();
 });
+riprovaModifica.addEventListener("click", inizializzaModifica);
 invia.addEventListener("click", apriConferma);
 document.getElementById("conferma-invio").addEventListener("click", inviaOrdine);
 document.getElementById("annulla-invio").addEventListener("click", chiudiConferma);
@@ -1797,7 +1826,12 @@ caricamentoMenu.aggiornamento.catch(errore => {
 });
 
 async function inizializzaModifica() {
-    if (!numeroModifica) return;
+    if (!numeroModifica || caricamentoModificaInCorso) return;
+    caricamentoModificaInCorso = true;
+    erroreCaricamentoModifica = false;
+    payloadOriginaleModifica = null;
+    aggiornaStatoCaricamentoModifica();
+    mostraMessaggio(`Caricamento ordine #${numeroModifica}...`, "");
     document.title = `Modifica ordine #${numeroModifica} | CIVICO7`;
     document.querySelector("main.container > header h1").textContent = `Modifica ordine #${numeroModifica}`;
     document.getElementById("btn-annulla").textContent = "Annulla";
@@ -1867,11 +1901,18 @@ async function inizializzaModifica() {
         extraAperto = false;
         aggiornaBottoneCostoConsegna();
         chiudiRisultatiClientiIndirizzo();
-        renderRiepilogo();
         if (datiOrdineCompleti(tipo, datiIntestazioneCorrenti())) chiudiIntestazione();
         payloadOriginaleModifica = JSON.stringify(creaPayloadCorrente());
+        erroreCaricamentoModifica = false;
+        renderRiepilogo();
+        mostraMessaggio("", "");
     } catch (errore) {
-        mostraMessaggio(errore.message || "Impossibile caricare l'ordine.", "errore");
+        payloadOriginaleModifica = null;
+        erroreCaricamentoModifica = true;
+        mostraMessaggio(`Impossibile caricare l'ordine #${numeroModifica}. Riprova.`, "errore");
+    } finally {
+        caricamentoModificaInCorso = false;
+        aggiornaStatoCaricamentoModifica();
     }
 }
 

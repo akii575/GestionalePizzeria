@@ -836,6 +836,23 @@ button {
 .successo {
     color: var(--verde);
 }
+.btn-riprova-modifica {
+    min-height: 44px;
+    margin: 0 0 12px;
+    padding: 10px 16px;
+    border: 1px solid var(--theme-green);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--theme-green);
+    font: inherit;
+    font-weight: 600;
+}
+.btn-riprova-modifica[hidden] {
+    display: none;
+}
+.barra-conto-dettagli[aria-disabled="true"] {
+    pointer-events: none;
+}
 .conferma-modale {
     position: fixed;
     inset: 0;

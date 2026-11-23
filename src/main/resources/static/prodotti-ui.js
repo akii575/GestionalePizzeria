@@ -210,6 +210,10 @@ const prodottiUI = (() => {
         };
     }
 
+    function puoSalvareModifica(payloadOriginale) {
+        return payloadOriginale !== null;
+    }
+
     function aggiungiProdotti(righe, rigaAttiva, prodotto, quantita = 1) {
         const aggiunte = Array.from({ length: quantita }, () => creaRiga(prodotto));
         const nuoveRighe = [...righe, ...aggiunte];
@@ -574,6 +578,7 @@ const prodottiUI = (() => {
         creaRiga,
         preparaRigheModifica,
         creaPayloadComanda,
+        puoSalvareModifica,
         aggiungiProdotti,
         preparaRipetizione,
         impostaRigaAttiva,

@@ -12,6 +12,7 @@ const {
     creaRiga,
     preparaRigheModifica,
     creaPayloadComanda,
+    puoSalvareModifica,
     aggiungiProdotti,
     preparaRipetizione,
     impostaRigaAttiva,
@@ -40,6 +41,19 @@ const {
     togliNotaRapida,
     notaContiene
 } = require("../src/main/resources/static/prodotti-ui");
+
+test("edit save is blocked until the original order has loaded", () => {
+    const script = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.js"),
+        "utf8"
+    );
+    const guard = script.indexOf("if (numeroModifica && !puoSalvareModifica(payloadOriginaleModifica)) return;");
+    const put = script.indexOf("fetch(`/api/ordini/${numeroModifica}`, {");
+
+    assert.equal(puoSalvareModifica(null), false);
+    assert.equal(puoSalvareModifica("{}"), true);
+    assert.ok(guard >= 0 && put > guard, "the null-payload guard must run before the edit PUT");
+});
 
 test("editing an order preserves its rows, extras, exclusions, and one-row-per-product payload", () => {
     const menu = [{
