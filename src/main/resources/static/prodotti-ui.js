@@ -282,7 +282,7 @@ const prodottiUI = (() => {
 
     function raggruppaRigheConferma(righe) {
         const gruppi = new Map();
-        (righe || []).forEach(riga => {
+        (righe || []).forEach((riga, indice) => {
             const extra = (Array.isArray(riga.extra) ? riga.extra : [])
                 .map(elemento => typeof elemento === "string" ? elemento : elemento?.id || elemento?.nome || "")
                 .sort();
@@ -294,8 +294,9 @@ const prodottiUI = (() => {
             const gruppo = gruppi.get(chiave);
             if (gruppo) {
                 gruppo.quantita++;
+                gruppo.indici.push(indice);
             } else {
-                gruppi.set(chiave, { riga, quantita: 1 });
+                gruppi.set(chiave, { riga, quantita: 1, indici: [indice] });
             }
         });
         return [...gruppi.values()];
@@ -562,7 +563,10 @@ const prodottiUI = (() => {
     }
 
     function riepilogoIntestazione(tipo, dati) {
-        if (tipo === "tavolo") return `${dati.tavolo} · ${dati.numeroPersone} persone`;
+        if (tipo === "tavolo") {
+            const persone = Number(dati.numeroPersone);
+            return `${dati.tavolo} · ${persone} ${persone === 1 ? "persona" : "persone"}`;
+        }
         if (tipo === "banco") return `Banco · ${String(dati.cognome || "").trim()}`;
         if (tipo === "ritiro") {
             return ["Ritiro", String(dati.nome || "").trim(), String(dati.orario || "").trim()]

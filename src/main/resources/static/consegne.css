@@ -178,3 +178,65 @@
 
     .order-card__delivery-status--consegnata { min-width: 0; }
 }
+
+.order-card--delivery-mode .order-card__compact-status { min-width: 80px; }
+.order-card--delivery-mode .order-card__delivery-status {
+    min-width: 80px;
+    min-height: 38px;
+    padding: 5px 7px;
+    border-radius: 9px;
+    font-size: 12px;
+}
+.order-card--delivery-mode .order-card__delivery-status--consegnata {
+    min-width: 80px;
+    flex-direction: row;
+    gap: 4px;
+    background: transparent;
+    color: #166534;
+}
+.order-card--delivery-mode .order-card__delivery-status--consegnata > span { font-size: 14px; }
+.order-card--delivery-mode .order-card__delivery-status--consegnata small { font-size: 10px; }
+
+.order-card__fields--delivery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px 12px;
+}
+.order-card__fields--delivery .order-card__field {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.order-card__fields--delivery .order-card__field-label { display: none; }
+.order-card__delivery-contact {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+}
+.order-card__delivery-action {
+    min-width: 0;
+    min-height: 36px;
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 12px !important;
+}
+.order-card__delivery-contact small {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+    .order-card--delivery-mode .order-card__compact-status { min-width: 74px; }
+    .order-card--delivery-mode .order-card__delivery-status { min-width: 74px; font-size: 11px; }
+    .order-card--delivery-mode .order-card__delivery-status--consegnata { min-width: 74px; }
+    .order-card__fields--delivery { gap: 5px; padding-inline: 8px; }
+    .order-card__delivery-contact { gap: 4px; }
+    .order-card__delivery-action { padding-inline: 6px; font-size: 11px !important; }
+}
