@@ -117,6 +117,20 @@ test("order entry wires selector events, first-product collapse, reset and note 
     assert.match(html, /id="numero-persone" class="visually-hidden" type="number"[^>]*required/);
 });
 
+test("people selector is a five-column grid without horizontal scrolling", () => {
+    const css = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.css"),
+        "utf8"
+    );
+    const regole = [...css.matchAll(/([^{}]*\.persone-selettore[^{}]*)\{([^{}]*)\}/g)].map(regola => regola[2]);
+
+    assert.ok(regole.length > 0);
+    assert.ok(regole.some(regola => /grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)/.test(regola)));
+    for (const regola of regole) {
+        assert.doesNotMatch(regola, /overflow(-x)?\s*:|display:\s*flex|flex-wrap/);
+    }
+});
+
 test("search ignores case and accents on the real menu", () => {
     assert.ok(nomi(filtraProdotti(menu, "caffe")).includes("Caffè"));
     assert.ok(nomi(filtraProdotti(menu, "CROCCHE")).includes("Crocché di Patate"));

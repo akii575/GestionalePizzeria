@@ -1222,13 +1222,15 @@ button {
     font-weight: 600;
 }
 
-.tavoli-griglia {
+.tavoli-griglia,
+.persone-selettore {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 6px;
 }
 
-.opzione-tavolo {
+.opzione-tavolo,
+.opzione-persone {
     width: 100%;
     min-width: 44px;
     min-height: 48px;
@@ -1239,35 +1241,6 @@ button {
     color: var(--theme-ink);
     font: inherit;
     font-size: 18px;
-    font-weight: 600;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.persone-selettore {
-    display: flex;
-    gap: 4px;
-    overflow-x: auto;
-    padding: 1px 0 4px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-}
-
-.persone-selettore::-webkit-scrollbar {
-    display: none;
-}
-
-.opzione-persone {
-    width: 44px;
-    min-width: 44px;
-    min-height: 48px;
-    flex: 0 0 44px;
-    border: 1px solid var(--theme-line);
-    border-radius: 10px;
-    background: #fff;
-    color: var(--theme-ink);
-    font: inherit;
-    font-size: 16px;
     font-weight: 600;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
@@ -1707,6 +1680,30 @@ button {
     }
 }
 
+@media (max-width: 699px) {
+    #campo-pagamento-consegna {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    #campo-pagamento-consegna > .campo-pagamento-consegna,
+    #campo-pagamento-consegna > .btn-costo-consegna {
+        flex: 0 0 auto;
+        width: 100%;
+        min-width: 0;
+    }
+
+    #campo-pagamento-consegna label {
+        white-space: nowrap;
+    }
+
+    #campo-pagamento-consegna > .btn-costo-consegna {
+        min-height: 44px;
+        font-size: 14px;
+    }
+}
+
 @media (max-width: 767px) {
     .app-shell .container {
         padding: 0 12px calc(var(--app-mobile-checkout-height) + var(--app-mobile-nav-height));
@@ -1755,11 +1752,13 @@ button {
         gap: 10px;
     }
 
-    .tavoli-griglia {
+    .tavoli-griglia,
+    .persone-selettore {
         gap: 5px;
     }
 
-    .opzione-tavolo {
+    .opzione-tavolo,
+    .opzione-persone {
         min-height: 48px;
     }
 
