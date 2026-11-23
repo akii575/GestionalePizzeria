@@ -288,12 +288,44 @@ test("kitchen receipts include only kitchen categories and ingredients, while sa
             { prodotto: "Acqua", categoria: "bibite", prezzoBase: 2, totale: 2 }
         ]
     });
+
     assert.match(addedKitchen, /@@TITLE:AGGIUNTA - TAVOLO@@/);
     assert.match(addedKitchen, /@@SECTION:PIZZE@@/);
     assert.doesNotMatch(addedKitchen, /BIBITE|EUR|TOTALE/);
     assert.equal(kitchen.split(/\r?\n/).some((line, index, lines) => (
         line === "" && lines[index + 1] === ""
     )), false);
+});
+
+test("receipt prints removed ingredients for kitchen and sala without grouping them with normal rows", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const row = {
+        prodotto: "Margherita",
+        categoria: "pizze",
+        prezzoBase: 8,
+        totale: 8,
+        ingredienti: ["Pomodoro", "Basilico", "Mozzarella"]
+    };
+    const order = {
+        numero: 42,
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [row, { ...row, senza: ["Basilico"] }],
+        totale: 16
+    };
+    const options = {
+        productIngredients: { Margherita: ["Pomodoro", "Basilico", "Mozzarella"] },
+        kitchenCategories: new Set(["pizze"])
+    };
+    const cucina = formatReceipt(order, 80, { ...options, profile: "cucina" });
+    const sala = formatReceipt(order, 80, { ...options, profile: "sala" });
+
+    assert.equal((cucina.match(/@@ITEM:1X MARGHERITA@@/g) || []).length, 2);
+    assert.match(cucina, /@@SMALL: {2}POMODORO, MOZZARELLA@@/);
+    const ingredientLines = cucina.split(/\r?\n/).filter(line => line.startsWith("@@SMALL:"));
+    assert.equal(ingredientLines.filter(line => line.includes("BASILICO")).length, 1);
+    assert.match(cucina, /@@ITEM:\x20{2}- SENZA BASILICO@@/);
+    assert.equal((sala.match(/@@ITEM:1X MARGHERITA/g) || []).length, 2);
+    assert.match(sala, /\x20{2}- senza basilico/);
 });
 
 test("receipt groups products in Firestore category order using prices stored in order rows", () => {

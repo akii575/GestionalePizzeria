@@ -150,14 +150,20 @@ function rigaEdit(riga = { prodotto: menu[0]?.nome || "", extra: [] }) {
     div.className = "riga-edit";
     const prodottoMenu = menu.find(p => p.nome === riga.prodotto);
     riga.ingredienti = riga.ingredienti || prodottoMenu?.ingredienti || [];
+    const senza = Array.isArray(riga.senza) ? riga.senza : [];
+    div.dataset.senza = JSON.stringify(senza);
     const extraSelezionati = riga.extra.map(riferimentoExtra).filter(Boolean);
-    div.innerHTML = `<label>Prodotto<select class="prodotto">${menu.map(p => `<option value="${escapeHtml(p.nome)}" ${p.nome === riga.prodotto ? "selected" : ""} ${p.disponibile === false && p.nome !== riga.prodotto ? "disabled" : ""}>${escapeHtml(p.nome)}${p.disponibile === false ? " (Esaurito)" : ""}</option>`).join("")}</select><small class="prodotto-ingredienti"></small></label><div class="extra-editor" ${prodottoMenu?.ammetteExtra === true ? "" : "hidden"}></div><button class="rimuovi" type="button">Rimuovi</button>`;
+    div.innerHTML = `<label>Prodotto<select class="prodotto">${menu.map(p => `<option value="${escapeHtml(p.nome)}" ${p.nome === riga.prodotto ? "selected" : ""} ${p.disponibile === false && p.nome !== riga.prodotto ? "disabled" : ""}>${escapeHtml(p.nome)}${p.disponibile === false ? " (Esaurito)" : ""}</option>`).join("")}</select><small class="prodotto-ingredienti"></small><small class="prodotto-senza"></small></label><div class="extra-editor" ${prodottoMenu?.ammetteExtra === true ? "" : "hidden"}></div><button class="rimuovi" type="button">Rimuovi</button>`;
     const extraEditor = div.querySelector(".extra-editor");
     const descrizione = div.querySelector(".prodotto-ingredienti");
-    function aggiornaDescrizione(prodotto) {
+    const senzaDescrizione = div.querySelector(".prodotto-senza");
+    function aggiornaDescrizione(prodotto, ingredientiSenza) {
         descrizione.textContent = prodotto?.ingredienti?.length ? prodotto.ingredienti.join(", ") : "";
+        senzaDescrizione.textContent = ingredientiSenza.length
+            ? `senza ${ingredientiSenza.join(", ")}`
+            : "";
     }
-    aggiornaDescrizione(prodottoMenu);
+    aggiornaDescrizione(prodottoMenu, senza);
     if (!extraEditor.hidden) extraEditor.appendChild(opzioniExtra(extraSelezionati));
     div.querySelector(".rimuovi").onclick = () => {
         div.remove();
@@ -165,7 +171,8 @@ function rigaEdit(riga = { prodotto: menu[0]?.nome || "", extra: [] }) {
     };
     div.querySelector(".prodotto").onchange = event => {
         const nuovo = menu.find(p => p.nome === event.target.value);
-        aggiornaDescrizione(nuovo);
+        div.dataset.senza = "[]";
+        aggiornaDescrizione(nuovo, []);
         extraEditor.hidden = nuovo?.ammetteExtra !== true || nuovo.disponibile === false;
         extraEditor.innerHTML = "";
         if (!extraEditor.hidden) extraEditor.appendChild(opzioniExtra([]));
@@ -184,7 +191,8 @@ function applicaMenu(menuNuovo, extraNuovi) {
     if (ordineCaricato) {
         const righeCorrenti = Array.from(righe.querySelectorAll(".riga-edit")).map(div => ({
             prodotto: div.querySelector(".prodotto").value,
-            extra: JSON.parse(div.querySelector(".extra-selezionati")?.dataset.extra || "[]")
+            extra: JSON.parse(div.querySelector(".extra-selezionati")?.dataset.extra || "[]"),
+            senza: JSON.parse(div.dataset.senza || "[]")
         }));
         righe.replaceChildren();
         righeCorrenti.forEach(rigaEdit);
@@ -328,7 +336,8 @@ document.getElementById("salva").onclick = async () => {
         note: document.getElementById("note").value,
         righe: Array.from(document.querySelectorAll(".riga-edit")).map(riga => ({
             prodotto: riga.querySelector(".prodotto").value,
-            extra: JSON.parse(riga.querySelector(".extra-selezionati")?.dataset.extra || "[]")
+            extra: JSON.parse(riga.querySelector(".extra-selezionati")?.dataset.extra || "[]"),
+            senza: JSON.parse(riga.dataset.senza || "[]")
         }))
     };
     const risposta = await fetch(`/api/ordini/${numero}`, {

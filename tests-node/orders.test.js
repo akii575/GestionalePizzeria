@@ -207,6 +207,59 @@ test("order prices and categories come from Firestore menu data, not client fiel
     assert.equal(order.totale, 7);
 });
 
+test("validates and canonicalizes removed ingredients without changing the price", () => {
+    const product = {
+        ...testCatalog.menu.find(item => item.nome === "Margherita"),
+        ingredienti: ["Pomodoro", "Basilico"]
+    };
+    const catalog = { ...testCatalog, allProducts: [product] };
+    const order = prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita", senza: ["bAsIlIcO"] }]
+    }, catalog);
+
+    assert.deepEqual(order.righe[0].senza, ["Basilico"]);
+    assert.equal(order.righe[0].totale, product.prezzo);
+    for (const senza of [["Origano"], ["Basilico", "basilico"], Array(11).fill("Basilico"), "Basilico"]) {
+        assert.throws(() => prepareOrder({
+            tipo: "banco",
+            cognomeBanco: "Rossi",
+            righe: [{ prodotto: "Margherita", senza }]
+        }, catalog), /Ingrediente non valido/);
+    }
+});
+
+test("new rows without menu ingredients ignore removed ingredients", () => {
+    const product = {
+        ...testCatalog.menu.find(item => item.nome === "Margherita"),
+        ingredienti: []
+    };
+    const order = prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita", senza: "not-an-array" }]
+    }, { ...testCatalog, allProducts: [product] });
+
+    assert.deepEqual(order.righe[0].senza, []);
+});
+
+test("editing preserves removed ingredients that are no longer in the menu", () => {
+    const product = {
+        ...testCatalog.menu.find(item => item.nome === "Margherita"),
+        ingredienti: ["Pomodoro"]
+    };
+    const order = prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita", senza: ["Basilico"] }]
+    }, { ...testCatalog, allProducts: [product] }, {
+        existingRows: [{ prodotto: "Margherita", senza: ["Basilico"] }]
+    });
+
+    assert.deepEqual(order.righe[0].senza, ["Basilico"]);
+});
+
 test("order validation rejects archived and unavailable products", () => {
     const product = testCatalog.menu.find(item => item.nome === "Margherita");
     const customCatalog = {

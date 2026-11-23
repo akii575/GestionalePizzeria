@@ -128,9 +128,9 @@ test("customer profiles group order rows by product and extras and omit table co
         data: "2026-11-22T18:00:00.000Z",
         tipo: "consegna",
         righe: [
-            { prodotto: "Margherita", quantita: 2, extra: ["Bufala", "Olive"] },
-            { prodotto: "Margherita", quantita: 1, extra: ["Bufala"] },
-            { prodotto: "Margherita", quantita: 1, extra: [] }
+            { prodotto: "Margherita", quantita: 2, extra: ["Bufala", "Olive"], senza: [] },
+            { prodotto: "Margherita", quantita: 1, extra: ["Bufala"], senza: [] },
+            { prodotto: "Margherita", quantita: 1, extra: [], senza: [] }
         ]
     });
     assert.equal("coperto" in profile, false);
@@ -139,6 +139,23 @@ test("customer profiles group order rows by product and extras and omit table co
         telefonoRitiro: "12345",
         righe: []
     }, "2026-11-22T18:00:00.000Z"), null);
+});
+
+test("customer repeat orders save removed ingredients and keep them separate from normal rows", () => {
+    const profile = customerProfileForOrder({
+        tipo: "ritiro",
+        telefonoRitiro: "3331234567",
+        righe: [
+            { prodotto: "Margherita", extra: [], senza: [] },
+            { prodotto: "Margherita", extra: [], senza: ["Basilico"] },
+            { prodotto: "Margherita", extra: [], senza: ["Basilico"] }
+        ]
+    }, "2026-11-22T18:00:00.000Z");
+
+    assert.deepEqual(profile.ultimoOrdine.righe, [
+        { prodotto: "Margherita", quantita: 1, extra: [], senza: [] },
+        { prodotto: "Margherita", quantita: 2, extra: [], senza: ["Basilico"] }
+    ]);
 });
 
 test("customer profiles keep at most 30 distinct product and extra combinations", () => {
@@ -419,7 +436,8 @@ test("creating a delivery order updates the customer inside its order transactio
     assert.deepEqual(customerWrite.value.ultimoOrdine.righe, [{
         prodotto: "Margherita",
         quantita: 2,
-        extra: ["Bufala"]
+        extra: ["Bufala"],
+        senza: []
     }]);
     assert.equal(customerWrite.value.ultimoOrdine.data, response.body.dataOra);
     assert.equal("coperto" in customerWrite.value, false);

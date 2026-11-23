@@ -646,6 +646,55 @@ button {
 #extra-lista .extra-card:focus:not(:focus-visible) {
     outline: none;
 }
+#extra-lista[hidden] {
+    display: none;
+}
+.senza-ingredienti {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.senza-ingredienti[hidden] {
+    display: none;
+}
+.senza-ingredienti > strong {
+    padding-top: 8px;
+    color: var(--theme-ink);
+    font-size: 13px;
+}
+.senza-ingredienti-lista {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    gap: 6px;
+    overflow-x: hidden;
+}
+.senza-chip {
+    box-sizing: border-box;
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 1px solid #E5E7EB;
+    border-radius: 999px;
+    background: #fff;
+    color: #1F2937;
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.2;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.senza-chip.selezionato {
+    border-color: #B91C1C;
+    background: #FEF2F2;
+    color: #B91C1C;
+    text-decoration: line-through;
+}
+.senza-chip:focus:not(:focus-visible) {
+    outline: none;
+}
 .gestione-extra-riepilogo {
     margin-bottom: 12px;
 }
@@ -733,6 +782,13 @@ button {
     display: block;
     margin-top: 2px;
     color: var(--theme-muted);
+    font-size: 12px;
+}
+.riepilogo-senza,
+.conferma-riga .conferma-senza {
+    display: block;
+    margin-top: 3px;
+    color: #991B1B;
     font-size: 12px;
 }
 .rimuovi {
