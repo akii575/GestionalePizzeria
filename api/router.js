@@ -7,6 +7,7 @@ const routeLoaders = {
     menu: () => require("../lib/handlers/menu"),
     "menu-admin": () => require("../lib/handlers/menu-admin"),
     "reset-numeri": () => require("../lib/handlers/reset-numeri"),
+    "stato-serata": () => require("../lib/handlers/stato-serata"),
     "auth/logout": () => require("../lib/handlers/auth/logout"),
     "auth/session": () => require("../lib/handlers/auth/session"),
     "auth/verify": () => require("../lib/handlers/auth/verify"),

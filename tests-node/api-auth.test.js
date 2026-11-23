@@ -7,6 +7,7 @@ const protectedHandlers = [
     ["extras", apiRoute("extra"), "GET"],
     ["orders", apiRoute("ordini"), "GET"],
     ["deliveries", apiRoute("consegne"), "GET"],
+    ["evening status", apiRoute("stato-serata"), "GET"],
     ["order update", apiRoute("ordini/1"), "PUT"],
     ["payment update", apiRoute("ordini/1"), "PATCH"],
     ["order reset", apiRoute("reset-numeri"), "POST"]
