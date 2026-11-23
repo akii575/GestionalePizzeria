@@ -27,6 +27,8 @@ let prodottoCoperto = null;
 const tipoOrdine = document.getElementById("tipo-ordine");
 const campoTavolo = document.getElementById("campo-tavolo");
 const tavolo = document.getElementById("tavolo");
+const tavoloPersonalizzato = document.getElementById("tavolo-personalizzato");
+const numeroTavoloPersonalizzato = document.getElementById("numero-tavolo-personalizzato");
 const numeroPersone = document.getElementById("numero-persone");
 const selettoreTipoOrdine = document.getElementById("selettore-tipo-ordine");
 const tavoliGriglia = document.getElementById("tavoli-griglia");
@@ -88,6 +90,7 @@ const {
     aggiornaConteggioProdotti,
     controllaLimiteRighe,
     impostaValoreControllo,
+    nomeTavoloDaNumero,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
     riepilogoIntestazione,
@@ -97,6 +100,7 @@ const {
     notaContiene
 } = window.prodottiUI;
 const clientiAbituali = window.prodottiUI.creaGestoreSuggerimentiClienti();
+const gestioneTavoli = window.prodottiUI.creaGestoreTavoli();
 let etichetteCategorie = Object.fromEntries(
     [...document.querySelectorAll(".tab[data-tab]")].map(tab => [tab.dataset.tab, tab.textContent.trim()])
 );
@@ -528,11 +532,33 @@ function aggiornaSelettoreTipoOrdine() {
     });
 }
 function aggiornaSelettoreTavoli() {
+    const selezione = gestioneTavoli.stato();
+    if (selezione.tavolo && !Array.from(tavolo.options).some(opzione => opzione.value === selezione.tavolo)) {
+        const opzione = document.createElement("option");
+        opzione.value = selezione.tavolo;
+        opzione.textContent = selezione.tavolo;
+        tavolo.add(opzione);
+    }
+    if (tavolo.value !== selezione.tavolo) {
+        impostaValoreControllo(tavolo, selezione.tavolo, "change");
+    }
     tavoliGriglia.querySelectorAll("[data-tavolo]").forEach(bottone => {
         const selezionato = bottone.dataset.tavolo === tavolo.value;
         bottone.classList.toggle("selezionato", selezionato);
         bottone.setAttribute("aria-pressed", String(selezionato));
     });
+    const bottonePersonalizzato = tavoliGriglia.querySelector("[data-tavolo-personalizzato]");
+    bottonePersonalizzato.textContent = selezione.numeroPersonalizzato || "+";
+    bottonePersonalizzato.classList.toggle("selezionato", Boolean(selezione.numeroPersonalizzato));
+    bottonePersonalizzato.setAttribute("aria-pressed", String(Boolean(selezione.numeroPersonalizzato)));
+    tavoloPersonalizzato.hidden = !selezione.aperto;
+    numeroTavoloPersonalizzato.value = selezione.numero;
+    sezioneTavoli.classList.toggle("errore", Boolean(selezione.errore));
+    if (selezione.errore) {
+        mostraMessaggio(selezione.errore, "errore");
+    } else if (messaggio.textContent === "Numero tavolo da 1 a 99" || messaggio.textContent === "Scegli il tavolo") {
+        mostraMessaggio("", "");
+    }
 }
 function aggiornaSelettorePersone() {
     const valore = Number(numeroPersone.value);
@@ -555,19 +581,35 @@ function impostaPersonePersonalizzate(aperta) {
     numeroPersone.min = aperta ? "9" : "1";
 }
 function creaSelettoriOrdine() {
-    for (const opzione of tavolo.options) {
-        if (opzione.disabled || !opzione.value) continue;
+    for (let numero = 1; numero <= 15; numero++) {
         const bottone = document.createElement("button");
-        const testo = opzione.textContent.trim();
+        const valore = nomeTavoloDaNumero(numero);
         bottone.type = "button";
         bottone.className = "opzione-tavolo";
-        bottone.dataset.tavolo = opzione.value;
-        bottone.textContent = testo.replace(/^Tavolo\s*/i, "") || testo;
-        bottone.setAttribute("aria-label", testo);
+        bottone.dataset.tavolo = valore;
+        bottone.textContent = String(numero);
+        bottone.setAttribute("aria-label", valore);
         bottone.setAttribute("aria-pressed", "false");
-        bottone.addEventListener("click", () => impostaValoreControllo(tavolo, opzione.value, "change"));
+        bottone.addEventListener("click", () => {
+            gestioneTavoli.scegli(numero);
+            aggiornaSelettoreTavoli();
+        });
         tavoliGriglia.appendChild(bottone);
     }
+
+    const bottoneTavoloPersonalizzato = document.createElement("button");
+    bottoneTavoloPersonalizzato.type = "button";
+    bottoneTavoloPersonalizzato.className = "opzione-tavolo";
+    bottoneTavoloPersonalizzato.dataset.tavoloPersonalizzato = "";
+    bottoneTavoloPersonalizzato.textContent = "+";
+    bottoneTavoloPersonalizzato.setAttribute("aria-label", "Altro tavolo");
+    bottoneTavoloPersonalizzato.setAttribute("aria-pressed", "false");
+    bottoneTavoloPersonalizzato.addEventListener("click", () => {
+        const selezione = gestioneTavoli.togglePersonalizzato();
+        aggiornaSelettoreTavoli();
+        if (selezione.aperto) numeroTavoloPersonalizzato.focus();
+    });
+    tavoliGriglia.appendChild(bottoneTavoloPersonalizzato);
 
     for (let persone = 1; persone <= 8; persone++) {
         const bottone = document.createElement("button");
@@ -655,7 +697,8 @@ function ripristinaIntestazioneComanda() {
     note.value = "";
     aggiornaPulsanteNote();
     impostaPersonePersonalizzate(false);
-    impostaValoreControllo(tavolo, "", "change");
+    gestioneTavoli.reset();
+    aggiornaSelettoreTavoli();
     impostaValoreControllo(numeroPersone, "", "input");
     sezioneTavoli.classList.remove("errore");
     sezionePersone.classList.remove("errore");
@@ -1162,6 +1205,17 @@ function validaDatiOrdine() {
     const dati = datiIntestazioneCorrenti();
     const campoMancante = datiObbligatoriMancanti(tipoOrdine.value, dati);
     if (tipoOrdine.value === "tavolo") {
+        const selezione = gestioneTavoli.stato();
+        if (selezione.errore || (selezione.aperto && !selezione.tavolo)) {
+            if (!selezione.aperto) {
+                gestioneTavoli.togglePersonalizzato();
+                aggiornaSelettoreTavoli();
+            }
+            sezioneTavoli.classList.add("errore");
+            mostraMessaggio("Numero tavolo da 1 a 99", "errore");
+            numeroTavoloPersonalizzato.focus();
+            return false;
+        }
         if (campoMancante === "tavolo") {
             sezioneTavoli.classList.add("errore");
             apriIntestazione();
@@ -1436,6 +1490,10 @@ note.addEventListener("input", aggiornaPulsanteNote);
 intestazioneCompatta.addEventListener("click", apriIntestazione);
 tavolo.addEventListener("change", () => {
     sezioneTavoli.classList.remove("errore");
+    aggiornaSelettoreTavoli();
+});
+numeroTavoloPersonalizzato.addEventListener("input", () => {
+    gestioneTavoli.impostaNumeroPersonalizzato(numeroTavoloPersonalizzato.value);
     aggiornaSelettoreTavoli();
 });
 for (const id of ["telefono-consegna", "telefono-ritiro"]) {

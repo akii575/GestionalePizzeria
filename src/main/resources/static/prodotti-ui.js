@@ -287,6 +287,72 @@ const prodottiUI = (() => {
         controllo.dispatchEvent(new Event(tipoEvento, { bubbles: true }));
     }
 
+    function normalizzaNumeroTavolo(valore) {
+        const testo = String(valore ?? "").trim();
+        if (!/^\d+$/.test(testo)) return "";
+        const numero = Number(testo);
+        return Number.isInteger(numero) && numero >= 1 && numero <= 99 ? String(numero) : "";
+    }
+
+    function nomeTavoloDaNumero(valore) {
+        const numero = normalizzaNumeroTavolo(valore);
+        return numero ? `Tavolo ${numero}` : "";
+    }
+
+    function numeroTavoloDaNome(nome) {
+        const corrispondenza = /^Tavolo\s+(\d+)$/i.exec(String(nome ?? "").trim());
+        return corrispondenza ? normalizzaNumeroTavolo(corrispondenza[1]) : "";
+    }
+
+    function creaGestoreTavoli() {
+        let tavolo = "";
+        let numero = "";
+        let numeroPersonalizzato = "";
+        let aperto = false;
+        let errore = "";
+
+        function statoCorrente() {
+            return { tavolo, numero, numeroPersonalizzato, aperto, errore };
+        }
+
+        return {
+            stato: statoCorrente,
+            togglePersonalizzato() {
+                aperto = !aperto;
+                if (aperto && !numeroPersonalizzato) {
+                    tavolo = "";
+                    numero = "";
+                    errore = "";
+                }
+                return statoCorrente();
+            },
+            impostaNumeroPersonalizzato(valore) {
+                aperto = true;
+                numero = String(valore ?? "");
+                numeroPersonalizzato = normalizzaNumeroTavolo(numero);
+                tavolo = nomeTavoloDaNumero(numero);
+                errore = numeroPersonalizzato ? "" : "Numero tavolo da 1 a 99";
+                return statoCorrente();
+            },
+            scegli(numeroScelto) {
+                tavolo = nomeTavoloDaNumero(numeroScelto);
+                numero = "";
+                numeroPersonalizzato = "";
+                aperto = false;
+                errore = tavolo ? "" : "Numero tavolo da 1 a 99";
+                return statoCorrente();
+            },
+            reset() {
+                tavolo = "";
+                numero = "";
+                numeroPersonalizzato = "";
+                aperto = false;
+                errore = "";
+                return statoCorrente();
+            }
+        };
+    }
+
     function datiObbligatoriMancanti(tipo, dati) {
         if (tipo === "tavolo") {
             const persone = Number(dati.numeroPersone);
@@ -388,6 +454,10 @@ const prodottiUI = (() => {
         aggiornaConteggioProdotti,
         controllaLimiteRighe,
         impostaValoreControllo,
+        normalizzaNumeroTavolo,
+        nomeTavoloDaNumero,
+        numeroTavoloDaNome,
+        creaGestoreTavoli,
         datiObbligatoriMancanti,
         datiOrdineCompleti,
         riepilogoIntestazione,
