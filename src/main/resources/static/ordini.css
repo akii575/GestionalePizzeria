@@ -794,6 +794,14 @@ button {
     color: #991B1B;
     font-size: 12px;
 }
+.riepilogo-note-riga,
+.conferma-riga .conferma-nota-riga {
+    display: block;
+    margin-top: 3px;
+    color: #6B4E00;
+    font-size: 12px;
+    font-weight: 600;
+}
 .riepilogo-non-disponibile {
     display: block;
     margin-top: 3px;
@@ -1441,14 +1449,52 @@ button {
 
 .note-rapide {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 6px;
     margin-top: 8px;
-    overflow-x: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.note-rapide::-webkit-scrollbar,
+.note-riga-lista::-webkit-scrollbar {
+    display: none;
+}
+
+.note-riga {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.note-riga[hidden] {
+    display: none;
+}
+
+.note-riga > strong {
+    flex: 0 0 auto;
+    color: var(--theme-ink);
+    font-size: 13px;
+}
+
+.note-riga-lista {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 .note-chip {
     box-sizing: border-box;
+    flex: 0 0 auto;
     min-height: 36px;
     padding: 6px 10px;
     border: 1px solid #E5E7EB;

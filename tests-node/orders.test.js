@@ -230,6 +230,39 @@ test("validates and canonicalizes removed ingredients without changing the price
     }
 });
 
+test("validates pizza notes against the fixed list and saves canonical values", () => {
+    const order = prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita", note: ["bEn CoTtA", "SENZA GLUTINE"] }]
+    });
+
+    assert.deepEqual(order.righe[0].note, ["Ben cotta", "Senza glutine"]);
+    assert.deepEqual(prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita" }]
+    }).righe[0].note, []);
+    assert.deepEqual(publicOrder({
+        ...order,
+        righe: [{ ...order.righe[0], note: undefined }]
+    }).righe[0].note, []);
+
+    for (const note of [
+        "Ben cotta",
+        null,
+        ["Origano"],
+        ["Ben cotta", "ben cotta"],
+        ["Ben cotta", "Poco cotta", "Tagliata", "Senza glutine", "Senza lattosio", "Ben cotta"]
+    ]) {
+        assert.throws(() => prepareOrder({
+            tipo: "banco",
+            cognomeBanco: "Rossi",
+            righe: [{ prodotto: "Margherita", note }]
+        }), /Nota pizza non valida/);
+    }
+});
+
 test("new rows without menu ingredients ignore removed ingredients", () => {
     const product = {
         ...testCatalog.menu.find(item => item.nome === "Margherita"),

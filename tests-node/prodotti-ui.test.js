@@ -6,6 +6,7 @@ const menu = require("../lib/menu.json");
 const {
     normalizza,
     filtraProdotti,
+    NOTE_RIGA,
     applicaClienteIndirizzo,
     isCoperto,
     calcolaCoperto,
@@ -20,6 +21,7 @@ const {
     rimuoviProdotto,
     toggleExtra,
     toggleSenza,
+    toggleNotaRiga,
     intestazioneExtra,
     LIMITE_RIGHE_ORDINE,
     creaStatoMoltiplicatore,
@@ -41,6 +43,11 @@ const {
     togliNotaRapida,
     notaContiene
 } = require("../src/main/resources/static/prodotti-ui");
+const { NOTE_RIGA: NOTE_RIGA_SERVER } = require("../lib/note-riga");
+
+test("client pizza-note choices match the server list", () => {
+    assert.deepEqual(NOTE_RIGA, NOTE_RIGA_SERVER);
+});
 
 test("edit save is blocked until the original order has loaded", () => {
     const script = fs.readFileSync(
@@ -88,7 +95,8 @@ test("editing an order preserves its rows, extras, exclusions, and one-row-per-p
                 prezzoBase: 6.5,
                 ingredienti: menu[0].ingredienti,
                 extra: [{ id: "mozzarella", nome: "Mozzarella", prezzo: 1.5 }],
-                senza: ["Basilico"]
+                senza: ["Basilico"],
+                note: ["ben cotta"]
             },
             {
                 prodotto: "Margherita",
@@ -118,8 +126,8 @@ test("editing an order preserves its rows, extras, exclusions, and one-row-per-p
         telefonoRitiro: "",
         note: "Ben cotta",
         righe: [
-            { prodotto: "Margherita", extra: extraMenu, senza: ["Basilico"] },
-            { prodotto: "Margherita", extra: [], senza: [] }
+            { prodotto: "Margherita", extra: extraMenu, senza: ["Basilico"], note: ["Ben cotta"] },
+            { prodotto: "Margherita", extra: [], senza: [], note: [] }
         ]
     });
 });
@@ -146,7 +154,8 @@ test("editing preserves an unavailable product so the waiter can remove it", () 
     }, rows).righe, [{
         prodotto: "Pizza fuori menu",
         extra: [],
-        senza: ["Pomodoro"]
+        senza: ["Pomodoro"],
+        note: []
     }]);
 });
 
@@ -458,7 +467,8 @@ test("new rows always start without extras", () => {
         ingredienti: ["pomodoro"],
         ammetteExtra: true,
         extra: [],
-        senza: []
+        senza: [],
+        note: []
     });
 });
 
@@ -477,6 +487,20 @@ test("removed ingredient chips toggle canonical ingredients on the active row", 
     assert.equal(toggleSenza(righe, null, "Basilico"), righe);
 });
 
+test("pizza-note chips toggle canonical notes only on the active row", () => {
+    const righe = [
+        { prodotto: "Margherita", note: [] },
+        { prodotto: "Marinara", note: [] }
+    ];
+    const selezionate = toggleNotaRiga(righe, 0, "bEn CoTtA");
+
+    assert.deepEqual(selezionate[0].note, ["Ben cotta"]);
+    assert.deepEqual(selezionate[1], righe[1]);
+    assert.deepEqual(toggleNotaRiga(selezionate, 0, "BEN COTTA")[0].note, []);
+    assert.equal(toggleNotaRiga(righe, 0, "Da dividere"), righe);
+    assert.equal(toggleNotaRiga(righe, null, "Ben cotta"), righe);
+});
+
 test("repeat-last-order restores only removed ingredients still in the menu", () => {
     const product = {
         nome: "Margherita",
@@ -486,10 +510,11 @@ test("repeat-last-order restores only removed ingredients still in the menu", ()
         ammetteExtra: true
     };
     const result = preparaRipetizione({
-        righe: [{ prodotto: "Margherita", quantita: 1, extra: [], senza: ["Basilico", "Cipolla"] }]
+        righe: [{ prodotto: "Margherita", quantita: 1, extra: [], senza: ["Basilico", "Cipolla"], note: ["Ben cotta"] }]
     }, [product], [], 10);
 
     assert.deepEqual(result.righe[0].senza, ["Basilico"]);
+    assert.deepEqual(result.righe[0].note, ["Ben cotta"]);
 });
 
 test("active extra row tracks eligible products but not drinks", () => {
@@ -564,7 +589,7 @@ test("confirmation groups identical rows but keeps different extras and notes se
         prezzo: 6.5,
         extra: [],
         senza: [],
-        nota: "ben cotta"
+        note: ["Ben cotta"]
     };
     const righe = raggruppaRigheConferma([margherita, { ...margherita }]);
     assert.equal(righe.length, 1);
@@ -575,7 +600,7 @@ test("confirmation groups identical rows but keeps different extras and notes se
     assert.equal(differenziate.length, 2);
     assert.deepEqual(differenziate.map(gruppo => gruppo.quantita), [1, 1]);
 
-    const conNotaDiversa = { ...margherita, nota: "poco cotta" };
+    const conNotaDiversa = { ...margherita, note: ["Poco cotta"] };
     const separate = raggruppaRigheConferma([margherita, conExtra, conNotaDiversa]);
     assert.equal(separate.length, 3);
     assert.deepEqual(separate.map(gruppo => gruppo.quantita), [1, 1, 1]);
