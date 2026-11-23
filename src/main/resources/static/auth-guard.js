@@ -3,7 +3,6 @@
     const roleReloadKey = "civico7-account-role-reload";
     const accountCacheLifetime = 12 * 60 * 60 * 1000;
     const pathname = window.location.pathname;
-    const isHome = pathname === "/" || pathname === "/index.html";
     const isDeliveryPage = pathname === "/consegne.html";
     const nativeFetch = window.fetch.bind(window);
 
@@ -200,10 +199,6 @@
         document.querySelectorAll("[data-hide-for-staff]").forEach(element => {
             element.hidden = account.staff;
         });
-        if ((account.admin || account.staff) && isHome) {
-            const existingToolbar = document.querySelector(".account-toolbar");
-            if (!existingToolbar) showToolbar(account.email || (account.admin ? "Amministratore" : "Staff"));
-        }
         if (isDeliveryPage) {
             const navigation = document.querySelector(".dashboard-header nav");
             if (navigation && !navigation.querySelector(".auth-logout")) {
@@ -251,14 +246,4 @@
         return button;
     }
 
-    function showToolbar(email) {
-        const toolbar = document.createElement("div");
-        toolbar.className = "account-toolbar";
-        const identity = document.createElement("span");
-        identity.className = "account-toolbar__identity";
-        identity.textContent = email || "Amministratore";
-        const button = makeLogoutButton();
-        toolbar.append(identity, button);
-        document.body.prepend(toolbar);
-    }
 })();

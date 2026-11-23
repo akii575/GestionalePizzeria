@@ -297,10 +297,7 @@ button.stato-pagamento { cursor: pointer; }
 .auth-feedback { position: fixed; inset: 0; z-index: 10000; display: grid; place-content: center; gap: 12px; padding: 16px; background: var(--sfondo); color: var(--inchiostro); text-align: center; }
 .auth-feedback h1 { margin: 0; }
 .auth-feedback p { max-width: 42rem; margin: 0; }
-.auth-feedback .auth-logout, .account-toolbar .auth-logout { min-width: 120px; justify-self: center; padding: 10px 16px; border: 0; background: var(--theme-green); color: #fff; }
-.account-toolbar { position: fixed; z-index: 9999; top: 12px; right: 12px; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); padding: 8px 10px; border: var(--theme-surface-border); border-radius: var(--theme-control-radius); background: var(--theme-surface); box-shadow: var(--theme-shadow); font-size: 14px; }
-.account-toolbar__identity { min-width: 0; overflow-wrap: anywhere; }
-.account-toolbar .auth-logout { min-width: 0; min-height: 44px; justify-self: auto; padding: 6px 10px; }
+.auth-feedback .auth-logout { min-width: 120px; justify-self: center; padding: 10px 16px; border: 0; background: var(--theme-green); color: #fff; }
 
 @media (max-width: 720px) {
     .riga-pagamento-consegna { gap: 8px; }
@@ -310,12 +307,6 @@ button.stato-pagamento { cursor: pointer; }
         min-height: 44px;
         padding: 6px 8px;
         font-size: 12px;
-    }
-    .account-toolbar {
-        position: static;
-        width: fit-content;
-        max-width: calc(100% - 32px);
-        margin: 8px 16px 12px auto;
     }
     .dashboard, .container, .modifica { padding: 16px; }
     .home { padding: 0 16px 24px; }
@@ -348,10 +339,6 @@ button.stato-pagamento { cursor: pointer; }
 }
 
 @media (max-width: 420px) {
-    .account-toolbar {
-        max-width: calc(100% - 24px);
-        margin-right: 12px;
-    }
     .dashboard, .container, .modifica { padding: 12px; }
     .home { padding: 0 16px 24px; }
     .ordine-testa { padding: 10px; gap: 6px; }
@@ -385,7 +372,6 @@ button.stato-pagamento { cursor: pointer; }
     .ordine-righe { padding-inline: 12px; }
     .azioni { flex-wrap: wrap; padding-inline: 12px; }
     .riga-edit { grid-template-columns: minmax(0, 1fr) auto; }
-    .account-toolbar { top: 8px; right: 8px; max-width: calc(100vw - 16px); }
 }
 
 @media (max-width: 350px) {

@@ -8,6 +8,10 @@
     display: none;
 }
 
+.app-sidebar-account-email {
+    display: none;
+}
+
 body.app-shell nav.app-bottom-nav {
     display: none;
 }
@@ -232,6 +236,20 @@ body.app-shell nav.app-bottom-nav {
     .app-sidebar-actions .app-reset {
         padding-inline: 12px;
     }
+
+    .app-sidebar-account-email {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        padding: 4px 12px 0;
+        color: rgba(255, 255, 255, .65);
+        font-size: 11px;
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
 @media (min-width: 1025px) {
@@ -411,7 +429,7 @@ body.app-shell nav.app-bottom-nav {
         width: calc(100% + var(--app-mobile-gutter) + var(--app-mobile-gutter));
         min-height: calc(60px + env(safe-area-inset-top));
         margin: 0 var(--app-mobile-gutter-negative) 14px;
-        padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+        padding: env(safe-area-inset-top) 12px 8px;
         border: 0;
         background: var(--theme-green);
         color: #fff;
@@ -596,6 +614,18 @@ body.app-shell nav.app-bottom-nav {
         margin: 0 0 10px;
         color: var(--theme-ink);
         font-size: 19px;
+    }
+
+    .app-more-account-email {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        padding: 8px 12px 4px;
+        color: var(--theme-muted);
+        font-size: 12px;
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     body.app-shell nav.app-more-links {

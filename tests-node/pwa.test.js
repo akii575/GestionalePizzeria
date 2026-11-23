@@ -134,7 +134,7 @@ test("login and app navigation use the optimized round logo", () => {
 
 test("safe-area padding protects the mobile header, sidebar and bottom navigation", () => {
     const navCss = fs.readFileSync(path.join(staticDirectory, "nav.css"), "utf8");
-    assert.match(navCss, /@media \(max-width: 767px\)[\s\S]*?\.app-page-header \{[\s\S]*?padding: calc\(8px \+ env\(safe-area-inset-top\)\)/);
+    assert.match(navCss, /@media \(max-width: 767px\)[\s\S]*?\.app-page-header \{[\s\S]*?padding: env\(safe-area-inset-top\) 12px 8px/);
     assert.match(navCss, /\.app-sidebar \{[\s\S]*?padding: max\(16px, env\(safe-area-inset-top\)\)/);
     assert.match(navCss, /safe-area-inset-bottom/);
 });
