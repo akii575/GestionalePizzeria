@@ -40,10 +40,11 @@ function render() {
     }
     lista.innerHTML = "";
     if (!ordini.length) { lista.innerHTML = '<div class="vuoto">Nessun ordine corrisponde ai filtri.</div>'; return; }
-    ordini.slice().reverse().forEach(ordine => {
+    ordini.slice().sort((primo, secondo) => Number(secondo.numero) - Number(primo.numero)).forEach(ordine => {
         lista.insertAdjacentHTML("beforeend", window.orderCard.render(ordine, {
             canEdit: window.currentAccount?.admin === true || window.currentAccount?.staff === true,
             hideTotalForStaff: true,
+            showServiceTypeLabel: !tipoServizio,
             menu: stato.menu
         }));
     });

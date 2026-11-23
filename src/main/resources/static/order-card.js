@@ -148,24 +148,41 @@ const orderCard = (() => {
     }
 
     function renderProducts(rows, menu) {
-        return (Array.isArray(rows) ? rows : []).map(row => {
+        const groups = new Map();
+        (Array.isArray(rows) ? rows : []).forEach(row => {
             const extras = (Array.isArray(row.extra) ? row.extra : []).map(extra => (
                 typeof extra === "string" ? extra : extra?.nome
             )).filter(Boolean);
+            const senza = (Array.isArray(row.senza) ? row.senza : [])
+                .filter(ingrediente => typeof ingrediente === "string" && ingrediente.trim());
+            const price = Number(row.totale ?? row.prezzoBase ?? 0);
+            const identity = JSON.stringify([
+                row.prodotto,
+                extras.slice().sort(),
+                senza.slice().sort(),
+                price
+            ]);
+            const group = groups.get(identity);
+            if (group) {
+                group.quantity += 1;
+            } else {
+                groups.set(identity, { row, extras, senza, price, quantity: 1 });
+            }
+        });
+
+        return [...groups.values()].map(({ row, extras, senza, price, quantity }) => {
             const ingredients = menu.find(product => product.nome === row.prodotto)?.ingredienti || [];
             const ingredientMarkup = ingredients.length
                 ? `<small class="order-card__ingredients">${escapeHtml(ingredients.join(", "))}</small>`
                 : "";
-            const senza = (Array.isArray(row.senza) ? row.senza : [])
-                .filter(ingrediente => typeof ingrediente === "string" && ingrediente.trim());
             const senzaMarkup = senza.length
                 ? `<small class="order-card__without-ingredients">senza ${escapeHtml(senza.join(", "))}</small>`
                 : "";
             const extraMarkup = extras.length
                 ? `<span class="order-card__extra">Extra: ${escapeHtml(extras.join(", "))}</span>`
                 : "";
-            const price = euro.format(Number(row.totale ?? row.prezzoBase ?? 0));
-            return `<li><div class="order-card__product-row"><div><strong>${escapeHtml(row.prodotto)} x1</strong>${ingredientMarkup}${senzaMarkup}</div><span>${price}</span></div>${extraMarkup}</li>`;
+            const productName = quantity > 1 ? `${quantity}× ${row.prodotto}` : row.prodotto;
+            return `<li><div class="order-card__product-row"><div><strong>${escapeHtml(productName)}</strong>${ingredientMarkup}${senzaMarkup}</div><span>${euro.format(price * quantity)}</span></div>${extraMarkup}</li>`;
         }).join("");
     }
 
@@ -216,14 +233,10 @@ const orderCard = (() => {
             const [, month, day] = (input.value || today).split("-");
             const dateLabel = isToday ? "Oggi" : `${day}/${month}`;
             button.classList.toggle("selezionata", !isToday);
-            button.setAttribute("aria-label", isToday ? "Seleziona la data di oggi" : `Seleziona la data ${dateLabel}`);
+            input.setAttribute("aria-label", isToday ? "Data ordini, oggi" : `Data ordini, ${dateLabel}`);
             button.title = isToday ? "Oggi" : dateLabel;
             label.textContent = dateLabel;
         }
-        button.addEventListener("click", () => {
-            if (typeof input.showPicker === "function") input.showPicker();
-            else input.click();
-        });
         input.addEventListener("change", aggiornaEtichetta);
         aggiornaEtichetta();
     }
@@ -308,6 +321,9 @@ const orderCard = (() => {
         const detailId = `order-detail-${escapeHtml(orderNumber)}`;
         const expansionState = options.expansionState || expandedOrderState;
         const expanded = expansionState.isOpen(order.numero);
+        const serviceLabel = options.showServiceTypeLabel === true
+            ? `<span class="order-card__type order-card__type--${escapeHtml(type)}">${escapeHtml(serviceNames[type] || serviceNames.tavolo)}</span>`
+            : "";
         const date = new Date(order.dataOra);
         const dateText = Number.isNaN(date.valueOf()) ? "—" : date.toLocaleString("it-IT");
         const serviceTime = type !== "tavolo" && order.orario
@@ -341,6 +357,7 @@ const orderCard = (() => {
             <article class="order-card${expanded ? " order-card--expanded" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
                 <button class="order-card__toggle" type="button" data-order-number="${escapeHtml(orderNumber)}" aria-expanded="${String(expanded)}" aria-controls="${detailId}">
                     <span class="order-card__compact-copy">
+                        ${serviceLabel}
                         <span class="order-card__reference">${escapeHtml(reference)}</span>
                         <span class="order-card__meta">${metadata}</span>
                     </span>

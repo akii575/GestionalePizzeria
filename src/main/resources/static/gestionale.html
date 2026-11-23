@@ -27,11 +27,11 @@
     <section class="filtri" aria-label="Filtri ordini">
         <label for="filtro">Cerca tavolo, cliente, recapito o prodotto<input id="filtro" type="search" placeholder="Tavolo, indirizzo o prodotto..."></label>
         <div class="filtro-data">
-            <button id="apri-data" class="filtro-data__button" type="button" aria-label="Seleziona la data di oggi">
+            <input id="data" class="filtro-data__input" type="date" aria-label="Data ordini">
+            <span id="apri-data" class="filtro-data__button" aria-hidden="true">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 3v4M17 3v4M3 10h18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 14h2m3 0h2m3 0h1M7 18h2m3 0h2" stroke="currentColor" stroke-width="2"/></svg>
                 <span data-date-label>Oggi</span>
-            </button>
-            <input id="data" class="filtro-data__input" type="date" aria-label="Data ordini" tabindex="-1" aria-hidden="true">
+            </span>
         </div>
     </section>
     <section class="metriche" aria-label="Riepilogo">

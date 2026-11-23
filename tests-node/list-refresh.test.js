@@ -4,13 +4,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-function createPageContext(pageScript, currentAccount = { admin: true, staff: false, delivery: false }) {
+function createPageContext(pageScript, currentAccount = { admin: true, staff: false, delivery: false }, orders = []) {
     const elements = new Map();
     const listeners = new Map();
     const elementListeners = new Map();
     const requests = [];
     const intervals = new Map();
     const renderCounts = new Map();
+    const renderedCards = [];
     let nextIntervalId = 0;
     let clock = 1_000;
 
@@ -24,10 +25,12 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
                     byName.get(name).push(callback);
                 },
                 querySelectorAll() { return []; },
-                insertAdjacentHTML() {
+                insertAdjacentHTML(_position, markup) {
+                    renderedCards.push(String(markup));
                     renderCounts.set(id, (renderCounts.get(id) || 0) + 1);
                 },
                 replaceChildren() {
+                    renderedCards.length = 0;
                     renderCounts.set(id, (renderCounts.get(id) || 0) + 1);
                 },
                 className: "",
@@ -36,6 +39,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
             Object.defineProperty(value, "innerHTML", {
                 get() { return ""; },
                 set() {
+                    if (id.startsWith("lista-")) renderedCards.length = 0;
                     renderCounts.set(id, (renderCounts.get(id) || 0) + 1);
                 }
             });
@@ -67,7 +71,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         window: {
             authReady: Promise.resolve(true),
             currentAccount,
-            orderCard: { bindReprints() {}, bindDateFilter() {}, render() { return ""; } }
+            orderCard: { bindReprints() {}, bindDateFilter() {}, render(order) { return String(order.numero); } }
         },
         fetch: async url => {
             requests.push(String(url));
@@ -75,7 +79,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
                 ? []
                 : String(url).includes("versione=")
                     ? { invariato: true, versione: 4 }
-                    : { versione: 4, ordini: [] };
+                    : { versione: 4, ordini: orders };
             return { ok: true, async json() { return body; } };
         },
         setInterval(callback, delay) {
@@ -101,6 +105,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         elementListeners,
         requests,
         renderCounts,
+        renderedCards,
         element,
         advance(milliseconds) {
             clock += milliseconds;
@@ -111,6 +116,30 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
 async function flushPagePromises() {
     await new Promise(resolve => setImmediate(resolve));
 }
+
+test("the all-orders list sorts newest order numbers first", async () => {
+    const scriptPath = path.join(__dirname, "../src/main/resources/static/gestionale.js");
+    const state = createPageContext(fs.readFileSync(scriptPath, "utf8"), undefined, [
+        { numero: 2, totale: 0 },
+        { numero: 10, totale: 0 },
+        { numero: 4, totale: 0 }
+    ]);
+    await flushPagePromises();
+
+    assert.deepEqual(state.renderedCards, ["10", "4", "2"]);
+});
+
+test("the delivery list preserves its existing order", async () => {
+    const scriptPath = path.join(__dirname, "../src/main/resources/static/consegne.js");
+    const state = createPageContext(fs.readFileSync(scriptPath, "utf8"), undefined, [
+        { numero: 2, totale: 0 },
+        { numero: 10, totale: 0 },
+        { numero: 4, totale: 0 }
+    ]);
+    await flushPagePromises();
+
+    assert.deepEqual(state.renderedCards, ["2", "10", "4"]);
+});
 
 for (const [page, endpoint, interval, listId] of [
     ["gestionale.js", "/api/ordini", 15_000, "lista-ordini"],
