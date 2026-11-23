@@ -242,7 +242,7 @@ nav:not(.home-links):not(.tab-container):not(.app-sidebar-links):not(.app-bottom
 .ordine-testa > div, .order-card__header > div { min-width: 0; overflow-wrap: anywhere; }
 .riga { min-width: 0; grid-template-columns: minmax(0, 1fr) auto; }
 .riga > div:first-child { min-width: 0; overflow-wrap: anywhere; }
-.azioni button, .order-card__actions button, .app-mappe-scelta { min-height: 44px; }
+.azioni button, .order-card__actions button, .order-card__actions a, .app-mappe-scelta { min-height: 44px; }
 .order-card__field-action { min-height: 44px; }
 .order-card__field-value a { display: inline-flex; align-items: center; min-height: 44px; }
 .modifica > header a { display: inline-flex; align-items: center; min-height: 44px; }

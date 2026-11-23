@@ -13,19 +13,19 @@ test("HTML escaping protects text and quoted attributes", () => {
     );
 });
 
-test("order and edit menu templates escape names, extras, and formatted prices", () => {
+test("order templates escape names and the legacy edit page only redirects", () => {
     const orderScript = fs.readFileSync(path.join(staticDirectory, "ordini.js"), "utf8");
-    const editScript = fs.readFileSync(path.join(staticDirectory, "modifica.js"), "utf8");
     const orderPage = fs.readFileSync(path.join(staticDirectory, "ordini.html"), "utf8");
-    const editPage = fs.readFileSync(path.join(staticDirectory, "modifica.html"), "utf8");
+    const legacyPage = fs.readFileSync(path.join(staticDirectory, "modifica.html"), "utf8");
+    const redirectScript = fs.readFileSync(path.join(staticDirectory, "modifica-redirect.js"), "utf8");
 
     assert.match(orderScript, /<strong>\$\{escapeHtml\(extra\.nome\)\}<\/strong><span>\$\{escapeHtml\(euro\.format\(Number\(extra\.prezzo\)\)\)\}/);
     assert.match(orderScript, /<strong>\$\{escapeHtml\(prodotto\.nome\)\}<\/strong><span class="prezzo-prodotto">\$\{escapeHtml\(euro\.format\(Number\(prodotto\.prezzo\)\)\)\}/);
-    assert.match(editScript, /<strong>\$\{escapeHtml\(item\.nome\)\}<\/strong><span>\$\{escapeHtml\(euro\.format\(Number\(item\.prezzo\)\)\)\}/);
-    assert.match(editScript, /value="\$\{escapeHtml\(p\.nome\)\}"[^>]*>\$\{escapeHtml\(p\.nome\)\}\$\{p\.disponibile === false \? " \(Esaurito\)" : ""\}<\/option>/);
     assert.match(orderScript, /bottone\.disabled = prodotto\.disponibile === false/);
     assert.match(orderScript, /ricerca-esaurito">Esaurito/);
     assert.match(orderScript, /tab\.textContent = categoria\.nome \|\| labels\.get\(categoria\.id\) \|\| categoria\.id/);
     assert.match(orderPage, /src="\/html-utils\.js"[\s\S]*?src="\/ordini\.js"/);
-    assert.match(editPage, /src="\/html-utils\.js"[\s\S]*?src="\/modifica\.js"/);
+    assert.match(legacyPage, /src="\/modifica-redirect\.js"/);
+    assert.match(redirectScript, /location\.replace\("\/ordini\.html\?modifica=" \+ encodeURIComponent\(numero\)\)/);
+    assert.doesNotMatch(legacyPage, /modifica\.(?:js|css)/);
 });

@@ -99,11 +99,6 @@ function render() {
         : "";
     lista.innerHTML = `${activeMarkup}${deliveredMarkup}`;
 
-    lista.querySelectorAll("[data-modifica]").forEach(button => {
-        button.addEventListener("click", () => {
-            window.location.href = `/modifica.html?numero=${encodeURIComponent(button.dataset.modifica)}`;
-        });
-    });
     lista.querySelectorAll("[data-elimina]").forEach(button => {
         button.addEventListener("click", () => eliminaConsegna(button.dataset.elimina));
     });

@@ -40,6 +40,10 @@ test("every page declares the installable app metadata", () => {
 
     for (const page of pages) {
         const html = fs.readFileSync(path.join(staticDirectory, page), "utf8");
+        if (page === "modifica.html") {
+            assert.match(html, /src="\/modifica-redirect\.js"/);
+            continue;
+        }
         const head = html.slice(html.indexOf("<head"), html.indexOf("</head>"));
         assert.match(head, /<meta name="viewport"[^>]*viewport-fit=cover/i, page);
         assert.match(head, /<link rel="manifest" href="\/manifest\.webmanifest"/i, page);

@@ -216,7 +216,13 @@
 
     function currentPageHref(isHome) {
         if (isHome) return "/";
-        if (window.location.pathname === "/modifica.html") return "/gestionale.html";
+        const modifica = new URLSearchParams(window.location.search).get("modifica") || "";
+        if (window.location.pathname === "/ordini.html"
+                && /^\d+$/.test(modifica)
+                && Number.isSafeInteger(Number(modifica))
+                && Number(modifica) > 0) {
+            return "/gestionale.html";
+        }
         return window.location.pathname;
     }
 

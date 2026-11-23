@@ -1,4 +1,20 @@
 const stato = { categoria: "pizze", menu: [], extra: [], righe: [], rigaAttiva: null };
+const parametriUrl = new URLSearchParams(window.location.search);
+const numeroModificaParametro = parametriUrl.get("modifica") || "";
+const numeroModifica = /^\d+$/.test(numeroModificaParametro)
+    && Number.isSafeInteger(Number(numeroModificaParametro))
+    && Number(numeroModificaParametro) > 0
+    ? Number(numeroModificaParametro)
+    : null;
+const originiModifica = new Set(["gestionale", "consegne", "tavoli", "ritiri", "banco"]);
+const paginaRitornoModifica = originiModifica.has(parametriUrl.get("da"))
+    ? `/${parametriUrl.get("da")}.html`
+    : "/gestionale.html";
+let payloadOriginaleModifica = null;
+let tipoOrdineOriginale = null;
+let numeroPersoneOriginale = null;
+let copertoOrdine = null;
+let pagamentoModifica = "";
 const prodotti = document.getElementById("prodotti");
 const riepilogo = document.getElementById("riepilogo-items");
 const riepilogoConteggio = document.getElementById("riepilogo-conteggio");
@@ -66,6 +82,7 @@ const campoPagamentoConsegna = document.getElementById("campo-pagamento-consegna
 const pagamentoRitiro = document.getElementById("pagamento-ritiro");
 const pagamentoConsegna = document.getElementById("pagamento-consegna");
 const confermaModale = document.getElementById("conferma-modale");
+const annullaModificaModale = document.getElementById("annulla-modifica-modale");
 const confermaIntestazione = document.getElementById("conferma-intestazione");
 const confermaRighe = document.getElementById("conferma-righe");
 const confermaTotale = document.getElementById("conferma-totale");
@@ -84,6 +101,8 @@ const {
     filtraProdotti,
     isCoperto,
     calcolaCoperto,
+    preparaRigheModifica,
+    creaPayloadComanda,
     aggiungiProdotti,
     preparaRipetizione,
     impostaRigaAttiva,
@@ -99,6 +118,7 @@ const {
     controllaLimiteRighe,
     impostaValoreControllo,
     nomeTavoloDaNumero,
+    numeroTavoloDaNome,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
     riepilogoIntestazione,
@@ -497,6 +517,7 @@ function aggiornaRicercaClienteAbituale() {
     }
     tokenRicercaCliente++;
     const tipo = tipoOrdine.value;
+    if (numeroModifica) return;
     if (!["consegna", "ritiro"].includes(tipo)) return;
     const input = document.getElementById(tipo === "consegna" ? "telefono-consegna" : "telefono-ritiro");
     const numero = normalizzaTelefonoCliente(input.value);
@@ -769,9 +790,16 @@ function totaleOrdine() {
         + (copertoCorrente()?.totale || 0);
 }
 function copertoCorrente() {
+    const persone = Number(numeroPersone.value);
+    if (numeroModifica
+            && tipoOrdine.value === tipoOrdineOriginale
+            && persone === numeroPersoneOriginale
+            && Number(copertoOrdine?.prezzoUnitario) > 0) {
+        return calcolaCoperto(tipoOrdine.value, persone, copertoOrdine.prezzoUnitario);
+    }
     return calcolaCoperto(
         tipoOrdine.value,
-        Number(numeroPersone.value),
+        persone,
         prodottoCoperto?.disponibile === false || prodottoCoperto?.archiviato === true
             ? 0
             : prodottoCoperto?.prezzo
@@ -995,7 +1023,9 @@ function renderRiepilogo() {
         stato.righe.length
     );
     invia.disabled = !stato.righe.length;
-    invia.textContent = stato.righe.length ? "Rivedi e invia" : "Aggiungi prodotti";
+    invia.textContent = stato.righe.length
+        ? numeroModifica ? "Rivedi e salva" : "Rivedi e invia"
+        : "Aggiungi prodotti";
     const inviaSheet = document.getElementById("riepilogo-sheet-invia");
     inviaSheet.disabled = !stato.righe.length;
     inviaSheet.textContent = invia.textContent;
@@ -1016,8 +1046,11 @@ function renderRigheRiepilogo(contenitore) {
         const senza = Array.isArray(riga.senza) && riga.senza.length
             ? `<small class="riepilogo-senza">senza ${escapeHtml(riga.senza.join(", "))}</small>`
             : "";
+        const nonDisponibile = riga.nonDisponibile
+            ? '<small class="riepilogo-non-disponibile">Non più disponibile</small>'
+            : "";
         const nomeRiga = `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indice)}">${escapeHtml(riga.prodotto)}</button>`;
-        voce.innerHTML = `<div>${nomeRiga}${senza}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
+        voce.innerHTML = `<div>${nomeRiga}${nonDisponibile}${senza}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
         contenitore.appendChild(voce);
     });
     if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
@@ -1309,6 +1342,9 @@ function apriConferma() {
         })
         .join("");
     confermaTotale.textContent = `Totale: ${euro.format(totaleOrdine())}`;
+    document.getElementById("conferma-invio").textContent = numeroModifica
+        ? "Salva modifiche"
+        : "Conferma";
     confermaModale.hidden = false;
     document.body.classList.add("modale-aperta");
     document.getElementById("conferma-invio").focus();
@@ -1317,36 +1353,62 @@ function chiudiConferma() {
     confermaModale.hidden = true;
     document.body.classList.remove("modale-aperta");
 }
+function creaPayloadCorrente() {
+    const tipo = tipoOrdine.value;
+    const tavoloOrdine = tipo === "tavolo"
+        ? numeroModifica
+            ? nomeTavoloDaNumero(numeroTavoloDaNome(tavolo.value))
+            : tavolo.value
+        : tipo === "ritiro" ? document.getElementById("cliente-ritiro").value : "";
+    return creaPayloadComanda({
+        tipo,
+        orario: orario.value,
+        statoPagamento: tipo === "ritiro"
+            ? pagamentoRitiro.value
+            : tipo === "consegna" ? pagamentoConsegna.value : null,
+        cognomeBanco: document.getElementById("cognome-banco").value,
+        tavoloOCliente: tavoloOrdine,
+        numeroPersone: numeroPersone.value,
+        indirizzoConsegna: inputIndirizzoConsegna.value,
+        telefonoConsegna: inputTelefonoConsegna.value,
+        costoConsegna,
+        telefonoRitiro: document.getElementById("telefono-ritiro").value,
+        note: note.value
+    }, stato.righe);
+}
 async function inviaOrdine() {
     chiudiConferma();
     invia.disabled = true;
+    const ordine = creaPayloadCorrente();
+    if (numeroModifica) {
+        mostraMessaggio("Salvataggio modifiche in corso...", "");
+        try {
+            if (navigator.onLine === false) throw new TypeError("offline");
+            const risposta = await fetch(`/api/ordini/${numeroModifica}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(ordine)
+            });
+            const dati = await risposta.json();
+            if (!risposta.ok) throw new Error(dati.errore || "Salvataggio non riuscito.");
+            mostraMessaggio(
+                `Ordine #${numeroModifica} aggiornato. ${dati.messaggioStampa}`,
+                dati.stampaCompletata || dati.stampaInCoda ? "successo" : "errore"
+            );
+            window.setTimeout(() => window.location.replace(paginaRitornoModifica), 1200);
+        } catch (errore) {
+            const senzaConnessione = navigator.onLine === false || errore instanceof TypeError;
+            mostraMessaggio(
+                senzaConnessione
+                    ? "Modifiche NON salvate: manca la connessione. Riprova appena torna internet."
+                    : errore.message,
+                "errore"
+            );
+            invia.disabled = false;
+        }
+        return;
+    }
     mostraMessaggio("Invio ordine in corso...", "");
-    const tipo = tipoOrdine.value;
-    const consegna = tipo === "consegna";
-    const ritiro = tipo === "ritiro";
-    const tavolo = tipo === "tavolo";
-    const ordine = {
-        tipo,
-        orario: tavolo ? "" : orario.value,
-        statoPagamento: ritiro ? pagamentoRitiro.value : consegna ? pagamentoConsegna.value : null,
-        cognomeBanco: tipo === "banco" ? document.getElementById("cognome-banco").value : "",
-        tavoloOCliente: tavolo
-            ? document.getElementById("tavolo").value
-            : ritiro
-                ? document.getElementById("cliente-ritiro").value
-                : "",
-        numeroPersone: tavolo ? Number(numeroPersone.value) : null,
-        indirizzoConsegna: consegna ? document.getElementById("indirizzo-consegna").value : "",
-        telefonoConsegna: consegna ? document.getElementById("telefono-consegna").value : "",
-        costoConsegna: consegna ? costoConsegna : 0,
-        telefonoRitiro: ritiro ? document.getElementById("telefono-ritiro").value : "",
-        note: document.getElementById("note").value,
-        righe: stato.righe.map(riga => ({
-            prodotto: riga.prodotto,
-            extra: riga.extra,
-            senza: Array.isArray(riga.senza) ? riga.senza : []
-        }))
-    };
     try {
         if (navigator.onLine === false) throw new TypeError("offline");
         const risposta = await fetch("/api/ordini", {
@@ -1494,12 +1556,33 @@ ricercaModale.addEventListener("click", evento => {
 });
 tipoOrdine.addEventListener("change", () => {
     if (tipoOrdine.value !== tipoOrdineCorrente) apriIntestazione();
+    const pagamentoPrecedente = tipoOrdineCorrente === "ritiro"
+        ? pagamentoRitiro.value
+        : tipoOrdineCorrente === "consegna" ? pagamentoConsegna.value : "";
+    const pagamentoAttuale = tipoOrdine.value === "ritiro"
+        ? pagamentoRitiro
+        : tipoOrdine.value === "consegna" ? pagamentoConsegna : null;
+    if (numeroModifica && pagamentoAttuale) {
+        const nuovoPagamento = pagamentoPrecedente || pagamentoModifica || "non_pagato";
+        pagamentoAttuale.value = tipoOrdine.value !== "consegna" && nuovoPagamento === "pos"
+            ? "non_pagato"
+            : nuovoPagamento;
+        pagamentoModifica = pagamentoAttuale.value;
+    } else if (numeroModifica && pagamentoPrecedente) {
+        pagamentoModifica = pagamentoPrecedente;
+    }
     tipoOrdineCorrente = tipoOrdine.value;
     if (tipoOrdine.value !== "consegna") costoConsegna = 0;
     aggiornaTipoOrdine();
     aggiornaRicercaClienteAbituale();
     aggiornaRicercaClientiIndirizzo();
     renderRiepilogo();
+});
+pagamentoRitiro.addEventListener("change", () => {
+    if (numeroModifica) pagamentoModifica = pagamentoRitiro.value;
+});
+pagamentoConsegna.addEventListener("change", () => {
+    if (numeroModifica) pagamentoModifica = pagamentoConsegna.value;
 });
 noteToggle.addEventListener("click", () => {
     noteAperta = !noteAperta;
@@ -1601,6 +1684,17 @@ mediaRiepilogoSheet.addEventListener("change", aggiornaSheetAlCambioViewport);
 mediaGrigliaExtra.addEventListener("change", renderGrigliaExtra);
 aggiornaAccessibilitaBarraSheet();
 document.getElementById("btn-annulla").addEventListener("click", () => {
+    if (numeroModifica) {
+        if (payloadOriginaleModifica !== null
+                && JSON.stringify(creaPayloadCorrente()) !== payloadOriginaleModifica) {
+            annullaModificaModale.hidden = false;
+            document.body.classList.add("modale-aperta");
+            document.getElementById("annulla-modifica-esci").focus({ preventScroll: true });
+        } else {
+            window.location.replace(paginaRitornoModifica);
+        }
+        return;
+    }
     stato.righe = [];
     stato.rigaAttiva = null;
     chiudiRisultatiClientiIndirizzo();
@@ -1611,11 +1705,30 @@ document.getElementById("btn-annulla").addEventListener("click", () => {
     renderRiepilogo();
     mostraMessaggio("Ordine annullato.", "");
 });
+document.getElementById("annulla-modifica-continua").addEventListener("click", () => {
+    annullaModificaModale.hidden = true;
+    document.body.classList.remove("modale-aperta");
+});
+document.getElementById("annulla-modifica-esci").addEventListener("click", () => {
+    window.location.replace(paginaRitornoModifica);
+});
+annullaModificaModale.addEventListener("click", evento => {
+    if (evento.target === annullaModificaModale) {
+        annullaModificaModale.hidden = true;
+        document.body.classList.remove("modale-aperta");
+    }
+});
 document.addEventListener("keydown", evento => {
     intrappolaFocusNelRiepilogoSheet(evento);
     if (evento.key !== "Escape") return;
     if (!clientiIndirizzoRisultati.hidden) {
         chiudiRisultatiClientiIndirizzo();
+        evento.preventDefault();
+        return;
+    }
+    if (!annullaModificaModale.hidden) {
+        annullaModificaModale.hidden = true;
+        document.body.classList.remove("modale-aperta");
         evento.preventDefault();
         return;
     }
@@ -1682,3 +1795,84 @@ const caricamentoMenu = window.prodottiUI.caricaMenuConCache(async () => {
 caricamentoMenu.aggiornamento.catch(errore => {
     if (!caricamentoMenu.cache) mostraMessaggio(errore.message, "errore");
 });
+
+async function inizializzaModifica() {
+    if (!numeroModifica) return;
+    document.title = `Modifica ordine #${numeroModifica} | CIVICO7`;
+    document.querySelector("main.container > header h1").textContent = `Modifica ordine #${numeroModifica}`;
+    document.getElementById("btn-annulla").textContent = "Annulla";
+    document.getElementById("conferma-invio").textContent = "Salva modifiche";
+
+    try {
+        try {
+            await caricamentoMenu.aggiornamento;
+        } catch (errore) {
+            if (!caricamentoMenu.cache) throw errore;
+        }
+        const risposta = await fetch(`/api/ordini/${numeroModifica}`);
+        const ordine = await risposta.json();
+        if (!risposta.ok) throw new Error(ordine.errore || "Impossibile caricare l'ordine.");
+
+        const tipo = ordine.tipo === "sala" ? "tavolo" : ordine.tipo || "tavolo";
+        const persone = Number.isInteger(ordine.numeroPersone) && ordine.numeroPersone > 0
+            ? ordine.numeroPersone
+            : 1;
+        tipoOrdine.value = tipo;
+        tipoOrdineOriginale = tipo;
+        numeroPersoneOriginale = persone;
+        copertoOrdine = ordine.coperto || null;
+        const righeCopertoLegacy = (ordine.righe || []).filter(riga => isCoperto({ nome: riga.prodotto }));
+        if (!copertoOrdine && tipoOrdineOriginale === "tavolo" && righeCopertoLegacy.length) {
+            const totaleCopertoLegacy = righeCopertoLegacy.reduce(
+                (totale, riga) => totale + Number(riga.totale ?? riga.prezzoBase ?? 0),
+                0
+            );
+            copertoOrdine = calcolaCoperto("tavolo", persone, totaleCopertoLegacy / persone);
+        }
+
+        gestioneTavoli.reset();
+        const numeroTavoloOrdine = numeroTavoloDaNome(ordine.tavoloOCliente);
+        if (tipo === "tavolo" && numeroTavoloOrdine) {
+            if (Number(numeroTavoloOrdine) <= 15) {
+                gestioneTavoli.scegli(numeroTavoloOrdine);
+            } else {
+                gestioneTavoli.impostaNumeroPersonalizzato(numeroTavoloOrdine);
+            }
+        }
+        aggiornaSelettoreTavoli();
+        numeroPersone.value = String(persone);
+        impostaPersonePersonalizzate(persone > 8);
+        aggiornaSelettorePersone();
+
+        document.getElementById("cliente-ritiro").value = ordine.tipo === "ritiro"
+            ? ordine.tavoloOCliente || ""
+            : "";
+        document.getElementById("indirizzo-consegna").value = ordine.indirizzoConsegna || "";
+        document.getElementById("telefono-consegna").value = ordine.telefonoConsegna || "";
+        document.getElementById("telefono-ritiro").value = ordine.telefonoRitiro || "";
+        document.getElementById("cognome-banco").value = ordine.cognomeBanco || "";
+        note.value = ordine.note || "";
+        noteAperta = Boolean(note.value);
+        orario.value = tipo === "tavolo" ? "" : ordine.orario || oraLocale();
+        pagamentoRitiro.value = ordine.statoPagamento || "";
+        pagamentoConsegna.value = ordine.statoPagamento || "";
+        pagamentoModifica = ordine.statoPagamento || "";
+        costoConsegna = Number(ordine.costoConsegna) === 2 ? 2 : 0;
+        tipoOrdineCorrente = tipo;
+        aggiornaTipoOrdine();
+        aggiornaPulsanteNote();
+
+        stato.righe = preparaRigheModifica(ordine.righe, stato.menu, stato.extra);
+        stato.rigaAttiva = stato.righe.length ? stato.righe.length - 1 : null;
+        extraAperto = false;
+        aggiornaBottoneCostoConsegna();
+        chiudiRisultatiClientiIndirizzo();
+        renderRiepilogo();
+        if (datiOrdineCompleti(tipo, datiIntestazioneCorrenti())) chiudiIntestazione();
+        payloadOriginaleModifica = JSON.stringify(creaPayloadCorrente());
+    } catch (errore) {
+        mostraMessaggio(errore.message || "Impossibile caricare l'ordine.", "errore");
+    }
+}
+
+inizializzaModifica();

@@ -241,8 +241,7 @@ body.app-shell nav.app-bottom-nav {
         padding: 24px;
     }
 
-    body.app-shell main.container,
-    body.app-shell main.modifica {
+    body.app-shell main.container {
         width: min(1400px, calc(100% - 260px));
         margin-left: calc(240px + max(0px, (100% - 1640px) / 2));
     }
@@ -323,13 +322,11 @@ body.app-shell nav.app-bottom-nav {
 
     body.app-shell main.home,
     body.app-shell main.dashboard,
-    body.app-shell main.container,
-    body.app-shell main.modifica {
+    body.app-shell main.container {
         padding-top: 0;
     }
 
-    body.app-shell .container,
-    body.app-shell .modifica {
+    body.app-shell .container {
         --app-mobile-gutter: 12px;
         --app-mobile-gutter-negative: -12px;
     }

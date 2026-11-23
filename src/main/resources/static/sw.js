@@ -9,7 +9,6 @@ const PAGE_PATHS = new Set([
     "/ritiri.html",
     "/banco.html",
     "/tavoli.html",
-    "/modifica.html",
     "/menu.html",
     "/login.html"
 ]);

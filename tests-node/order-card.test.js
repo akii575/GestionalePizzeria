@@ -45,6 +45,32 @@ test("all order services use the same card structure and field styling", () => {
     }
 });
 
+test("edit links keep their origin and open the shared order composer", () => {
+    const previousWindow = global.window;
+    try {
+        for (const origin of ["gestionale", "consegne", "tavoli", "ritiri", "banco"]) {
+            global.window = { paymentUI, location: { pathname: `/${origin}.html` } };
+            const html = orderCard.render({
+                numero: 12,
+                righe: [{ prodotto: "Margherita", totale: 6 }]
+            }, { canEdit: true });
+            assert.match(html, new RegExp(`href="/ordini\\.html\\?modifica=12&amp;da=${origin}"`));
+        }
+    } finally {
+        if (previousWindow === undefined) delete global.window;
+        else global.window = previousWindow;
+    }
+});
+
+test("legacy edit path is referenced only by its redirect page", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    for (const file of fs.readdirSync(directory)) {
+        if (file === "modifica.html" || !/\.(?:js|html|css)$/.test(file)) continue;
+        assert.doesNotMatch(fs.readFileSync(path.join(directory, file), "utf8"), /\/modifica\.html/);
+    }
+    assert.match(fs.readFileSync(path.join(directory, "modifica.html"), "utf8"), /modifica-redirect\.js/);
+});
+
 test("order heading shows only the service name and number without truncation", () => {
     const orders = [
         { tipo: "consegna", title: "Consegna · ordine #8", indirizzoConsegna: "Via Roma 12" },
@@ -392,27 +418,31 @@ test("delivery surcharge is included in order details only when present", () => 
     assert.doesNotMatch(deliveryWithoutFee, /order-card__delivery-fee/);
 });
 
-test("delivery surcharge toggle is placed beside payment and adapts to narrow screens", () => {
+test("delivery surcharge toggle is shared by new and edited orders", () => {
     const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
     const newOrderPage = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
-    const editOrderPage = fs.readFileSync(path.join(directory, "modifica.html"), "utf8");
     const theme = fs.readFileSync(path.join(directory, "theme.css"), "utf8");
 
     assert.match(newOrderPage, /<div id="campo-pagamento-consegna" class="riga-pagamento-consegna" hidden>[\s\S]*?id="pagamento-consegna"[\s\S]*?id="btn-costo-consegna"/);
-    assert.match(editOrderPage, /<div id="campo-pagamento" class="riga-pagamento-consegna" hidden>[\s\S]*?id="stato-pagamento"[\s\S]*?id="btn-costo-consegna"/);
+    assert.match(newOrderPage, /id="pagamento-ritiro"/);
     assert.match(theme, /\.riga-pagamento-consegna\s*\{\s*display:\s*flex;[^}]*align-items:\s*flex-end;[^}]*justify-content:\s*space-between;[^}]*gap:\s*12px;/);
     assert.match(theme, /@media \(max-width: 720px\)[\s\S]*?\.riga-pagamento-consegna > \.btn-costo-consegna\s*\{[^}]*min-height:\s*44px;/);
     assert.match(theme, /@media \(max-width: 350px\)[\s\S]*?\.riga-pagamento-consegna \{ flex-wrap: wrap; \}/);
 });
 
-test("order edit allows changing POS payment status and clears it when switching to pickup", () => {
-    const editScript = fs.readFileSync(
-        path.join(__dirname, "..", "src", "main", "resources", "static", "modifica.js"),
-        "utf8"
-    );
+test("edit mode loads, updates, and cancels through the shared order composer", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+    const page = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
 
-    assert.doesNotMatch(editScript, /posFisso|statoPagamento\.disabled\s*=|tipo-ordine"\)\.disabled\s*=/);
-    assert.match(editScript, /tipo !== "consegna" && statoPagamento\.value === "pos"[\s\S]*?statoPagamento\.value = "non_pagato"/);
+    assert.match(script, /fetch\(`\/api\/ordini\/\$\{numeroModifica\}`\)/);
+    assert.match(script, /method: "PUT"/);
+    assert.match(script, /invia\.textContent = stato\.righe\.length\s*\? numeroModifica \? "Rivedi e salva"/);
+    assert.match(script, /tipoOrdine\.value !== "consegna" && nuovoPagamento === "pos"/);
+    assert.match(script, /annulla-modifica-continua/);
+    assert.match(script, /window\.location\.replace\(paginaRitornoModifica\)/);
+    assert.doesNotMatch(script, /window\.confirm/);
+    assert.match(page, /id="annulla-modifica-modale"/);
 });
 
 test("every order-list page loads the shared card renderer before its page script", () => {
@@ -527,7 +557,7 @@ test("wide desktop layouts use the space beside the sidebar", () => {
     const orderStyles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
 
     assert.match(navigation, /@media \(min-width: 1440px\)[\s\S]*?body\.app-shell main\.dashboard\s*\{[^}]*width: min\(1808px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 2048px\) \/ 2\)\);[^}]*padding: 24px;/);
-    assert.match(navigation, /body\.app-shell main\.container,\s*body\.app-shell main\.modifica\s*\{[^}]*width: min\(1400px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1640px\) \/ 2\)\);/);
+    assert.match(navigation, /body\.app-shell main\.container\s*\{[^}]*width: min\(1400px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1640px\) \/ 2\)\);/);
     assert.match(navigation, /body\.app-shell main\.home\s*\{[^}]*width: min\(1100px, calc\(100% - 260px\)\);[^}]*margin-left: calc\(240px \+ max\(0px, \(100% - 1340px\) \/ 2\)\);/);
     assert.match(navigation, /body\.app-shell main\.dashboard \.lista-ordini,\s*body\.app-shell main\.dashboard \.lista-consegne\s*\{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(340px, 1fr\)\);/);
     assert.match(navigation, /body\.app-shell main\.dashboard \.metriche\s*\{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
@@ -546,7 +576,7 @@ test("mobile list headers keep the title and actions on one line", () => {
     assert.match(navigation, /body\.app-shell \.app-page-header h1\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
     assert.match(navigation, /\.app-header-actions\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*margin-left:\s*auto;/);
     assert.match(navigation, /body\.app-shell \.app-page-header\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;[^}]*width:\s*calc\(100% \+ var\(--app-mobile-gutter\) \+ var\(--app-mobile-gutter\)\);[^}]*margin:\s*0 var\(--app-mobile-gutter-negative\) 14px;/);
-    assert.match(navigation, /body\.app-shell main\.home,\s*body\.app-shell main\.dashboard,\s*body\.app-shell main\.container,\s*body\.app-shell main\.modifica\s*\{[^}]*padding-top:\s*0;/);
+    assert.match(navigation, /body\.app-shell main\.home,\s*body\.app-shell main\.dashboard,\s*body\.app-shell main\.container\s*\{[^}]*padding-top:\s*0;/);
     assert.match(navigation, /body\.app-shell \.app-page-header \.app-header-actions\s*\{[^}]*min-width:\s*0;[^}]*margin-left:\s*auto;[^}]*justify-content:\s*flex-end;/);
     assert.match(theme, /@media \(max-width: 720px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 16px 24px;/);
     assert.match(theme, /@media \(max-width: 420px\)[\s\S]*?\.home\s*\{\s*padding:\s*0 12px 24px;/);
@@ -559,11 +589,8 @@ test("mobile navigation and checkout use one safe-area offset", () => {
     const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
     const navigationScript = fs.readFileSync(path.join(directory, "nav.js"), "utf8");
     const orderStyles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
-    const editStyles = fs.readFileSync(path.join(directory, "modifica.css"), "utf8");
     const orderScript = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
-    const editScript = fs.readFileSync(path.join(directory, "modifica.js"), "utf8");
     const orderPage = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
-    const editPage = fs.readFileSync(path.join(directory, "modifica.html"), "utf8");
 
     assert.match(navigation, /--app-mobile-nav-content-height:\s*60px;[\s\S]*?--app-mobile-nav-height:\s*calc\(var\(--app-mobile-nav-content-height\) \+ env\(safe-area-inset-bottom\)\)/);
     assert.match(navigation, /html\.app-shell-root\s*\{\s*background:\s*var\(--theme-green\);/);
@@ -575,24 +602,21 @@ test("mobile navigation and checkout use one safe-area offset", () => {
     assert.match(navigation, /body\.app-shell nav\.app-bottom-nav > \.app-nav-item\.is-active\s*\{[^}]*color:\s*var\(--theme-green\);/);
     assert.doesNotMatch(navigation, /app-bottom-create svg\s*\{[^}]*top:\s*-33px;/);
     assert.match(navigationScript, /create = createLink\(\{ \.\.\.link, label: "Nuova" \}/);
+    assert.match(navigationScript, /window\.location\.pathname === "\/ordini\.html"[\s\S]*?return "\/gestionale\.html"/);
     assert.match(orderStyles, /\.composer-summary > \.barra-conto\s*\{[^}]*position:\s*fixed;[^}]*bottom:\s*var\(--app-mobile-nav-height\);[^}]*height:\s*var\(--app-mobile-checkout-height\);/);
     assert.match(orderStyles, /\.composer-summary > \.barra-conto > \.btn-invia:disabled\s*\{[^}]*cursor:\s*not-allowed;[^}]*opacity:\s*\.45;/);
     assert.match(orderStyles, /@media \(max-width: 767px\), \(min-width: 768px\) and \(max-width: 1023px\) and \(orientation: portrait\)[\s\S]*?\.composer-layout\s*\{[^}]*display:\s*block;/);
     assert.match(orderStyles, /@media \(max-width: 1023px\) and \(orientation: portrait\)[\s\S]*?\.composer-summary > \.riepilogo-card\s*\{[^}]*display:\s*block;[^}]*border-radius:\s*16px;/);
     assert.match(orderStyles, /@media \(max-width: 767px\) and \(orientation: landscape\)[\s\S]*?\.composer-summary > \.riepilogo-card > \.riepilogo\s*\{\s*display:\s*none;/);
-    assert.match(orderScript, /invia\.textContent = stato\.righe\.length \? "Rivedi e invia" : "Aggiungi prodotti";/);
-    assert.match(editStyles, /\.modifica-footer\s*\{[^}]*bottom:\s*var\(--app-mobile-nav-height\);/);
+    assert.match(orderScript, /invia\.textContent = stato\.righe\.length\s*\? numeroModifica \? "Rivedi e salva" : "Rivedi e invia"/);
+    assert.match(orderScript, /conferma-invio"\)\.textContent = numeroModifica\s*\? "Salva modifiche"/);
     assert.match(orderPage, /class="riepilogo-totale-riga">\s*<p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti<\/p>\s*<p id="riepilogo-totale" class="riepilogo-totale">[^<]*<\/p>/);
     assert.match(orderPage, /class="barra-conto-dettagli"[\s\S]*?<p id="barra-totale" class="riepilogo-totale">[^<]*<\/p>\s*<p id="barra-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti<\/p>/);
     assert.match(orderPage, /<button class="btn-invia" id="btn-invia" type="button" disabled>Aggiungi prodotti<\/button>/);
     assert.match(orderScript, /aggiornaConteggioProdotti\(riepilogoConteggio, stato\.righe\.length\);/);
     assert.match(orderScript, /barraTotale\.textContent = testoTotale;/);
     assert.match(orderScript, /aggiornaConteggioProdotti\(barraConteggio, stato\.righe\.length\);/);
-    assert.match(editPage, /<p id="totale-modifica">[^<]*<\/p>\s*<p id="conteggio-modifica" class="riepilogo-conteggio" aria-live="polite">0 prodotti<\/p>/);
-    assert.match(editPage, /src="\/prodotti-ui\.js"[\s\S]*?src="\/modifica\.js"/);
-    assert.match(editScript, /aggiornaConteggioProdotti\(conteggioModifica, righeOrdine\.length\);/);
     assert.doesNotMatch(orderStyles, /counter-reset:\s*order-items|counter-increment:\s*order-items|counter\(order-items\)/);
-    assert.doesNotMatch(editStyles, /counter-reset:\s*edit-products|counter-increment:\s*edit-products|counter\(edit-products\)/);
 });
 
 test("order summary rows keep a two-column remove action and omit empty extras", () => {

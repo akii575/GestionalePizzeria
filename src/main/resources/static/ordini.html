@@ -180,6 +180,7 @@
                 <div id="campo-pagamento-ritiro" hidden>
                     <label for="pagamento-ritiro">Pagamento ritiro</label>
                     <select id="pagamento-ritiro">
+                        <option value="">Da verificare</option>
                         <option value="non_pagato" selected>Non pagato</option>
                         <option value="pagato">Pagato</option>
                     </select>
@@ -188,6 +189,7 @@
                     <div class="campo-pagamento-consegna">
                         <label for="pagamento-consegna">Pagamento consegna</label>
                         <select id="pagamento-consegna">
+                            <option value="">Da verificare</option>
                             <option value="non_pagato" selected>Non pagato</option>
                             <option value="pagato">Pagato</option>
                             <option value="pos">POS</option>
@@ -345,6 +347,23 @@
                 <div class="conferma-azioni">
                     <button id="conferma-invio" type="button" class="btn-invia">Conferma</button
                     ><button id="annulla-invio" type="button" class="btn-annulla">Modifica</button>
+                </div>
+            </div>
+        </div>
+        <div
+            id="annulla-modifica-modale"
+            class="conferma-modale"
+            hidden
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="annulla-modifica-titolo"
+        >
+            <div class="conferma-contenuto annulla-modifica-contenuto">
+                <h2 id="annulla-modifica-titolo">Scartare le modifiche?</h2>
+                <p>Le modifiche non salvate andranno perse.</p>
+                <div class="conferma-azioni">
+                    <button id="annulla-modifica-continua" type="button" class="btn-annulla">Continua modifica</button>
+                    <button id="annulla-modifica-esci" type="button" class="btn-invia">Esci senza salvare</button>
                 </div>
             </div>
         </div>

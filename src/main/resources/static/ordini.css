@@ -794,6 +794,13 @@ button {
     color: #991B1B;
     font-size: 12px;
 }
+.riepilogo-non-disponibile {
+    display: block;
+    margin-top: 3px;
+    color: #991B1B;
+    font-size: 12px;
+    font-weight: 700;
+}
 .rimuovi {
     border: 0;
     background: transparent;

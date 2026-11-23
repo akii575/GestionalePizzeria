@@ -88,7 +88,6 @@ test("Vercel rewrites every protected page and API path to the router", () => {
         ["/index.html", "index.html"],
         ["/ordini.html", "ordini.html"],
         ["/gestionale.html", "gestionale.html"],
-        ["/modifica.html", "modifica.html"],
         ["/consegne.html", "consegne.html"],
         ["/ritiri.html", "ritiri.html"],
         ["/banco.html", "banco.html"],
