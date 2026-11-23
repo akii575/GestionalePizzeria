@@ -83,6 +83,18 @@ test("order detail shows the automatic cover charge for table service", () => {
         coperto: { persone: 4, prezzoUnitario: 2, totale: 8 }
     });
 
+    test("order card shows removed ingredients below the product", () => {
+        const html = render({
+            righe: [{
+                prodotto: "Margherita",
+                totale: 5,
+                senza: ["Basilico"]
+            }]
+        });
+
+        assert.match(html, /class="order-card__without-ingredients">senza Basilico<\/small>/);
+    });
+
     assert.match(table, /Coperto 4 × 2,00\s*€<\/p>/);
     assert.match(table, /order-card__total">13,00/);
     assert.doesNotMatch(counter, /order-card__cover-charge/);

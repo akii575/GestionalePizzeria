@@ -246,10 +246,14 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         const groupedRows = new Map();
         for (const row of rowsByCategory.get(category)) {
             const rowExtras = (row.extra || []).map(receiptExtra);
+            const senza = (Array.isArray(row.senza) ? row.senza : [])
+                .filter(ingredient => typeof ingredient === "string" && ingredient.trim());
             const basePrice = receiptBasePrice(row);
             const key = JSON.stringify([
                 row.prodotto,
                 rowExtras.map(extra => [extra.name, extra.price]).sort((first, second) => first[0].localeCompare(second[0], "it")),
+                senza.map(ingredient => ingredient.trim().toLocaleLowerCase("it-IT"))
+                    .sort((first, second) => first.localeCompare(second, "it-IT")),
                 basePrice
             ]);
             const existing = groupedRows.get(key);
@@ -264,9 +268,23 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
                 lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, receiptWidth)
                     .map(line => `@@ITEM:${line}@@`));
                 const ingredients = options.productIngredients?.[row.prodotto];
-                if (Array.isArray(ingredients) && ingredients.length) {
-                    lines.push(...wrapReceiptPrefix("  ", ingredients.join(", "), normalWidth)
+                const senza = (Array.isArray(row.senza) ? row.senza : [])
+                    .filter(ingredient => typeof ingredient === "string" && ingredient.trim());
+                const sansNames = new Set(senza.map(ingredient => ingredient.trim().toLocaleLowerCase("it-IT")));
+                const productIngredients = Array.isArray(ingredients)
+                    ? ingredients
+                    : Array.isArray(row.ingredienti) ? row.ingredienti : [];
+                const displayedIngredients = productIngredients.filter(ingredient =>
+                    typeof ingredient === "string"
+                    && !sansNames.has(ingredient.trim().toLocaleLowerCase("it-IT"))
+                );
+                if (displayedIngredients.length) {
+                    lines.push(...wrapReceiptPrefix("  ", displayedIngredients.join(", "), normalWidth)
                         .map(line => `@@SMALL:${line}@@`));
+                }
+                for (const ingredient of senza) {
+                    lines.push(...wrapReceiptPrefix("  - SENZA ", ingredient.toLocaleUpperCase("it-IT"), receiptWidth)
+                        .map(line => `@@ITEM:${line}@@`));
                 }
                 for (const extra of rowExtras) {
                     lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth)
@@ -278,6 +296,14 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             const itemParts = wrapReceiptItemParts(`${quantity}x ${row.prodotto}`, baseTotal, receiptWidth);
             lines.push(...itemParts.nameLines.map(line => `@@ITEM:${line}@@`));
             if (itemParts.amountLine) lines.push(itemParts.amountLine);
+            for (const ingredient of (Array.isArray(row.senza) ? row.senza : [])
+                .filter(value => typeof value === "string" && value.trim())) {
+                const prefix = "  - senza ";
+                lines.push(...wrapReceiptText(
+                    ingredient.toLocaleLowerCase("it-IT"),
+                    Math.max(1, receiptWidth - Array.from(prefix).length)
+                ).map(line => `${prefix}${line.toLocaleLowerCase("it-IT")}`));
+            }
             for (const extra of rowExtras) {
                 const extraTotal = Math.round(extra.price * quantity * 100) / 100;
                 if (extra.price > 0) {

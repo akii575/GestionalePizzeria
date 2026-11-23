@@ -76,11 +76,16 @@ const orderCard = (() => {
             const ingredientMarkup = ingredients.length
                 ? `<small class="order-card__ingredients">${escapeHtml(ingredients.join(", "))}</small>`
                 : "";
+            const senza = (Array.isArray(row.senza) ? row.senza : [])
+                .filter(ingrediente => typeof ingrediente === "string" && ingrediente.trim());
+            const senzaMarkup = senza.length
+                ? `<small class="order-card__without-ingredients">senza ${escapeHtml(senza.join(", "))}</small>`
+                : "";
             const extraMarkup = extras.length
                 ? `<span class="order-card__extra">Extra: ${escapeHtml(extras.join(", "))}</span>`
                 : "";
             const price = euro.format(Number(row.totale ?? row.prezzoBase ?? 0));
-            return `<li><div class="order-card__product-row"><div><strong>${escapeHtml(row.prodotto)} x1</strong>${ingredientMarkup}</div><span>${price}</span></div>${extraMarkup}</li>`;
+            return `<li><div class="order-card__product-row"><div><strong>${escapeHtml(row.prodotto)} x1</strong>${ingredientMarkup}${senzaMarkup}</div><span>${price}</span></div>${extraMarkup}</li>`;
         }).join("");
     }
 

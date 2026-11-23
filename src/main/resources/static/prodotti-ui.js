@@ -115,6 +115,10 @@ const prodottiUI = (() => {
         return prodotto?.ammetteExtra === true;
     }
 
+    function rigaModificabile(riga) {
+        return ammetteExtra(riga) || (Array.isArray(riga?.ingredienti) && riga.ingredienti.length > 0);
+    }
+
     function isCoperto(prodotto) {
         return typeof prodotto?.nome === "string"
             && prodotto.nome.trim().toLocaleLowerCase("it-IT") === "coperto";
@@ -141,7 +145,8 @@ const prodottiUI = (() => {
             categoria: prodotto.categoria,
             ingredienti: prodotto.ingredienti || [],
             ammetteExtra: conExtra,
-            extra: []
+            extra: [],
+            senza: []
         };
     }
 
@@ -150,7 +155,7 @@ const prodottiUI = (() => {
         const nuoveRighe = [...righe, ...aggiunte];
         return {
             righe: nuoveRighe,
-            rigaAttiva: ammetteExtra(prodotto) ? nuoveRighe.length - 1 : rigaAttiva
+            rigaAttiva: rigaModificabile(prodotto) ? nuoveRighe.length - 1 : rigaAttiva
         };
     }
 
@@ -183,7 +188,11 @@ const prodottiUI = (() => {
                     limiteRaggiunto = true;
                     break;
                 }
-                righe.push({ prodotto, extra });
+                righe.push({
+                    prodotto,
+                    extra,
+                    senza: normalizzaSenzaIngredienti(voce.senza, prodotto.ingredienti)
+                });
             }
         }
         return { righe, nonDisponibili: [...nonDisponibili], limiteRaggiunto };
@@ -192,7 +201,7 @@ const prodottiUI = (() => {
     function impostaRigaAttiva(righe, indice) {
         return {
             righe,
-            rigaAttiva: Number.isInteger(indice) && ammetteExtra(righe[indice]) ? indice : null
+            rigaAttiva: Number.isInteger(indice) && rigaModificabile(righe[indice]) ? indice : null
         };
     }
 
@@ -204,14 +213,14 @@ const prodottiUI = (() => {
         if (indice === rigaAttiva) {
             let prossimoAttivo = null;
             nuoveRighe.forEach((riga, posizione) => {
-                if (ammetteExtra(riga)) prossimoAttivo = posizione;
+                if (rigaModificabile(riga)) prossimoAttivo = posizione;
             });
             return { righe: nuoveRighe, rigaAttiva: prossimoAttivo };
         }
         const prossimoIndice = rigaAttiva === null ? null : rigaAttiva > indice ? rigaAttiva - 1 : rigaAttiva;
         return {
             righe: nuoveRighe,
-            rigaAttiva: prossimoIndice !== null && ammetteExtra(nuoveRighe[prossimoIndice]) ? prossimoIndice : null
+            rigaAttiva: prossimoIndice !== null && rigaModificabile(nuoveRighe[prossimoIndice]) ? prossimoIndice : null
         };
     }
 
@@ -230,6 +239,49 @@ const prodottiUI = (() => {
             };
         });
         return { righe: nuoveRighe, rigaAttiva };
+    }
+
+    function normalizzaSenzaIngredienti(senza, ingredienti) {
+        if (!Array.isArray(senza) || !Array.isArray(ingredienti)) return [];
+        const ingredientiMenu = new Map(
+            ingredienti
+                .filter(ingrediente => typeof ingrediente === "string")
+                .map(ingrediente => [ingrediente.trim().toLocaleLowerCase("it-IT"), ingrediente])
+        );
+        const selezionati = new Set();
+        return senza.reduce((risultato, ingrediente) => {
+            if (typeof ingrediente !== "string") return risultato;
+            const normalizzato = ingrediente.trim().toLocaleLowerCase("it-IT");
+            const canonico = ingredientiMenu.get(normalizzato);
+            if (canonico && !selezionati.has(normalizzato)) {
+                selezionati.add(normalizzato);
+                risultato.push(canonico);
+            }
+            return risultato;
+        }, []);
+    }
+
+    function toggleSenza(righe, rigaAttiva, ingrediente) {
+        const riga = righe[rigaAttiva];
+        if (!riga || typeof ingrediente !== "string") return righe;
+        const canonical = (riga.ingredienti || []).find(item =>
+            typeof item === "string"
+            && item.trim().toLocaleLowerCase("it-IT") === ingrediente.trim().toLocaleLowerCase("it-IT")
+        );
+        if (!canonical) return righe;
+        const senza = Array.isArray(riga.senza) ? riga.senza : [];
+        const chiaveIngrediente = canonical.trim().toLocaleLowerCase("it-IT");
+        const presente = senza.some(item =>
+            typeof item === "string"
+            && item.trim().toLocaleLowerCase("it-IT") === chiaveIngrediente
+        );
+        return righe.map((elemento, indice) => indice !== rigaAttiva ? elemento : {
+            ...elemento,
+            senza: presente
+                ? senza.filter(item => typeof item !== "string"
+                    || item.trim().toLocaleLowerCase("it-IT") !== chiaveIngrediente)
+                : [...senza, canonical]
+        });
     }
 
     function intestazioneExtra(righe, rigaAttiva) {
@@ -446,6 +498,8 @@ const prodottiUI = (() => {
         impostaRigaAttiva,
         rimuoviProdotto,
         toggleExtra,
+        toggleSenza,
+        normalizzaSenzaIngredienti,
         intestazioneExtra,
         creaStatoMoltiplicatore,
         premiTastoMoltiplicatore,

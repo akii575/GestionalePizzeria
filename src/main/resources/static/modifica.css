@@ -17,6 +17,7 @@ textarea { height: 110px; resize: none; overflow-x: hidden; overflow-y: auto; fo
 .extra-editor .extra-carousel::-webkit-scrollbar { width: 8px; height: auto; }
 .extra-editor .extra-card { flex: 0 0 auto; width: 100%; min-height: 52px; scroll-snap-align: none; border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 12px rgba(34, 55, 45, .08); }
 .prodotto-ingredienti { display: block; margin-top: 5px; color: #5d625d; font-size: 12px; font-weight: normal; line-height: 1.3; }
+.prodotto-senza { display: block; margin-top: 3px; color: #991b1b; font-size: 12px; font-weight: normal; line-height: 1.3; }
 .riga-edit {
     display: grid;
     grid-template-columns: 1fr auto;

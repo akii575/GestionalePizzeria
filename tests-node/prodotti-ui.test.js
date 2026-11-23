@@ -11,9 +11,11 @@ const {
     calcolaCoperto,
     creaRiga,
     aggiungiProdotti,
+    preparaRipetizione,
     impostaRigaAttiva,
     rimuoviProdotto,
     toggleExtra,
+    toggleSenza,
     intestazioneExtra,
     LIMITE_RIGHE_ORDINE,
     creaStatoMoltiplicatore,
@@ -350,8 +352,39 @@ test("new rows always start without extras", () => {
         categoria: "pizze",
         ingredienti: ["pomodoro"],
         ammetteExtra: true,
-        extra: []
+        extra: [],
+        senza: []
     });
+});
+
+test("removed ingredient chips toggle canonical ingredients on the active row", () => {
+    const pizza = {
+        nome: "Margherita",
+        prezzo: 5,
+        ingredienti: ["Pomodoro", "Basilico"],
+        ammetteExtra: true
+    };
+    const righe = [creaRiga(pizza)];
+    const rimossa = toggleSenza(righe, 0, "basilico");
+
+    assert.deepEqual(rimossa[0].senza, ["Basilico"]);
+    assert.deepEqual(toggleSenza(rimossa, 0, "Basilico")[0].senza, []);
+    assert.equal(toggleSenza(righe, null, "Basilico"), righe);
+});
+
+test("repeat-last-order restores only removed ingredients still in the menu", () => {
+    const product = {
+        nome: "Margherita",
+        prezzo: 5,
+        ingredienti: ["Pomodoro", "Basilico"],
+        disponibile: true,
+        ammetteExtra: true
+    };
+    const result = preparaRipetizione({
+        righe: [{ prodotto: "Margherita", quantita: 1, extra: [], senza: ["Basilico", "Cipolla"] }]
+    }, [product], [], 10);
+
+    assert.deepEqual(result.righe[0].senza, ["Basilico"]);
 });
 
 test("active extra row tracks eligible products but not drinks", () => {

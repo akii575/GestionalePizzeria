@@ -76,3 +76,20 @@ test("matches the same extras regardless of their ordering", () => {
 
     assert.deepEqual(diffRighe([oldRow], [newRow]), { aggiunte: [], rimosse: [] });
 });
+
+test("treats removed ingredients as part of row identity", () => {
+    const withoutBasilico = { ...margherita, senza: ["Basilico"] };
+    const withoutPomodoro = { ...margherita, senza: ["Pomodoro"] };
+    const changed = diffRighe([margherita], [withoutBasilico]);
+
+    assert.deepEqual(changed.aggiunte, [withoutBasilico]);
+    assert.deepEqual(changed.rimosse, [margherita]);
+    assert.deepEqual(diffRighe(
+        [{ ...margherita, senza: ["Basilico", "Pomodoro"] }],
+        [{ ...margherita, senza: ["Pomodoro", "Basilico"] }]
+    ), { aggiunte: [], rimosse: [] });
+    assert.deepEqual(diffRighe([withoutBasilico], [withoutPomodoro]), {
+        aggiunte: [withoutPomodoro],
+        rimosse: [withoutBasilico]
+    });
+});

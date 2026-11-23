@@ -22,6 +22,8 @@ const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
 const extraLista = document.getElementById("extra-lista");
 const extraIntestazione = document.getElementById("extra-intestazione");
+const senzaIngredienti = document.getElementById("senza-ingredienti");
+const senzaIngredientiLista = document.getElementById("senza-ingredienti-lista");
 const mediaGrigliaExtra = window.matchMedia("(max-width: 699px)");
 let prodottoCoperto = null;
 const tipoOrdine = document.getElementById("tipo-ordine");
@@ -82,6 +84,7 @@ const {
     impostaRigaAttiva,
     rimuoviProdotto,
     toggleExtra,
+    toggleSenza,
     intestazioneExtra,
     creaStatoMoltiplicatore,
     premiTastoMoltiplicatore,
@@ -450,11 +453,16 @@ async function aggiornaCacheClienteDopoInvio(ordine, rispostaOrdine) {
         const raggruppate = new Map();
         for (const riga of ordine.righe) {
             const extra = nomiExtra(riga.extra);
-            const chiave = JSON.stringify([riga.prodotto, [...extra].sort((a, b) => a.localeCompare(b, "it-IT"))]);
+            const senza = Array.isArray(riga.senza) ? riga.senza : [];
+            const chiave = JSON.stringify([
+                riga.prodotto,
+                [...extra].sort((a, b) => a.localeCompare(b, "it-IT")),
+                [...senza].sort((a, b) => a.localeCompare(b, "it-IT"))
+            ]);
             const corrente = raggruppate.get(chiave);
             if (corrente) corrente.quantita++;
             else if (raggruppate.size < 30) {
-                raggruppate.set(chiave, { prodotto: riga.prodotto, quantita: 1, extra });
+                raggruppate.set(chiave, { prodotto: riga.prodotto, quantita: 1, extra, senza });
             }
         }
         cacheClienti.set(telefono, Promise.resolve({
@@ -504,6 +512,7 @@ function ripetiUltimoOrdine(ultimoOrdine) {
         stato.righe = aggiunta.righe;
         stato.rigaAttiva = aggiunta.rigaAttiva;
         stato.righe[stato.righe.length - 1].extra = voce.extra;
+        stato.righe[stato.righe.length - 1].senza = voce.senza;
     }
     renderRiepilogo();
     const messaggi = [];
@@ -795,8 +804,11 @@ function renderGrigliaExtra() {
     const paginaCorrente = extraLista.clientWidth
         ? Math.round(extraLista.scrollLeft / extraLista.clientWidth)
         : 0;
-    sezioneExtra.hidden = !stato.extra.length;
+    const rigaAttiva = stato.righe[stato.rigaAttiva];
+    const ingredienti = Array.isArray(rigaAttiva?.ingredienti) ? rigaAttiva.ingredienti : [];
+    sezioneExtra.hidden = !stato.extra.length && !ingredienti.length;
     extraIntestazione.textContent = intestazioneExtra(stato.righe, stato.rigaAttiva);
+    extraLista.hidden = !stato.extra.length;
     extraLista.replaceChildren();
     const colonne = mediaGrigliaExtra.matches ? 3 : 4;
     const righe = mediaGrigliaExtra.matches ? 4 : 3;
@@ -827,6 +839,27 @@ function renderGrigliaExtra() {
     if (extraLista.children.length) {
         extraLista.scrollLeft = Math.min(paginaCorrente, extraLista.children.length - 1) * extraLista.clientWidth;
     }
+    renderSenzaIngredienti(rigaAttiva, ingredienti);
+}
+function renderSenzaIngredienti(riga, ingredienti) {
+    senzaIngredientiLista.replaceChildren();
+    senzaIngredienti.hidden = !riga || !ingredienti.length;
+    if (!riga || !ingredienti.length) return;
+    const selezionati = new Set((Array.isArray(riga.senza) ? riga.senza : [])
+        .filter(ingrediente => typeof ingrediente === "string")
+        .map(ingrediente => ingrediente.trim().toLocaleLowerCase("it-IT")));
+    ingredienti.forEach(ingrediente => {
+        if (typeof ingrediente !== "string") return;
+        const bottone = document.createElement("button");
+        const attivo = selezionati.has(ingrediente.trim().toLocaleLowerCase("it-IT"));
+        bottone.type = "button";
+        bottone.className = "senza-chip";
+        bottone.textContent = ingrediente;
+        bottone.classList.toggle("selezionato", attivo);
+        bottone.setAttribute("aria-pressed", String(attivo));
+        bottone.dataset.senzaIngrediente = ingrediente;
+        senzaIngredientiLista.appendChild(bottone);
+    });
 }
 function renderProdotti() {
     prodotti.innerHTML = "";
@@ -1010,10 +1043,13 @@ function renderRigheRiepilogo(contenitore) {
         const extra = riga.extra.length
             ? `<span>Extra: ${escapeHtml(nomiExtra(riga.extra).join(", "))}</span>`
             : "";
-        const nomeRiga = riga.ammetteExtra
+        const senza = Array.isArray(riga.senza) && riga.senza.length
+            ? `<small class="riepilogo-senza">senza ${escapeHtml(riga.senza.join(", "))}</small>`
+            : "";
+        const nomeRiga = riga.ammetteExtra || riga.ingredienti?.length
             ? `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indice)}">${escapeHtml(riga.prodotto)}</button>`
             : `<strong>${escapeHtml(riga.prodotto)}</strong>`;
-        voce.innerHTML = `<div>${nomeRiga}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
+        voce.innerHTML = `<div>${nomeRiga}${senza}${descrizione}${extra}</div><button class="rimuovi" type="button" data-indice="${escapeHtml(indice)}">Rimuovi</button>`;
         contenitore.appendChild(voce);
     });
     if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
@@ -1297,7 +1333,10 @@ function apriConferma() {
                         return `${escapeHtml(nome)} (${escapeHtml(euro.format(Number(dato?.prezzo || 0)))})`;
                     })
                     .join(", ");
-                return `<div class="conferma-riga"><strong>${escapeHtml(riga.prodotto)} - ${escapeHtml(euro.format(Number(riga.prezzo)))}</strong>${riga.ingredienti?.length ? `<span>${escapeHtml(riga.ingredienti.join(", "))}</span>` : ""}${extra ? `<span>Extra: ${extra}</span>` : ""}<span>Totale riga: ${escapeHtml(euro.format(prezzoRiga(riga)))}</span></div>`;
+                const senza = Array.isArray(riga.senza) && riga.senza.length
+                    ? `<span class="conferma-senza">senza ${escapeHtml(riga.senza.join(", "))}</span>`
+                    : "";
+                return `<div class="conferma-riga"><strong>${escapeHtml(riga.prodotto)} - ${escapeHtml(euro.format(Number(riga.prezzo)))}</strong>${senza}${riga.ingredienti?.length ? `<span>${escapeHtml(riga.ingredienti.join(", "))}</span>` : ""}${extra ? `<span>Extra: ${extra}</span>` : ""}<span>Totale riga: ${escapeHtml(euro.format(prezzoRiga(riga)))}</span></div>`;
             })
             .join("");
     confermaTotale.textContent = `Totale: ${euro.format(totaleOrdine())}`;
@@ -1333,7 +1372,11 @@ async function inviaOrdine() {
         costoConsegna: consegna ? costoConsegna : 0,
         telefonoRitiro: ritiro ? document.getElementById("telefono-ritiro").value : "",
         note: document.getElementById("note").value,
-        righe: stato.righe.map(riga => ({ prodotto: riga.prodotto, extra: riga.extra }))
+        righe: stato.righe.map(riga => ({
+            prodotto: riga.prodotto,
+            extra: riga.extra,
+            senza: Array.isArray(riga.senza) ? riga.senza : []
+        }))
     };
     try {
         const risposta = await fetch("/api/ordini", {
@@ -1452,6 +1495,16 @@ extraLista.addEventListener(
     },
     true
 );
+senzaIngredientiLista.addEventListener("click", evento => {
+    const bottone = evento.target.closest("[data-senza-ingrediente]");
+    if (!bottone || !senzaIngredientiLista.contains(bottone)) return;
+    stato.righe = toggleSenza(
+        stato.righe,
+        stato.rigaAttiva,
+        bottone.dataset.senzaIngrediente
+    );
+    renderRiepilogo();
+});
 bottoneRicerca.addEventListener("click", apriRicerca);
 ricercaInput.addEventListener("input", renderRisultatiRicerca);
 ricercaTasti.addEventListener("pointerdown", evento => {
