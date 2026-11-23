@@ -198,11 +198,11 @@ test("staff pages hide only the four daily displayed totals", () => {
     const staticPath = path.join(__dirname, "../src/main/resources/static");
     for (const page of ["ritiri.html", "banco.html", "tavoli.html", "gestionale.html"]) {
         const html = fs.readFileSync(path.join(staticPath, page), "utf8");
-        assert.match(html, /<div data-hide-for-staff><span>Totale visualizzato<\/span><strong id="totale-ordini">/);
+        assert.match(html, /class="metriche__totale" data-hide-for-staff[^>]*aria-label="Totale visualizzato"/);
     }
     const deliveries = fs.readFileSync(path.join(staticPath, "consegne.html"), "utf8");
     assert.doesNotMatch(deliveries, /data-hide-for-staff/);
-    assert.match(deliveries, /<span>Totale consegne<\/span><strong id="totale-consegne">/);
+    assert.match(deliveries, /class="metriche__totale"[^>]*aria-label="Totale consegne"/);
 });
 
 test("gestionale skips calculating the daily total for staff", async () => {
@@ -240,7 +240,7 @@ test("gestionale skips calculating the daily total for staff", async () => {
         window: {
             authReady: Promise.resolve(true),
             currentAccount: { admin: false, staff: true },
-            orderCard: { bindReprints() {}, render() { return ""; } }
+            orderCard: { bindReprints() {}, bindDateFilter() {}, render() { return ""; } }
         },
         fetch: async url => ({
             ok: true,

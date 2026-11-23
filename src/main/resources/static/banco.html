@@ -27,13 +27,18 @@
     </header>
     <section class="filtri" aria-label="Filtri ordini banco">
         <label for="filtro">Cerca ordine<input id="filtro" type="search" placeholder="Prodotto..."></label>
-        <label for="data">Data<input id="data" type="date"></label>
-        <label class="switch"><input id="autoAggiorna" type="checkbox" checked> Aggiorna ogni 15 secondi</label>
+        <div class="filtro-data">
+            <input id="data" class="filtro-data__input" type="date" aria-label="Data ordini">
+            <span id="apri-data" class="filtro-data__button" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 3v4M17 3v4M3 10h18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 14h2m3 0h2m3 0h1M7 18h2m3 0h2" stroke="currentColor" stroke-width="2"/></svg>
+                <span data-date-label>Oggi</span>
+            </span>
+        </div>
     </section>
     <section class="metriche" aria-label="Riepilogo banco">
-        <div><span>Ordini visualizzati</span><strong id="numero-ordini">0</strong></div>
-        <div data-hide-for-staff><span>Totale visualizzato</span><strong id="totale-ordini">0,00 EUR</strong></div>
-        <div><span>Ultimo aggiornamento</span><strong id="ultimo-aggiornamento">--:--</strong></div>
+        <span class="metriche__conteggio" aria-label="Ordini visualizzati"><strong id="numero-ordini">0</strong><span id="etichetta-ordini">ordini</span></span>
+        <span class="metriche__totale" data-hide-for-staff aria-label="Totale visualizzato"><span aria-hidden="true">· </span><strong id="totale-ordini">0,00 €</strong></span>
+        <span class="metriche__aggiornamento"><span aria-hidden="true">· agg. </span><strong id="ultimo-aggiornamento" aria-label="Ultimo aggiornamento">--:--</strong></span>
     </section>
     <p id="stato" role="status"></p>
     <section id="lista-ordini" class="lista-ordini" aria-live="polite"></section>
