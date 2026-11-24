@@ -183,11 +183,14 @@ function receiptRowsForProfile(order, options) {
 }
 
 function variationRowsForKitchen(options) {
-    const categories = options.variationCategories instanceof Set
-        ? options.variationCategories
-        : new Set(Array.isArray(options.variationCategories) ? options.variationCategories : []);
+    const categories = options.variationCategories == null
+        ? null
+        : options.variationCategories instanceof Set
+            ? options.variationCategories
+            : new Set(Array.isArray(options.variationCategories) ? options.variationCategories : []);
     const productCategories = options.productCategories || {};
     const printable = row => {
+        if (categories === null) return true;
         const category = row.categoria || productCategories[row.prodotto];
         return category === undefined || categories.has(category);
     };
@@ -640,13 +643,16 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                             ))
                             .map(document => document.id)
                     );
-                    return {
+                    const menuData = {
                         categoryOrder,
                         productCategories,
                         productIngredients,
                         kitchenCategories,
                         variationCategories
                     };
+                    receiptMenuCache = menuData;
+                    receiptMenuCacheExpiresAt = Date.now() + RECEIPT_MENU_CACHE_MILLISECONDS;
+                    return menuData;
                 })
                 .catch(error => {
                     console.error("Unable to load menu categories for receipt:", error.code || error.name || "unknown");
@@ -655,13 +661,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                         productCategories: {},
                         productIngredients: {},
                         kitchenCategories: null,
-                        variationCategories: new Set()
+                        variationCategories: null
                     };
-                })
-                .then(menuData => {
-                    receiptMenuCache = menuData;
-                    receiptMenuCacheExpiresAt = Date.now() + RECEIPT_MENU_CACHE_MILLISECONDS;
-                    return menuData;
                 })
                 .finally(() => {
                     receiptMenuPromise = null;
