@@ -62,8 +62,10 @@ const senzaIngredientiLista = document.getElementById("senza-ingredienti-lista")
 const noteRiga = document.getElementById("note-riga");
 const noteRigaLista = document.getElementById("note-riga-lista");
 const mediaGrigliaExtra = window.matchMedia("(max-width: 699px)");
+const mediaPannelloExtra = window.matchMedia("(min-width: 800px)");
 const prodottiWrapper = document.querySelector(".prodotti-wrapper");
 const prodottiIndicatore = document.getElementById("prodotti-indicatore");
+const extraFatto = document.getElementById("extra-fatto");
 let extraAperto = false;
 let prodottoCoperto = null;
 const tipoOrdine = document.getElementById("tipo-ordine");
@@ -996,7 +998,7 @@ function renderGrigliaExtra() {
     );
     extraIntestazione.setAttribute("aria-expanded", String(extraAperto));
     sezioneExtra.classList.toggle("extra-aperto", extraAperto);
-    extraDettagli.hidden = !extraAperto;
+    extraDettagli.hidden = !extraAperto || sezioneExtra.hidden;
     extraRicerca.hidden = !stato.extra.length;
     extraLista.replaceChildren();
     const extraVisibili = filtraExtra(stato.extra, extraRicerca.value);
@@ -1033,6 +1035,16 @@ function renderGrigliaExtra() {
     }
     renderSenzaIngredienti(rigaAttiva, ingredienti);
     renderNoteRiga(rigaAttiva, supportaNoteRiga);
+}
+function aggiornaPosizionePannelloExtra() {
+    const destinazione = mediaPannelloExtra.matches ? prodottiWrapper : sezioneExtra;
+    if (extraDettagli.parentElement !== destinazione) destinazione.appendChild(extraDettagli);
+}
+function chiudiPannelloExtra() {
+    if (!extraAperto) return;
+    extraAperto = false;
+    extraRicerca.value = "";
+    renderRiepilogo();
 }
 function renderSenzaIngredienti(riga, ingredienti) {
     senzaIngredientiLista.replaceChildren();
@@ -1094,6 +1106,11 @@ function aggiornaRighePaginaProdotti(griglia, pagina = griglia.querySelector(".p
     if (!pagina) return;
     if (!window.matchMedia("(min-width: 1440px)").matches) {
         pagina.style.removeProperty("--prodotti-righe");
+        pagina.querySelectorAll(".ingredienti-wrapper").forEach(wrapper => {
+            wrapper.hidden = false;
+            wrapper.style.removeProperty("--ingredienti-righe");
+            wrapper.style.removeProperty("--ingredienti-altezza");
+        });
         return;
     }
     const altezzaDisponibile = griglia.clientHeight;
@@ -1103,6 +1120,34 @@ function aggiornaRighePaginaProdotti(griglia, pagina = griglia.querySelector(".p
         (altezzaDisponibile + spazioRighe) / (118 + spazioRighe)
     ));
     pagina.style.setProperty("--prodotti-righe", String(righe));
+    aggiornaRigheIngredienti(pagina);
+}
+function aggiornaRigheIngredienti(pagina) {
+    pagina.querySelectorAll(".ingredienti-wrapper").forEach(wrapper => {
+        const bottone = wrapper.closest(".prodotto-btn");
+        const ingredienti = wrapper.querySelector(".ingredienti");
+        const intestazione = bottone?.querySelector(".prodotto-btn__meta");
+        if (!bottone || !ingredienti || !intestazione) return;
+
+        const stileBottone = window.getComputedStyle(bottone);
+        const stileWrapper = window.getComputedStyle(wrapper);
+        const altezzaRiga = Number.parseFloat(window.getComputedStyle(ingredienti).lineHeight);
+        if (!Number.isFinite(altezzaRiga) || altezzaRiga <= 0) return;
+
+        const esaurito = bottone.querySelector(".prodotto-esaurito");
+        const stileEsaurito = esaurito ? window.getComputedStyle(esaurito) : null;
+        const altezzaDisponibile = bottone.clientHeight
+            - (Number.parseFloat(stileBottone.paddingTop) || 0)
+            - (Number.parseFloat(stileBottone.paddingBottom) || 0)
+            - intestazione.offsetHeight
+            - (esaurito?.offsetHeight || 0)
+            - (Number.parseFloat(stileEsaurito?.marginTop) || 0)
+            - (Number.parseFloat(stileWrapper.marginTop) || 0);
+        const righe = Math.max(0, Math.min(2, Math.floor(Math.max(0, altezzaDisponibile) / altezzaRiga)));
+        wrapper.hidden = righe === 0;
+        wrapper.style.setProperty("--ingredienti-righe", String(righe));
+        wrapper.style.setProperty("--ingredienti-altezza", `${righe * altezzaRiga}px`);
+    });
 }
 function creaBottoneProdotto(prodotto) {
     const bottone = document.createElement("button");
@@ -1804,6 +1849,7 @@ async function inviaOrdine() {
 tabsCategorie.addEventListener("click", evento => {
     const tab = evento.target.closest(".tab[data-tab]");
     if (!tab || !tabsCategorie.contains(tab)) return;
+    chiudiPannelloExtra();
     stato.categoria = tab.dataset.tab;
     extraRicerca.value = "";
     tabsCategorie.querySelectorAll(".tab[data-tab]")
@@ -2036,6 +2082,12 @@ numeroPersone.min = "1";
 numeroPersone.max = "30";
 aggiornaPulsanteNote();
 aggiornaTipoOrdine();
+aggiornaPosizionePannelloExtra();
+window.addEventListener("resize", aggiornaPosizionePannelloExtra);
+extraFatto.addEventListener("click", () => {
+    chiudiPannelloExtra();
+    extraIntestazione.focus({ preventScroll: true });
+});
 extraIntestazione.addEventListener("click", () => {
     extraAperto = !extraAperto;
     if (!extraAperto) extraRicerca.value = "";
