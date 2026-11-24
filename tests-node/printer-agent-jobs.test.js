@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createPrinterAgent, formatReceipt } = require("../scripts/printer-agent");
+const { FieldValue } = require("firebase-admin/firestore");
 
 function createDatabase(seed) {
     const initialData = { ...seed };
@@ -30,7 +31,21 @@ function createDatabase(seed) {
             documents(name).set(String(id), value);
         },
         async update(value) {
-            documents(name).set(String(id), { ...documents(name).get(String(id)), ...value });
+            const current = documents(name).get(String(id)) || {};
+            const updated = { ...current };
+            for (const [field, nextValue] of Object.entries(value)) {
+                if (nextValue instanceof FieldValue && nextValue.constructor.name === "ArrayUnionTransform") {
+                    updated[field] = [...new Set([
+                        ...(Array.isArray(updated[field]) ? updated[field] : []),
+                        ...nextValue.elements
+                    ])];
+                } else if (nextValue instanceof FieldValue && nextValue.constructor.name === "DeleteTransform") {
+                    delete updated[field];
+                } else {
+                    updated[field] = nextValue;
+                }
+            }
+            documents(name).set(String(id), updated);
         }
     });
     const querySnapshot = (name, entries) => ({
@@ -94,9 +109,9 @@ async function runOneTick(agent) {
     await agent.stop();
 }
 
-function order() {
+function order(numero = 7) {
     return {
-        numero: 7,
+        numero,
         tipo: "tavolo",
         tavoloOCliente: "Tavolo 2",
         dataOra: "2026-11-11T12:00:00.000Z",
@@ -107,6 +122,34 @@ function order() {
 
 function readyPrinters(...names) {
     return names.map(name => ({ name, state: "ready", host: `192.168.1.${name === "Cucina" ? "2" : "3"}` }));
+}
+
+function queuedPrinterJob(numero, stampanti) {
+    return {
+        numero,
+        stampanti,
+        status: "queued",
+        attemptCount: 0,
+        printedPrinters: []
+    };
+}
+
+async function withFakeIntervals(callback) {
+    const originalSetInterval = global.setInterval;
+    const originalClearInterval = global.clearInterval;
+    const intervals = [];
+    global.setInterval = (run, milliseconds) => {
+        const timer = { run, milliseconds };
+        intervals.push(timer);
+        return timer;
+    };
+    global.clearInterval = () => {};
+    try {
+        await callback(intervals);
+    } finally {
+        global.setInterval = originalSetInterval;
+        global.clearInterval = originalClearInterval;
+    }
 }
 
 test("the agent prints a reprint only to its selected printer", async () => {
@@ -137,7 +180,7 @@ test("the agent prints a reprint only to its selected printer", async () => {
     assert.match(database.documents("orders").get("7").messaggioStampa, /^Ristampa completata\.$/);
 });
 
-test("the agent marks a selected reprint failed when its printer is not configured", async () => {
+test("the agent leaves a selected reprint queued when its printer is unavailable", async () => {
     const database = createDatabase({
         orders: { "7": order() },
         printerJobs: {
@@ -161,11 +204,11 @@ test("the agent marks a selected reprint failed when its printer is not configur
 
     const job = database.documents("printerJobs").get("000000000007-01");
     assert.equal(printCount, 0);
-    assert.equal(job.status, "failed");
-    assert.equal(job.lastError, "stampante_non_configurata");
+    assert.equal(job.status, "queued");
+    assert.deepEqual(job.printedPrinters, []);
 });
 
-test("the agent fails a reprint rather than silently skipping one requested printer", async () => {
+test("the agent prints the ready portion of a reprint and queues its missing printer", async () => {
     const database = createDatabase({
         orders: { "7": order() },
         printerJobs: {
@@ -188,9 +231,127 @@ test("the agent fails a reprint rather than silently skipping one requested prin
     await runOneTick(agent);
 
     const job = database.documents("printerJobs").get("000000000007-01");
-    assert.equal(printCount, 0);
-    assert.equal(job.status, "failed");
-    assert.equal(job.lastError, "stampante_non_configurata");
+    assert.equal(printCount, 1);
+    assert.equal(job.status, "queued");
+    assert.deepEqual(job.printedPrinters, ["Cucina"]);
+    assert.equal(
+        database.documents("orders").get("7").messaggioStampa,
+        "Stampata in Cucina, in attesa di Sala."
+    );
+});
+
+test("the agent prints three queued orders through Cucina while Sala is offline", async () => {
+    const numbers = [1, 2, 3];
+    const database = createDatabase({
+        orders: Object.fromEntries(numbers.map(numero => [String(numero), order(numero)])),
+        printerJobs: Object.fromEntries(numbers.map(numero => [
+            `00000000000${numero}`,
+            queuedPrinterJob(numero, ["Cucina", "Sala"])
+        ]))
+    });
+    const printers = [
+        { name: "Cucina", state: "ready", host: "192.168.1.2" },
+        { name: "Sala", state: "out_of_paper", host: "192.168.1.3" }
+    ];
+    const prints = [];
+    const agent = createPrinterAgent(database, {
+        getPrinters: async () => printers,
+        printOrder: async (currentOrder, printer) => {
+            prints.push({ numero: currentOrder.numero, printer: printer.name });
+        }
+    });
+
+    await runOneTick(agent);
+
+    assert.deepEqual(prints, numbers.map(numero => ({ numero, printer: "Cucina" })));
+    for (const numero of numbers) {
+        const job = database.documents("printerJobs").get(`00000000000${numero}`);
+        const currentOrder = database.documents("orders").get(String(numero));
+        assert.equal(job.status, "queued");
+        assert.deepEqual(job.printedPrinters, ["Cucina"]);
+        assert.equal(currentOrder.stampaInCoda, true);
+        assert.equal(currentOrder.messaggioStampa, "Stampata in Cucina, in attesa di Sala.");
+    }
+});
+
+test("a printer refresh resumes only the missing Sala copies", async () => {
+    await withFakeIntervals(async intervals => {
+        const numbers = [1, 2, 3];
+        const database = createDatabase({
+            orders: Object.fromEntries(numbers.map(numero => [String(numero), {
+                ...order(numero),
+                stampaInCoda: true,
+                messaggioStampa: "Stampata in Cucina, in attesa di Sala."
+            }])),
+            printerJobs: Object.fromEntries(numbers.map(numero => [
+                `00000000000${numero}`,
+                {
+                    ...queuedPrinterJob(numero, ["Cucina", "Sala"]),
+                    printedPrinters: ["Cucina"]
+                }
+            ]))
+        });
+        const availablePrinters = [{ name: "Cucina", state: "ready", host: "192.168.1.2" }];
+        const prints = [];
+        const agent = createPrinterAgent(database, {
+            getPrinters: async () => availablePrinters,
+            printOrder: async (currentOrder, printer) => {
+                prints.push({ numero: currentOrder.numero, printer: printer.name });
+            }
+        });
+
+        try {
+            await agent.run();
+            for (const numero of numbers) {
+                const job = database.documents("printerJobs").get(`00000000000${numero}`);
+                assert.equal(job.status, "queued");
+                assert.deepEqual(job.printedPrinters, ["Cucina"]);
+            }
+            assert.deepEqual(prints, []);
+
+            availablePrinters.push({ name: "Sala", state: "ready", host: "192.168.1.3" });
+            await intervals[0].run();
+
+            assert.deepEqual(prints, numbers.map(numero => ({ numero, printer: "Sala" })));
+            for (const numero of numbers) {
+                const job = database.documents("printerJobs").get(`00000000000${numero}`);
+                assert.equal(job.status, "printed");
+                assert.deepEqual(job.printedPrinters, ["Cucina", "Sala"]);
+            }
+        } finally {
+            await agent.stop();
+        }
+    });
+});
+
+test("an unavailable Sala-only reprint does not block a newer Cucina order", async () => {
+    const database = createDatabase({
+        orders: { "7": order(7), "8": order(8) },
+        printerJobs: {
+            "000000000007-01": {
+                ...queuedPrinterJob(7, ["Sala"]),
+                tipoStampa: "ristampa"
+            },
+            "000000000008-01": queuedPrinterJob(8, ["Cucina"])
+        }
+    });
+    const prints = [];
+    const agent = createPrinterAgent(database, {
+        getPrinters: async () => [
+            { name: "Cucina", state: "ready", host: "192.168.1.2" },
+            { name: "Sala", state: "out_of_paper", host: "192.168.1.3" }
+        ],
+        printOrder: async (currentOrder, printer) => {
+            prints.push({ numero: currentOrder.numero, printer: printer.name });
+        }
+    });
+
+    await runOneTick(agent);
+
+    assert.deepEqual(prints, [{ numero: 8, printer: "Cucina" }]);
+    assert.equal(database.documents("printerJobs").get("000000000007-01").status, "queued");
+    assert.deepEqual(database.documents("printerJobs").get("000000000007-01").printedPrinters, []);
+    assert.equal(database.documents("printerJobs").get("000000000008-01").status, "printed");
 });
 
 test("modified reprints are labeled on the receipt", () => {
