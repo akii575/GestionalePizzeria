@@ -451,6 +451,7 @@ button {
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: repeat(3, 132px);
+    grid-auto-flow: row;
     align-content: start;
     align-items: start;
     gap: 10px;
@@ -2101,7 +2102,9 @@ button {
     }
 
     .pagina-prodotti {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-rows: repeat(3, 128px);
+        grid-auto-flow: row;
     }
 
     .prodotto-btn {
@@ -2586,8 +2589,9 @@ button {
 
     .pagina-prodotti {
         height: 100%;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-rows: repeat(3, minmax(0, 1fr));
+        grid-auto-flow: row;
     }
 
     .prodotto-btn {
@@ -2599,13 +2603,15 @@ button {
 
 @media (min-width: 768px) and (max-width: 1279px) {
     .pagina-prodotti {
-        grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-flow: row;
     }
 }
 
 @media (min-width: 1280px) {
     .pagina-prodotti {
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-flow: row;
     }
 }
 
@@ -2811,9 +2817,10 @@ body {
 .pagina-prodotti {
     display: grid;
     width: 100%;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: none;
     grid-auto-rows: minmax(96px, auto);
+    grid-auto-flow: row;
     align-content: start;
     align-items: stretch;
     gap: 8px;
@@ -3261,7 +3268,8 @@ body {
 
 @media (min-width: 800px) and (max-width: 1023px) {
     .pagina-prodotti {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-flow: row;
     }
 
     .prodotto-btn strong {
@@ -3455,7 +3463,8 @@ body {
     }
 
     .pagina-prodotti {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-flow: row;
         grid-auto-rows: minmax(96px, auto);
     }
 

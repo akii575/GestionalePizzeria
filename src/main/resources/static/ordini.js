@@ -130,6 +130,7 @@ const { escapeHtml } = window.htmlUtils;
 const {
     NOTE_RIGA,
     filtraProdotti,
+    creaPagineProdotti,
     filtraExtra,
     trovaComponibileSenzaIngredienti,
     isCoperto,
@@ -1165,29 +1166,54 @@ function renderProdotti() {
     const disponibili = stato.menu
         .filter(prodotto => !isCoperto(prodotto) && prodotto.categoria === stato.categoria)
         .sort((a, b) => a.ordine - b.ordine || a.nome.localeCompare(b.nome, "it"));
-    const pagina = document.createElement("div");
-    pagina.className = "pagina-prodotti";
-    disponibili.forEach(prodotto => {
-        const bottone = creaBottoneProdotto(prodotto);
+    renderPagineProdotti(prodotti, disponibili, (bottone, prodotto) => {
         bottone.addEventListener("click", () => aggiungiProdotto(prodotto, "griglia"));
-        pagina.appendChild(bottone);
     });
-    prodotti.appendChild(pagina);
-    aggiornaRighePaginaProdotti(prodotti, pagina);
     aggiornaIndicatoreProdotti(prodotti, prodottiWrapper, prodottiIndicatore);
 }
-function aggiornaRighePaginaProdotti(griglia, pagina = griglia.querySelector(".pagina-prodotti")) {
-    if (!pagina) return;
-    if (!window.matchMedia("(min-width: 600px)").matches) {
-        pagina.style.removeProperty("--prodotti-righe");
-        pagina.querySelectorAll(".ingredienti-wrapper").forEach(wrapper => {
+function renderPagineProdotti(griglia, elenco, configuraBottone) {
+    creaPagineProdotti(elenco).forEach(prodottiPagina => {
+        const pagina = document.createElement("div");
+        pagina.className = "pagina-prodotti";
+        prodottiPagina.forEach(prodotto => {
+            const bottone = creaBottoneProdotto(prodotto);
+            configuraBottone(bottone, prodotto);
+            pagina.appendChild(bottone);
+        });
+        griglia.appendChild(pagina);
+        aggiornaRighePaginaProdotti(griglia, pagina);
+    });
+}
+function aggiornaRighePaginaProdotti(griglia, pagina = null) {
+    const pagine = pagina
+        ? [pagina]
+        : [...griglia.querySelectorAll(".pagina-prodotti")];
+    if (!pagine.length) return;
+    const altezzaMassima = Number.parseFloat(
+        window.getComputedStyle(pagine[0]).getPropertyValue("--prodotti-altezza-massima")
+    ) || 132;
+    const mostraIngredientiCompleti = window.matchMedia("(min-width: 600px)").matches;
+    pagine.forEach(paginaCorrente => {
+        const stilePagina = window.getComputedStyle(paginaCorrente);
+        const gap = Number.parseFloat(stilePagina.rowGap) || 0;
+        const paddingVerticale = (Number.parseFloat(stilePagina.paddingTop) || 0)
+            + (Number.parseFloat(stilePagina.paddingBottom) || 0);
+        const altezzaDisponibile = paginaCorrente.clientHeight - paddingVerticale - (gap * 2);
+        const altezzaRiga = Math.min(
+            altezzaMassima,
+            Math.max(0, altezzaDisponibile / 3)
+        );
+        paginaCorrente.style.setProperty("--prodotti-altezza-riga", `${altezzaRiga}px`);
+        if (mostraIngredientiCompleti) {
+            aggiornaRigheIngredienti(paginaCorrente);
+            return;
+        }
+        paginaCorrente.querySelectorAll(".ingredienti-wrapper").forEach(wrapper => {
             wrapper.hidden = false;
             wrapper.style.removeProperty("--ingredienti-righe");
             wrapper.style.removeProperty("--ingredienti-altezza");
         });
-        return;
-    }
-    aggiornaRigheIngredienti(pagina);
+    });
 }
 function aggiornaRigheIngredienti(pagina) {
     pagina.querySelectorAll(".ingredienti-wrapper").forEach(wrapper => {
@@ -1358,10 +1384,7 @@ function renderRisultatiRicerca() {
         aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
         return;
     }
-    const pagina = document.createElement("div");
-    pagina.className = "pagina-prodotti";
-    trovati.forEach(prodotto => {
-        const bottone = creaBottoneProdotto(prodotto);
+    renderPagineProdotti(ricercaRisultati, trovati, (bottone, prodotto) => {
         bottone.classList.add("ricerca-risultato");
         const categoria = document.createElement("span");
         categoria.className = "ricerca-categoria";
@@ -1388,10 +1411,7 @@ function renderRisultatiRicerca() {
                 : `Aggiunto: ${prodotto.nome}`;
             mostraMessaggio(descrizioneAggiunta, "successo");
         });
-        pagina.appendChild(bottone);
     });
-    ricercaRisultati.appendChild(pagina);
-    aggiornaRighePaginaProdotti(ricercaRisultati, pagina);
     aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
 }
 function gestisciTastoMoltiplicatore(evento) {

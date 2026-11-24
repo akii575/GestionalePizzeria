@@ -6,6 +6,7 @@ const menu = require("../lib/menu.json");
 const {
     normalizza,
     filtraProdotti,
+    creaPagineProdotti,
     filtraExtra,
     trovaComponibileSenzaIngredienti,
     NOTE_RIGA,
@@ -52,6 +53,19 @@ const { NOTE_RIGA: NOTE_RIGA_SERVER } = require("../lib/note-riga");
 
 test("client pizza-note choices match the server list", () => {
     assert.deepEqual(NOTE_RIGA, NOTE_RIGA_SERVER);
+});
+
+test("product pages keep row-major order and contain at most nine products", () => {
+    const fourProducts = creaPagineProdotti(["1", "2", "3", "4"]);
+    assert.equal(fourProducts.length, 1);
+    assert.deepEqual(
+        fourProducts[0].slice(0, 4).map((_, index) => [Math.floor(index / 3) + 1, index % 3 + 1]),
+        [[1, 1], [1, 2], [1, 3], [2, 1]]
+    );
+
+    const tenProducts = creaPagineProdotti(Array.from({ length: 10 }, (_, index) => String(index + 1)));
+    assert.equal(tenProducts.length, 2);
+    assert.deepEqual(tenProducts[1], ["10"]);
 });
 
 test("edit save is blocked until the original order has loaded", () => {
@@ -889,7 +903,7 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(script, /className = "prodotto-quantita"/);
     assert.match(script, /badge\.textContent = String\(quantita\)/);
     assert.match(script, /badge\?\.remove\(\)/);
-    assert.match(stile, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(170px,\s*1fr\)\)/);
+    assert.match(stile, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
     assert.match(stile, /\.prodotto-quantita\s*\{[^}]*top:\s*auto;[^}]*right:\s*4px;[^}]*bottom:\s*4px;[^}]*left:\s*auto;[^}]*width:\s*18px;[^}]*height:\s*18px;[^}]*background:\s*#1a5ea9;/);
     assert.match(stile, /\.prodotto-btn strong\s*\{[^}]*max-height:\s*2\.3em;[^}]*grid-column:\s*1 \/ -1;[^}]*overflow-wrap:\s*normal;[^}]*text-overflow:\s*clip;[^}]*word-break:\s*normal;[^}]*hyphens:\s*none;/s);
     assert.match(stile, /\.prodotto-btn strong::before\s*\{[^}]*float:\s*right;[^}]*width:\s*56px;[^}]*height:\s*1\.15em;/s);
@@ -902,6 +916,8 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(stile, /\.riepilogo-item__descrizione \.seleziona-riga\s*\{[^}]*display:\s*-webkit-box;[^}]*white-space:\s*normal;[^}]*-webkit-line-clamp:\s*2;/s);
     assert.match(stile, /\.ingredienti-nascosti \.prodotto-btn\s*\{[^}]*min-height:\s*64px;/);
     assert.match(script, /function aggiornaRighePaginaProdotti\([\s\S]*?matchMedia\("\(min-width: 600px\)"\)[\s\S]*?aggiornaRigheIngredienti\(pagina\)/);
+    assert.match(script, /function renderPagineProdotti\([\s\S]*?creaPagineProdotti\(elenco\)[\s\S]*?griglia\.appendChild\(pagina\)/);
+    assert.match(script, /function aggiornaRighePaginaProdotti\([\s\S]*?--prodotti-altezza-massima[\s\S]*?paginaCorrente\.clientHeight[\s\S]*?Math\.min\(\s*altezzaMassima,\s*Math\.max\(0,\s*altezzaDisponibile \/ 3\)\s*\)[\s\S]*?--prodotti-altezza-riga/);
     assert.match(script, /function aggiornaRigheIngredienti\([\s\S]*?bottone\.clientHeight[\s\S]*?stileBottone\.paddingTop[\s\S]*?stileBottone\.paddingBottom[\s\S]*?intestazione\.offsetHeight[\s\S]*?stileWrapper\.marginTop[\s\S]*?Math\.min\(5,[\s\S]*?Math\.floor\(Math\.max\(0, altezzaDisponibile\) \/ altezzaRiga\)/);
     assert.match(script, /function aggiornaIndicatoreProdotti\([\s\S]*?Math\.ceil\(griglia\.querySelectorAll\("\.prodotto-btn"\)\.length \/ 9\)/);
     assert.match(script, /chiudiSuProdotto:\s*window\.matchMedia\("\(min-width: 800px\)"\)\.matches/);
