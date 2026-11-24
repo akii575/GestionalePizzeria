@@ -7,9 +7,10 @@ const vm = require("node:vm");
 const pages = ["gestionale.html", "banco.html", "ritiri.html", "tavoli.html"];
 const staticDirectory = path.join(__dirname, "../src/main/resources/static");
 
-function runOrdersPage(currentAccount) {
+function runOrdersPage(currentAccount, { missingIds = [] } = {}) {
     const source = fs.readFileSync(path.join(staticDirectory, "gestionale.js"), "utf8");
     const elements = new Map();
+    const fetchCalls = [];
     function element(id) {
         if (!elements.has(id)) {
             const listeners = new Map();
@@ -34,7 +35,7 @@ function runOrdersPage(currentAccount) {
     const context = {
         document: {
             body: { dataset: { serviceType: "" } },
-            getElementById: element,
+            getElementById(id) { return missingIds.includes(id) ? null : element(id); },
             addEventListener() {},
             visibilityState: "visible"
         },
@@ -51,12 +52,15 @@ function runOrdersPage(currentAccount) {
                 render() { return ""; }
             }
         },
-        fetch: async url => ({
-            ok: true,
-            async json() {
-                return url === "/api/menu" ? [] : { versione: 1, ordini: [] };
-            }
-        }),
+        fetch: async url => {
+            fetchCalls.push(url);
+            return {
+                ok: true,
+                async json() {
+                    return url === "/api/menu" ? [] : { versione: 1, ordini: [] };
+                }
+            };
+        },
         setInterval() { return 1; },
         clearInterval() {},
         Intl,
@@ -66,7 +70,7 @@ function runOrdersPage(currentAccount) {
         Set
     };
     vm.runInNewContext(source, context);
-    return elements;
+    return { elements, fetchCalls };
 }
 
 test("order reset button is consistently labeled on every order-list page", () => {
@@ -97,11 +101,11 @@ test("reset confirmation explains the destructive action and does not use inline
 });
 
 test("only admins see reset controls and the confirmation unlocks only for RESET", async () => {
-    const staffElements = runOrdersPage({ admin: false, staff: true });
+    const { elements: staffElements } = runOrdersPage({ admin: false, staff: true });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(staffElements.get("reset-numeri").hidden, true);
 
-    const adminElements = runOrdersPage({ admin: true });
+    const { elements: adminElements } = runOrdersPage({ admin: true });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(adminElements.get("reset-numeri").hidden, false);
 
@@ -118,6 +122,24 @@ test("only admins see reset controls and the confirmation unlocks only for RESET
     phrase.value = "RESET";
     onInput();
     assert.equal(confirmButton.disabled, false);
+});
+
+test("shared order-list script loads orders when reset dialog elements are absent", async () => {
+    const dialogIds = [
+        "reset-numeri-dialog",
+        "reset-numeri-phrase",
+        "reset-numeri-confirm",
+        "reset-numeri-cancel"
+    ];
+    const { elements, fetchCalls } = runOrdersPage(
+        { admin: false, staff: true },
+        { missingIds: dialogIds }
+    );
+
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.ok(fetchCalls.includes("/api/ordini"));
+    assert.equal(elements.get("reset-numeri").hidden, true);
 });
 
 test("mobile all-orders header reset delegates to the existing reset button", () => {

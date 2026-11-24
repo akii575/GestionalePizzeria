@@ -238,33 +238,49 @@ const resetButton = document.getElementById("reset-numeri");
 const resetDialog = document.getElementById("reset-numeri-dialog");
 const resetPhrase = document.getElementById("reset-numeri-phrase");
 const resetConfirm = document.getElementById("reset-numeri-confirm");
-resetConfirm.disabled = true;
-resetPhrase.addEventListener("input", () => {
-    resetConfirm.disabled = resetPhrase.value !== "RESET";
-});
-resetButton.addEventListener("click", () => {
-    if (window.currentAccount?.admin !== true) return;
-    resetPhrase.value = "";
+const resetCancel = document.getElementById("reset-numeri-cancel");
+const resetConfirmationAvailable = Boolean(
+    resetButton
+    && resetDialog
+    && resetPhrase
+    && resetConfirm
+    && resetCancel
+    && typeof resetDialog.showModal === "function"
+    && typeof resetDialog.close === "function"
+);
+if (resetButton && !resetConfirmationAvailable) resetButton.hidden = true;
+if (resetConfirmationAvailable) {
     resetConfirm.disabled = true;
-    resetDialog.showModal();
-    resetPhrase.focus();
-});
-document.getElementById("reset-numeri-cancel").addEventListener("click", () => resetDialog.close());
-resetConfirm.addEventListener("click", async () => {
-    if (window.currentAccount?.admin !== true || resetPhrase.value !== "RESET") return;
-    resetDialog.close();
-    try {
-        const risposta = await fetch("/api/reset-numeri", { method: "POST" });
-        if (!risposta.ok) throw new Error("Reset non riuscito.");
-        if (window.themeToast) window.themeToast("Ordini eliminati e numerazione resettata");
-        await caricaOrdini();
-    } catch (errore) {
-        mostraStato(errore.message, "errore");
-    }
-});
+    resetPhrase.addEventListener("input", () => {
+        resetConfirm.disabled = resetPhrase.value !== "RESET";
+    });
+    resetButton.addEventListener("click", () => {
+        if (window.currentAccount?.admin !== true) return;
+        resetPhrase.value = "";
+        resetConfirm.disabled = true;
+        resetDialog.showModal();
+        resetPhrase.focus();
+    });
+    resetCancel.addEventListener("click", () => resetDialog.close());
+    resetConfirm.addEventListener("click", async () => {
+        if (window.currentAccount?.admin !== true || resetPhrase.value !== "RESET") return;
+        resetDialog.close();
+        try {
+            const risposta = await fetch("/api/reset-numeri", { method: "POST" });
+            if (!risposta.ok) throw new Error("Reset non riuscito.");
+            if (window.themeToast) window.themeToast("Ordini eliminati e numerazione resettata");
+            await caricaOrdini();
+        } catch (errore) {
+            mostraStato(errore.message, "errore");
+        }
+    });
+}
 async function avvia() {
     if (!await window.authReady || !window.currentAccount) return;
-    resetButton.hidden = window.currentAccount.admin !== true;
+    if (resetButton) {
+        resetButton.hidden = window.currentAccount.admin !== true;
+        if (!resetConfirmationAvailable) resetButton.hidden = true;
+    }
     let erroreMenu = null;
     try {
         const risposta = await fetch("/api/menu", { cache: "no-store" });
