@@ -66,6 +66,7 @@ function createDatabase(seed) {
                 where(field, operator, value) {
                     assert.equal(operator, "==");
                     let size = Infinity;
+                    let cursor = null;
                     const query = {
                         orderBy() {
                             return query;
@@ -74,19 +75,23 @@ function createDatabase(seed) {
                             size = limit;
                             return query;
                         },
-                        onSnapshot(callback) {
-                            callback(querySnapshot(name, [...documents(name).entries()]
+                        startAfter(document) {
+                            cursor = document.id;
+                            return query;
+                        },
+                        entries() {
+                            return [...documents(name).entries()]
                                 .filter(([, data]) => data[field] === value)
                                 .sort(([first], [second]) => first.localeCompare(second))
-                                .slice(0, size)));
+                                .filter(([id]) => cursor === null || id.localeCompare(cursor) > 0)
+                                .slice(0, size);
+                        },
+                        onSnapshot(callback) {
+                            callback(querySnapshot(name, query.entries()));
                             return () => {};
                         },
                         async get() {
-                            const entries = [...documents(name).entries()]
-                                .filter(([, data]) => data[field] === value)
-                                .sort(([first], [second]) => first.localeCompare(second))
-                                .slice(0, size);
-                            return querySnapshot(name, entries);
+                            return querySnapshot(name, query.entries());
                         }
                     };
                     return query;
@@ -180,14 +185,14 @@ test("the agent prints a reprint only to its selected printer", async () => {
     assert.match(database.documents("orders").get("7").messaggioStampa, /^Ristampa completata\.$/);
 });
 
-test("the agent leaves a selected reprint queued when its printer is unavailable", async () => {
+test("the agent leaves a selected reprint queued when its configured printer is offline", async () => {
     const database = createDatabase({
         orders: { "7": order() },
         printerJobs: {
             "000000000007-01": {
                 numero: 7,
                 tipoStampa: "ristampa",
-                stampanti: ["Cucina"],
+                stampanti: ["Sala"],
                 status: "queued",
                 attemptCount: 0,
                 printedPrinters: []
@@ -196,7 +201,10 @@ test("the agent leaves a selected reprint queued when its printer is unavailable
     });
     let printCount = 0;
     const agent = createPrinterAgent(database, {
-        getPrinters: async () => readyPrinters("Sala"),
+        getPrinters: async () => [
+            { name: "Cucina", state: "ready", host: "192.168.1.2" },
+            { name: "Sala", state: "unavailable", host: "192.168.1.3" }
+        ],
         printOrder: async () => { printCount++; }
     });
 
@@ -208,7 +216,7 @@ test("the agent leaves a selected reprint queued when its printer is unavailable
     assert.deepEqual(job.printedPrinters, []);
 });
 
-test("the agent prints the ready portion of a reprint and queues its missing printer", async () => {
+test("the agent prints configured ready printers before failing an unconfigured reprint target", async () => {
     const database = createDatabase({
         orders: { "7": order() },
         printerJobs: {
@@ -232,12 +240,33 @@ test("the agent prints the ready portion of a reprint and queues its missing pri
 
     const job = database.documents("printerJobs").get("000000000007-01");
     assert.equal(printCount, 1);
-    assert.equal(job.status, "queued");
+    assert.equal(job.status, "failed");
     assert.deepEqual(job.printedPrinters, ["Cucina"]);
-    assert.equal(
-        database.documents("orders").get("7").messaggioStampa,
-        "Stampata in Cucina, in attesa di Sala."
-    );
+    assert.equal(job.lastError, "stampante_non_configurata");
+});
+
+test("a Sala-only job fails when getPrinters configures only Cucina", async () => {
+    const database = createDatabase({
+        orders: { "7": order() },
+        printerJobs: {
+            "000000000007-01": {
+                ...queuedPrinterJob(7, ["Sala"]),
+                tipoStampa: "ristampa"
+            }
+        }
+    });
+    let printCount = 0;
+    const agent = createPrinterAgent(database, {
+        getPrinters: async () => readyPrinters("Cucina"),
+        printOrder: async () => { printCount++; }
+    });
+
+    await runOneTick(agent);
+
+    const job = database.documents("printerJobs").get("000000000007-01");
+    assert.equal(printCount, 0);
+    assert.equal(job.status, "failed");
+    assert.equal(job.lastError, "stampante_non_configurata");
 });
 
 test("the agent prints three queued orders through Cucina while Sala is offline", async () => {
@@ -291,7 +320,10 @@ test("a printer refresh resumes only the missing Sala copies", async () => {
                 }
             ]))
         });
-        const availablePrinters = [{ name: "Cucina", state: "ready", host: "192.168.1.2" }];
+        const availablePrinters = [
+            { name: "Cucina", state: "ready", host: "192.168.1.2" },
+            { name: "Sala", state: "unavailable", host: "192.168.1.3" }
+        ];
         const prints = [];
         const agent = createPrinterAgent(database, {
             getPrinters: async () => availablePrinters,
@@ -309,7 +341,7 @@ test("a printer refresh resumes only the missing Sala copies", async () => {
             }
             assert.deepEqual(prints, []);
 
-            availablePrinters.push({ name: "Sala", state: "ready", host: "192.168.1.3" });
+            availablePrinters[1].state = "ready";
             await intervals[0].run();
 
             assert.deepEqual(prints, numbers.map(numero => ({ numero, printer: "Sala" })));
@@ -352,6 +384,35 @@ test("an unavailable Sala-only reprint does not block a newer Cucina order", asy
     assert.equal(database.documents("printerJobs").get("000000000007-01").status, "queued");
     assert.deepEqual(database.documents("printerJobs").get("000000000007-01").printedPrinters, []);
     assert.equal(database.documents("printerJobs").get("000000000008-01").status, "printed");
+});
+
+test("more than 20 jobs waiting for an offline Sala do not block a new Cucina order", async () => {
+    const orders = {};
+    const printerJobs = {};
+    for (let numero = 1; numero <= 25; numero++) {
+        orders[String(numero)] = order(numero);
+        printerJobs[String(numero).padStart(12, "0")] = {
+            ...queuedPrinterJob(numero, ["Cucina", "Sala"]),
+            printedPrinters: ["Cucina"]
+        };
+    }
+    orders["26"] = order(26);
+    printerJobs["000000000026"] = queuedPrinterJob(26, ["Cucina", "Sala"]);
+    const database = createDatabase({ orders, printerJobs });
+    const prints = [];
+    const agent = createPrinterAgent(database, {
+        getPrinters: async () => [
+            { name: "Cucina", state: "ready", host: "192.168.1.2" },
+            { name: "Sala", state: "unavailable", host: "192.168.1.3" }
+        ],
+        printOrder: async (currentOrder, printer) => {
+            prints.push({ numero: currentOrder.numero, printer: printer.name });
+        }
+    });
+
+    await runOneTick(agent);
+
+    assert.deepEqual(prints, [{ numero: 26, printer: "Cucina" }]);
 });
 
 test("modified reprints are labeled on the receipt", () => {

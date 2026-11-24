@@ -543,6 +543,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     let lastPrintedOrder = null;
     let lastError = null;
     let printers = [];
+    let printersInitialized = false;
     let ownsLock = false;
     let drainPromise = null;
     let drainRequested = false;
@@ -588,12 +589,14 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         try {
             const available = await queryPrinters();
             printers = Array.isArray(available) ? available : [];
+            printersInitialized = true;
             workerState = printers.length > 0
                     && printers.every(printer => !printer.isVirtual && printer.state === "ready")
                 ? "ready"
                 : "printer_unavailable";
         } catch (error) {
             printers = [];
+            printersInitialized = true;
             workerState = "printer_unavailable";
             console.error("Unable to refresh printer status:", error.code || error.name || "unknown");
         }
@@ -677,6 +680,12 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         return printers.filter(printer => job.stampanti.includes(printer.name));
     }
 
+    function hasMissingPrinter(job, printers) {
+        return typeof job.stampanti !== "undefined"
+            && (!Array.isArray(job.stampanti)
+                || job.stampanti.some(name => !printers.some(printer => printer.name === name)));
+    }
+
     function targetPrinterNames(job, printers) {
         const names = typeof job.stampanti === "undefined"
             ? printers.map(printer => printer.name)
@@ -731,72 +740,89 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     }
 
     async function claimNextJob(printers) {
-        const snapshot = await jobs
-            .where("status", "==", "queued")
-            .orderBy(FieldPath.documentId())
-            .limit(20)
-            .get();
-        for (const candidate of snapshot.docs) {
-            const claimedJob = await db.runTransaction(async transaction => {
-                const controlSnapshot = await transaction.get(controlRef);
-                const lockSnapshot = await transaction.get(lockRef);
-                const jobSnapshot = await transaction.get(candidate.ref);
-                if (controlSnapshot.data()?.paused || lockSnapshot.data()?.instanceId !== instanceId
-                        || !jobSnapshot.exists || jobSnapshot.data().status !== "queued") {
-                    return null;
-                }
-                const job = jobSnapshot.data();
-                if (!readyUnprintedPrinters(job, printers).length) return null;
+        const pageSize = 50;
+        let lastCandidate = null;
+        while (true) {
+            let query = jobs
+                .where("status", "==", "queued")
+                .orderBy(FieldPath.documentId())
+                .limit(pageSize);
+            if (lastCandidate) query = query.startAfter(lastCandidate);
+            const snapshot = await query.get();
+            if (snapshot.empty) return null;
 
-                const orderRef = orders.doc(String(job.numero));
-                const orderSnapshot = await transaction.get(orderRef);
-                if (!orderSnapshot.exists) {
-                    transaction.update(candidate.ref, { status: "cancelled", lastError: "ordine_eliminato" });
-                    return null;
+            for (const candidate of snapshot.docs) {
+                const candidateJob = candidate.data();
+                if (!hasMissingPrinter(candidateJob, printers)
+                        && !readyUnprintedPrinters(candidateJob, printers).length) {
+                    continue;
                 }
-                const relatedJobs = await transaction.get(jobs.where("numero", "==", job.numero));
-                const anotherQueuedJob = relatedJobs.docs.some(document => (
-                    document.ref.id !== candidate.ref.id && document.data().status === "queued"
-                ));
-                workerState = "ready";
-                transaction.update(candidate.ref, {
-                    status: "printing",
-                    claimedBy: instanceId,
-                    leaseUntil: Timestamp.fromMillis(Date.now() + LEASE_MILLISECONDS),
-                    attemptCount: (job.attemptCount || 0) + 1,
-                    lastError: FieldValue.delete()
+                const claimedJob = await db.runTransaction(async transaction => {
+                    const controlSnapshot = await transaction.get(controlRef);
+                    const lockSnapshot = await transaction.get(lockRef);
+                    const jobSnapshot = await transaction.get(candidate.ref);
+                    if (controlSnapshot.data()?.paused || lockSnapshot.data()?.instanceId !== instanceId
+                            || !jobSnapshot.exists || jobSnapshot.data().status !== "queued") {
+                        return null;
+                    }
+                    const job = jobSnapshot.data();
+                    if (!hasMissingPrinter(job, printers)
+                            && !readyUnprintedPrinters(job, printers).length) {
+                        return null;
+                    }
+
+                    const orderRef = orders.doc(String(job.numero));
+                    const orderSnapshot = await transaction.get(orderRef);
+                    if (!orderSnapshot.exists) {
+                        transaction.update(candidate.ref, { status: "cancelled", lastError: "ordine_eliminato" });
+                        return null;
+                    }
+                    const relatedJobs = await transaction.get(jobs.where("numero", "==", job.numero));
+                    const anotherQueuedJob = relatedJobs.docs.some(document => (
+                        document.ref.id !== candidate.ref.id && document.data().status === "queued"
+                    ));
+                    workerState = "ready";
+                    transaction.update(candidate.ref, {
+                        status: "printing",
+                        claimedBy: instanceId,
+                        leaseUntil: Timestamp.fromMillis(Date.now() + LEASE_MILLISECONDS),
+                        attemptCount: (job.attemptCount || 0) + 1,
+                        lastError: FieldValue.delete()
+                    });
+                    const printMessage = job.tipoStampa === "variazione"
+                        ? "Variazione in stampa per la cucina."
+                        : job.tipoStampa === "ristampa"
+                            ? "Ristampa inviata alla stampante."
+                            : job.tipoStampa === "aggiunta"
+                                ? "Aggiunta inviata alla stampante."
+                                : "Comanda inviata alla stampante.";
+                    transaction.update(orderRef, {
+                        stampaCompletata: false,
+                        stampaInCoda: anotherQueuedJob,
+                        messaggioStampa: anotherQueuedJob ? "Comanda in attesa di stampa automatica." : printMessage
+                    });
+                    return {
+                        jobRef: candidate.ref,
+                        orderRef,
+                        order: orderSnapshot.data(),
+                        numero: job.numero,
+                        tipoStampa: job.tipoStampa || "completa",
+                        stampanti: job.stampanti,
+                        motivo: job.motivo,
+                        righe: job.righe,
+                        aggiunte: job.aggiunte,
+                        tolte: job.tolte,
+                        cambiate: job.cambiate,
+                        createdAt: job.createdAt,
+                        printedPrinters: Array.isArray(job.printedPrinters) ? [...job.printedPrinters] : []
+                    };
                 });
-                const printMessage = job.tipoStampa === "variazione"
-                    ? "Variazione in stampa per la cucina."
-                    : job.tipoStampa === "ristampa"
-                        ? "Ristampa inviata alla stampante."
-                        : job.tipoStampa === "aggiunta"
-                            ? "Aggiunta inviata alla stampante."
-                            : "Comanda inviata alla stampante.";
-                transaction.update(orderRef, {
-                    stampaCompletata: false,
-                    stampaInCoda: anotherQueuedJob,
-                    messaggioStampa: anotherQueuedJob ? "Comanda in attesa di stampa automatica." : printMessage
-                });
-                return {
-                    jobRef: candidate.ref,
-                    orderRef,
-                    order: orderSnapshot.data(),
-                    numero: job.numero,
-                    tipoStampa: job.tipoStampa || "completa",
-                    stampanti: job.stampanti,
-                    motivo: job.motivo,
-                    righe: job.righe,
-                    aggiunte: job.aggiunte,
-                    tolte: job.tolte,
-                    cambiate: job.cambiate,
-                    createdAt: job.createdAt,
-                    printedPrinters: Array.isArray(job.printedPrinters) ? [...job.printedPrinters] : []
-                };
-            });
-            if (claimedJob) return claimedJob;
+                if (claimedJob) return claimedJob;
+            }
+
+            if (snapshot.docs.length < pageSize) return null;
+            lastCandidate = snapshot.docs[snapshot.docs.length - 1];
         }
-        return null;
     }
 
     async function recordPrinterPrinted(job, printerName) {
@@ -901,40 +927,46 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         const job = await claimNextJob(printers);
         if (!job) return false;
         const selected = readyUnprintedPrinters(job, printers);
+        if (selected.length > 0) {
+            try {
+                const receiptOptions = {
+                    tipoStampa: job.tipoStampa,
+                    motivo: job.motivo,
+                    righe: job.righe,
+                    aggiunte: job.aggiunte || [],
+                    tolte: job.tolte || [],
+                    cambiate: job.cambiate || [],
+                    createdAt: job.createdAt,
+                    ...(await getReceiptMenuData())
+                };
+                if (job.tipoStampa === "variazione") {
+                    job.nessunaPizzaStampabile = receiptRowsForProfile(job.order, {
+                        ...receiptOptions,
+                        profile: "cucina"
+                    }).length === 0;
+                }
+                await sendOrderToPrinters(job.order, selected, {
+                    alreadyPrinted: job.printedPrinters,
+                    print: submitPrint,
+                    onPrinterPrinted: printerName => recordPrinterPrinted(job, printerName),
+                    receiptOptions
+                });
+            } catch (error) {
+                await finishJob(job, error);
+                lastError = "Una o più stampanti non hanno ricevuto la comanda.";
+                console.error(`Printing order #${job.numero} failed:`, error.code || error.name || "unknown");
+                await refreshPrinters();
+                return true;
+            }
+        }
+        if (hasMissingPrinter(job, printers)) {
+            await finishJob(job, new Error("stampante_non_configurata"), "stampante_non_configurata");
+            return true;
+        }
         if (!selected.length) {
             const missingPrinters = targetPrinterNames(job, printers)
                 .filter(name => !job.printedPrinters.includes(name));
             await requeueForMissingPrinters(job, missingPrinters);
-            return true;
-        }
-        try {
-            const receiptOptions = {
-                tipoStampa: job.tipoStampa,
-                motivo: job.motivo,
-                righe: job.righe,
-                aggiunte: job.aggiunte || [],
-                tolte: job.tolte || [],
-                cambiate: job.cambiate || [],
-                createdAt: job.createdAt,
-                ...(await getReceiptMenuData())
-            };
-            if (job.tipoStampa === "variazione") {
-                job.nessunaPizzaStampabile = receiptRowsForProfile(job.order, {
-                    ...receiptOptions,
-                    profile: "cucina"
-                }).length === 0;
-            }
-            await sendOrderToPrinters(job.order, selected, {
-                alreadyPrinted: job.printedPrinters,
-                print: submitPrint,
-                onPrinterPrinted: printerName => recordPrinterPrinted(job, printerName),
-                receiptOptions
-            });
-        } catch (error) {
-            await finishJob(job, error);
-            lastError = "Una o più stampanti non hanno ricevuto la comanda.";
-            console.error(`Printing order #${job.numero} failed:`, error.code || error.name || "unknown");
-            await refreshPrinters();
             return true;
         }
         const missingPrinters = targetPrinterNames(job, printers)
@@ -1020,7 +1052,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             unsubscribeQueue = jobs.where("status", "==", "queued").onSnapshot(snapshot => {
                 listenerRetryAttempt = 0;
                 lastQueueSnapshotHadJobs = !snapshot.empty;
-                if (!snapshot.empty) {
+                if (!snapshot.empty && printersInitialized) {
                     void drainQueue().catch(error => {
                         workerState = "cloud_unavailable";
                         lastError = "Connessione alla coda di stampa non disponibile.";
