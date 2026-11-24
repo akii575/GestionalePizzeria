@@ -1784,3 +1784,154 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
         display: none;
     }
 }
+
+@media (min-width: 800px) {
+    body.orders-composer-page.app-shell {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-layout {
+        display: grid;
+        min-height: 0;
+        align-items: stretch;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main {
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) {
+        grid-template-rows: minmax(0, 45%) 40px minmax(120px, 1fr) 40px;
+        gap: 6px;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) > .tavolo-input {
+        min-height: 0;
+        max-height: 100%;
+        margin: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) > .tab-container,
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) > .tab-container .tab {
+        min-height: 40px;
+        height: 40px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) > .prodotti-wrapper {
+        height: auto;
+        min-height: 120px;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) > .prodotti-wrapper > #prodotti {
+        height: 100%;
+        min-height: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        scroll-snap-type: x mandatory;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) > .prodotti-wrapper > #prodotti::-webkit-scrollbar {
+        display: none;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) .pagina-prodotti {
+        height: 100%;
+        grid-template-rows: repeat(3, minmax(0, 1fr));
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) .prodotto-btn {
+        height: 100%;
+        min-height: 0;
+        max-height: none;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) > .extra-section {
+        height: 40px;
+        min-height: 40px;
+        max-height: 40px;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) > .extra-section > .extra-intestazione {
+        min-height: 40px;
+        height: 40px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary {
+        position: relative;
+        top: auto;
+        display: flex;
+        height: 100%;
+        min-height: 0;
+        max-height: 100%;
+        align-self: stretch;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary > .riepilogo-card {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary > .riepilogo-card > .riepilogo {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary > .riepilogo-card > .riepilogo #riepilogo-items {
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary > .riepilogo-card > .riepilogo-totale-riga,
+    body.orders-composer-page.app-shell main.container .composer-summary > .riepilogo-card > .btn-annulla,
+    body.orders-composer-page.app-shell main.container .composer-summary > .barra-conto > .btn-invia {
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary > .barra-conto {
+        position: static;
+        display: flex;
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary > .riepilogo-card > .riepilogo-totale-riga {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary > .barra-conto > .btn-invia,
+    body.orders-composer-page.app-shell main.container .composer-summary > .riepilogo-card > .btn-annulla {
+        min-height: 44px;
+    }
+}

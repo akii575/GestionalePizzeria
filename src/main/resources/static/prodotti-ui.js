@@ -611,11 +611,16 @@ const prodottiUI = (() => {
         return datiObbligatoriMancanti(tipo, dati) === null;
     }
 
-    function deveChiudereIntestazione(tipo, dati, { inputAttivo = false, motivo = "cambio" } = {}) {
+    function deveChiudereIntestazione(
+        tipo,
+        dati,
+        { inputAttivo = false, motivo = "cambio", chiudiSuProdotto = false } = {}
+    ) {
         if (inputAttivo) return false;
+        if (motivo === "prodotto" && chiudiSuProdotto) return true;
         if (tipo === "tavolo") return datiOrdineCompleti(tipo, dati);
         if (tipo === "banco") {
-            return datiOrdineCompleti(tipo, dati) && ["sfocatura", "prodotto", "aggiunta"].includes(motivo);
+            return datiOrdineCompleti(tipo, dati) && ["sfocatura", "aggiunta"].includes(motivo);
         }
         if (tipo === "ritiro" || tipo === "consegna") {
             return motivo === "prodotto" || (motivo === "sfocatura" && datiOrdineCompleti(tipo, dati));
@@ -623,21 +628,52 @@ const prodottiUI = (() => {
         return false;
     }
 
-    function riepilogoIntestazione(tipo, dati) {
+    function riepilogoIntestazione(tipo, dati, { mostraCampiMancanti = false } = {}) {
         if (tipo === "tavolo") {
+            const tavolo = String(dati.tavolo || "").trim() || "Tavolo ?";
             const persone = Number(dati.numeroPersone);
+            const tavoloMancante = !String(dati.tavolo || "").trim();
+            const personeValide = Number.isInteger(persone) && persone >= 1 && persone <= 30;
+            if (mostraCampiMancanti && (tavoloMancante || !personeValide)) {
+                const campiMancanti = [];
+                if (tavoloMancante) campiMancanti.push("tavolo");
+                if (!personeValide) campiMancanti.push("persone");
+                return `${tavolo} · scegli ${campiMancanti.join(" e ")}`;
+            }
             return `${dati.tavolo} · ${persone} ${persone === 1 ? "persona" : "persone"}`;
         }
-        if (tipo === "banco") return `Banco · ${String(dati.cognome || "").trim()}`;
+        if (tipo === "banco") {
+            const cognome = String(dati.cognome || "").trim();
+            if (cognome) return `Banco · ${cognome}`;
+            return mostraCampiMancanti ? "Banco · manca il cognome" : "Banco · ";
+        }
         if (tipo === "ritiro") {
-            return ["Ritiro", String(dati.nome || "").trim(), String(dati.orario || "").trim()]
-                .filter(Boolean)
-                .join(" · ");
+            const nome = String(dati.nome || "").trim();
+            const telefono = String(dati.telefono || "").trim();
+            const mancanti = [];
+            if (!nome) mancanti.push("nome");
+            if (!telefono || dati.telefonoValido === false) mancanti.push("telefono");
+            if (mostraCampiMancanti && mancanti.length) {
+                const riepilogoMancanti = mancanti.length > 1
+                    ? `mancano ${mancanti.join("/")}`
+                    : `manca ${mancanti[0]}`;
+                return `Ritiro · ${riepilogoMancanti}`;
+            }
+            return ["Ritiro", nome, String(dati.orario || "").trim()].filter(Boolean).join(" · ");
         }
         if (tipo === "consegna") {
-            return ["Consegna", String(dati.indirizzo || "").trim(), String(dati.orario || "").trim()]
-                .filter(Boolean)
-                .join(" · ");
+            const indirizzo = String(dati.indirizzo || "").trim();
+            const telefono = String(dati.telefono || "").trim();
+            const mancanti = [];
+            if (!indirizzo) mancanti.push("indirizzo");
+            if (!telefono || dati.telefonoValido === false) mancanti.push("telefono");
+            if (mostraCampiMancanti && mancanti.length) {
+                const riepilogoMancanti = mancanti.length > 1
+                    ? `mancano ${mancanti.join("/")}`
+                    : `manca ${mancanti[0]}`;
+                return `Consegna · ${riepilogoMancanti}`;
+            }
+            return ["Consegna", indirizzo, String(dati.orario || "").trim()].filter(Boolean).join(" · ");
         }
         return "";
     }
