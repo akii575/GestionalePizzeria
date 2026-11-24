@@ -297,6 +297,75 @@ test("kitchen receipts include only kitchen categories and ingredients, while sa
     )), false);
 });
 
+test("variation receipts contain only filtered additions, removals and changed pizza details", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        numero: 42,
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 3",
+        dataOra: "2026-11-24T11:00:00.000Z",
+        orario: "20:30",
+        righe: [{ prodotto: "Non modificata", categoria: "pizze", totale: 5 }],
+        totale: 5
+    }, 80, {
+        tipoStampa: "variazione",
+        createdAt: "2026-11-24T17:35:00.000Z",
+        variationCategories: new Set(["pizze"]),
+        productCategories: {},
+        productIngredients: { Margherita: ["Pomodoro", "Funghi"] },
+        aggiunte: [{
+            prodotto: "Margherita",
+            categoria: "pizze",
+            prezzoBase: 5,
+            totale: 5,
+            senza: ["Funghi"],
+            note: ["Ben cotta"],
+            extra: [{ nome: "Bufala", prezzo: 2 }]
+        }],
+        tolte: [{ prodotto: "Diavola", categoria: "pizze", prezzoBase: 6, totale: 6 }],
+        cambiate: [{
+            prima: { prodotto: "Capricciosa", categoria: "pizze", prezzoBase: 7, totale: 7 },
+            dopo: {
+                prodotto: "Capricciosa",
+                categoria: "pizze",
+                prezzoBase: 7,
+                totale: 9,
+                senza: ["Funghi"],
+                note: ["Ben cotta"],
+                extra: [{ nome: "Bufala", prezzo: 2 }]
+            }
+        }]
+    });
+
+    assert.match(receipt, /^@@BIG:VARIAZIONE #42@@\r?\nTAVOLO 3 · 18:35/);
+    assert.match(receipt, /--- AGGIUNGERE ---[\s\S]*@@ITEM:1X MARGHERITA@@/);
+    assert.match(receipt, /@@ITEM:\s{2}- SENZA FUNGHI@@/);
+    assert.match(receipt, /@@ITEM:\s{2}! BEN COTTA@@/);
+    assert.match(receipt, /@@ITEM:\s{2}\+ BUFALA@@/);
+    assert.match(receipt, /--- TOGLIERE ---[\s\S]*@@ITEM:1X DIAVOLA@@/);
+    assert.match(receipt, /--- CAMBIARE ---[\s\S]*@@ITEM:1X CAPRICCIOSA@@[\s\S]*ORA: - SENZA FUNGHI/);
+    assert.match(receipt, /@@BIG:ORARIO 20:30@@$/);
+    assert.doesNotMatch(receipt, /NON MODIFICATA/);
+
+    const onlyAddition = formatReceipt({ numero: 43, righe: [] }, 80, {
+        tipoStampa: "variazione",
+        variationCategories: new Set(["pizze"]),
+        aggiunte: [{ prodotto: "Pizza nuova", categoria: "pizze" }],
+        tolte: [],
+        cambiate: []
+    });
+    assert.doesNotMatch(onlyAddition, /--- TOGLIERE ---|--- CAMBIARE ---/);
+
+    const unknownCategory = formatReceipt({ numero: 44, righe: [] }, 80, {
+        tipoStampa: "variazione",
+        variationCategories: new Set(),
+        aggiunte: [{ prodotto: "Fuori menu" }],
+        tolte: [],
+        cambiate: []
+    });
+    assert.match(unknownCategory, /@@ITEM:1X FUORI MENU@@/);
+});
+
 test("receipt prints removed ingredients for kitchen and sala without grouping them with normal rows", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const row = {

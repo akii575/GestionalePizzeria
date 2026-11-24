@@ -203,6 +203,24 @@ test("a queued job prints from the snapshot without waiting for the security tim
     });
 });
 
+test("the agent advertises variation capability on lock acquisition and renewal", async () => {
+    await withFakeTimers(async ({ intervals }) => {
+        const database = createDatabase();
+        const agent = createPrinterAgent(database, { getPrinters: async () => readyPrinter() });
+        await agent.run();
+
+        const acquiredLock = database.documents("metadata").get("printerAgentLock");
+        assert.deepEqual(acquiredLock.capabilities, ["variazione"]);
+        assert.ok(acquiredLock.leaseUntil.toMillis() > Date.now());
+
+        await intervals.find(timer => timer.milliseconds === 60_000 && !timer.cleared).run();
+        const renewedLock = database.documents("metadata").get("printerAgentLock");
+        assert.deepEqual(renewedLock.capabilities, ["variazione"]);
+        assert.ok(renewedLock.leaseUntil.toMillis() > Date.now());
+        await agent.stop();
+    });
+});
+
 test("the security timer skips the queue drain when an active listener last saw no jobs", async () => {
     await withFakeTimers(async ({ intervals }) => {
         const database = createDatabase();

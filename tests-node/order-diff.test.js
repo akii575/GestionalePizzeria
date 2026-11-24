@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { diffRighe } = require("../lib/order-diff");
+const { diffRighe, diffVariazioni } = require("../lib/order-diff");
 
 const margherita = {
     prodotto: "Margherita",
@@ -106,4 +106,21 @@ test("treats changed pizza notes as row changes and ignores note ordering", () =
         [{ ...margherita, note: ["Ben cotta", "Tagliata"] }],
         [{ ...margherita, note: ["Tagliata", "Ben cotta"] }]
     ), { aggiunte: [], rimosse: [] });
+});
+
+test("pairs removed and added rows of the same product as a change", () => {
+    const changed = { ...margherita, senza: ["Basilico"], note: ["Ben cotta"] };
+    const removed = { prodotto: "Diavola", totale: 7 };
+    const added = { prodotto: "Bufala", totale: 9 };
+
+    assert.deepEqual(diffVariazioni([margherita, removed], [changed, added]), {
+        aggiunte: [added],
+        tolte: [removed],
+        cambiate: [{ prima: margherita, dopo: changed }]
+    });
+    assert.deepEqual(diffVariazioni([margherita], [margherita]), {
+        aggiunte: [],
+        tolte: [],
+        cambiate: []
+    });
 });

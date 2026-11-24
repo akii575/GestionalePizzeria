@@ -161,6 +161,15 @@ function wrapReceiptPrefixedItem(prefix, value, price, width) {
 }
 
 function receiptRowsForProfile(order, options) {
+    if (options.tipoStampa === "variazione") {
+        if (options.profile !== "cucina") return [];
+        const variation = variationRowsForKitchen(options);
+        return [
+            ...variation.aggiunte,
+            ...variation.tolte,
+            ...variation.cambiate.flatMap(change => [change.prima, change.dopo])
+        ];
+    }
     const rows = options.tipoStampa === "aggiunta" ? options.righe || [] : order.righe || [];
     if (options.profile !== "cucina") return rows;
     const kitchenCategories = options.kitchenCategories;
@@ -173,9 +182,177 @@ function receiptRowsForProfile(order, options) {
     });
 }
 
-function formatReceipt(order, paperWidthMm = 80, options = {}) {
+function variationRowsForKitchen(options) {
+    const categories = options.variationCategories instanceof Set
+        ? options.variationCategories
+        : new Set(Array.isArray(options.variationCategories) ? options.variationCategories : []);
+    const productCategories = options.productCategories || {};
+    const printable = row => {
+        const category = row.categoria || productCategories[row.prodotto];
+        return category === undefined || categories.has(category);
+    };
+    return {
+        aggiunte: (options.aggiunte || []).filter(printable),
+        tolte: (options.tolte || []).filter(printable),
+        cambiate: (options.cambiate || []).filter(change => (
+            change?.prima && change?.dopo && (printable(change.prima) || printable(change.dopo))
+        ))
+    };
+}
+
+function receiptRowKey(row) {
+    const rowExtras = (row.extra || []).map(receiptExtra);
+    const senza = (Array.isArray(row.senza) ? row.senza : [])
+        .filter(ingredient => typeof ingredient === "string")
+        .map(ingredient => ingredient.trim().toLocaleLowerCase("it-IT"))
+        .sort((first, second) => first.localeCompare(second, "it-IT"));
+    const notes = (Array.isArray(row.note) ? row.note : [])
+        .filter(note => typeof note === "string")
+        .map(note => note.trim().toLocaleLowerCase("it-IT"))
+        .sort((first, second) => first.localeCompare(second, "it-IT"));
+    return JSON.stringify([
+        row.prodotto,
+        rowExtras.map(extra => [extra.name, extra.price])
+            .sort((first, second) => first[0].localeCompare(second[0], "it")),
+        senza,
+        notes,
+        receiptBasePrice(row)
+    ]);
+}
+
+function groupReceiptRows(rows) {
+    const groupedRows = new Map();
+    for (const row of rows) {
+        const rowExtras = (row.extra || []).map(receiptExtra);
+        const notes = (Array.isArray(row.note) ? row.note : [])
+            .filter(note => typeof note === "string" && note.trim());
+        const basePrice = receiptBasePrice(row);
+        const key = receiptRowKey(row);
+        const existing = groupedRows.get(key);
+        if (existing) {
+            existing.quantity++;
+        } else {
+            groupedRows.set(key, { row, rowExtras, basePrice, notes, quantity: 1 });
+        }
+    }
+    return [...groupedRows.values()];
+}
+
+function formatKitchenRows(rows, options, receiptWidth) {
+    const lines = [];
+    for (const { row, rowExtras, notes, quantity } of groupReceiptRows(rows)) {
+        lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, receiptWidth)
+            .map(line => `@@ITEM:${line}@@`));
+        const ingredients = options.productIngredients?.[row.prodotto];
+        const senza = (Array.isArray(row.senza) ? row.senza : [])
+            .filter(ingredient => typeof ingredient === "string" && ingredient.trim());
+        const sansNames = new Set(senza.map(ingredient => ingredient.trim().toLocaleLowerCase("it-IT")));
+        const productIngredients = Array.isArray(ingredients)
+            ? ingredients
+            : Array.isArray(row.ingredienti) ? row.ingredienti : [];
+        const displayedIngredients = productIngredients.filter(ingredient =>
+            typeof ingredient === "string"
+            && !sansNames.has(ingredient.trim().toLocaleLowerCase("it-IT"))
+        );
+        if (displayedIngredients.length) {
+            lines.push(...wrapReceiptPrefix("  ", displayedIngredients.join(", "), receiptWidth * 2)
+                .map(line => `@@SMALL:${line}@@`));
+        }
+        for (const ingredient of senza) {
+            lines.push(...wrapReceiptPrefix("  - SENZA ", ingredient.toLocaleUpperCase("it-IT"), receiptWidth)
+                .map(line => `@@ITEM:${line}@@`));
+        }
+        for (const note of notes) {
+            lines.push(...wrapReceiptPrefix("  ! ", note.toLocaleUpperCase("it-IT"), receiptWidth)
+                .map(line => `@@ITEM:${line}@@`));
+        }
+        for (const extra of rowExtras) {
+            lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth)
+                .map(line => `@@ITEM:${line}@@`));
+        }
+    }
+    return lines;
+}
+
+function formatVariationChange(change, quantity, width) {
+    const { dopo } = change;
+    const lines = [
+        ...wrapReceiptText(`${quantity}x ${dopo.prodotto}`, width).map(line => `@@ITEM:${line}@@`)
+    ];
+    const details = [
+        ...(Array.isArray(dopo.senza) ? dopo.senza : [])
+            .filter(value => typeof value === "string" && value.trim())
+            .map(value => `- SENZA ${value}`),
+        ...(Array.isArray(dopo.note) ? dopo.note : [])
+            .filter(value => typeof value === "string" && value.trim())
+            .map(value => `! ${value}`),
+        ...(Array.isArray(dopo.extra) ? dopo.extra : [])
+            .map(receiptExtra)
+            .filter(extra => extra.name.trim())
+            .map(extra => `+ ${extra.name}`)
+    ];
+    if (details.length) {
+        lines.push(...wrapReceiptPrefix("  ORA: ", details.join("  "), width)
+            .map(line => `@@ITEM:${line}@@`));
+    }
+    return lines;
+}
+
+function groupChangedRows(changes) {
+    const grouped = new Map();
+    for (const change of changes) {
+        const key = JSON.stringify([receiptRowKey(change.prima), receiptRowKey(change.dopo)]);
+        const existing = grouped.get(key);
+        if (existing) existing.quantity++;
+        else grouped.set(key, { change, quantity: 1 });
+    }
+    return [...grouped.values()];
+}
+
+function variationDestination(order) {
+    const tipo = ["banco", "ritiro", "consegna"].includes(order.tipo) ? order.tipo : "tavolo";
+    if (tipo === "consegna") return order.indirizzoConsegna || order.tavoloOCliente || "CONSEGNA";
+    if (tipo === "banco") return order.cognomeBanco ? `BANCO ${order.cognomeBanco}` : "BANCO";
+    if (order.tavoloOCliente) return order.tavoloOCliente;
+    return tipo === "ritiro" ? "RITIRO" : "TAVOLO";
+}
+
+function formatVariationReceipt(order, paperWidthMm, options) {
     const receiptWidth = paperWidthMm === 58 ? RECEIPT_WIDTH_58_MM : DEFAULT_RECEIPT_WIDTH;
-    const normalWidth = receiptWidth * 2;
+    const bigWidth = Math.floor(receiptWidth * 2 / 3);
+    const variation = variationRowsForKitchen(options);
+    const createdAt = new Date(options.createdAt || Date.now());
+    const time = (Number.isFinite(createdAt.getTime()) ? createdAt : new Date()).toLocaleTimeString("it-IT", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+        timeZone: "Europe/Rome"
+    });
+    const lines = [
+        ...wrapReceiptBig(`VARIAZIONE #${order.numero ?? ""}`, bigWidth),
+        ...wrapReceiptText(`${variationDestination(order)} · ${time}`, receiptWidth)
+    ];
+    if (variation.aggiunte.length) {
+        lines.push("--- AGGIUNGERE ---", ...formatKitchenRows(variation.aggiunte, options, receiptWidth));
+    }
+    if (variation.tolte.length) {
+        lines.push("--- TOGLIERE ---", ...formatKitchenRows(variation.tolte, options, receiptWidth));
+    }
+    if (variation.cambiate.length) {
+        lines.push("--- CAMBIARE ---");
+        for (const { change, quantity } of groupChangedRows(variation.cambiate)) {
+            lines.push(...formatVariationChange(change, quantity, receiptWidth));
+        }
+    }
+    if (order.orario) lines.push(...wrapReceiptBig(`ORARIO ${order.orario}`, bigWidth));
+    return lines.join("\r\n");
+}
+
+function formatReceipt(order, paperWidthMm = 80, options = {}) {
+    if (options.tipoStampa === "variazione") {
+        return formatVariationReceipt(order, paperWidthMm, options);
+    }
+    const receiptWidth = paperWidthMm === 58 ? RECEIPT_WIDTH_58_MM : DEFAULT_RECEIPT_WIDTH;
     const bigWidth = Math.floor(receiptWidth * 2 / 3);
     const divider = "-".repeat(receiptWidth);
     const date = new Date(order.dataOra).toLocaleDateString("it-IT", {
@@ -243,63 +420,13 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
     });
     for (const category of categories) {
         lines.push(`@@SECTION:${category.toLocaleUpperCase("it-IT")}@@`);
-        const groupedRows = new Map();
-        for (const row of rowsByCategory.get(category)) {
-            const rowExtras = (row.extra || []).map(receiptExtra);
-            const senza = (Array.isArray(row.senza) ? row.senza : [])
-                .filter(ingredient => typeof ingredient === "string" && ingredient.trim());
-            const notes = (Array.isArray(row.note) ? row.note : [])
-                .filter(note => typeof note === "string" && note.trim());
-            const basePrice = receiptBasePrice(row);
-            const key = JSON.stringify([
-                row.prodotto,
-                rowExtras.map(extra => [extra.name, extra.price]).sort((first, second) => first[0].localeCompare(second[0], "it")),
-                senza.map(ingredient => ingredient.trim().toLocaleLowerCase("it-IT"))
-                    .sort((first, second) => first.localeCompare(second, "it-IT")),
-                notes.map(note => note.trim().toLocaleLowerCase("it-IT"))
-                    .sort((first, second) => first.localeCompare(second, "it-IT")),
-                basePrice
-            ]);
-            const existing = groupedRows.get(key);
-            if (existing) {
-                existing.quantity++;
-            } else {
-                groupedRows.set(key, { row, rowExtras, basePrice, notes, quantity: 1 });
-            }
+        const categoryRows = rowsByCategory.get(category);
+        if (receiptOptions.profile === "cucina") {
+            lines.push(...formatKitchenRows(categoryRows, options, receiptWidth));
+            lines.push(divider);
+            continue;
         }
-        for (const { row, rowExtras, basePrice, notes, quantity } of groupedRows.values()) {
-            if (receiptOptions.profile === "cucina") {
-                lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, receiptWidth)
-                    .map(line => `@@ITEM:${line}@@`));
-                const ingredients = options.productIngredients?.[row.prodotto];
-                const senza = (Array.isArray(row.senza) ? row.senza : [])
-                    .filter(ingredient => typeof ingredient === "string" && ingredient.trim());
-                const sansNames = new Set(senza.map(ingredient => ingredient.trim().toLocaleLowerCase("it-IT")));
-                const productIngredients = Array.isArray(ingredients)
-                    ? ingredients
-                    : Array.isArray(row.ingredienti) ? row.ingredienti : [];
-                const displayedIngredients = productIngredients.filter(ingredient =>
-                    typeof ingredient === "string"
-                    && !sansNames.has(ingredient.trim().toLocaleLowerCase("it-IT"))
-                );
-                if (displayedIngredients.length) {
-                    lines.push(...wrapReceiptPrefix("  ", displayedIngredients.join(", "), normalWidth)
-                        .map(line => `@@SMALL:${line}@@`));
-                }
-                for (const ingredient of senza) {
-                    lines.push(...wrapReceiptPrefix("  - SENZA ", ingredient.toLocaleUpperCase("it-IT"), receiptWidth)
-                        .map(line => `@@ITEM:${line}@@`));
-                }
-                for (const note of notes) {
-                    lines.push(...wrapReceiptPrefix("  ! ", note.toLocaleUpperCase("it-IT"), receiptWidth)
-                        .map(line => `@@ITEM:${line}@@`));
-                }
-                for (const extra of rowExtras) {
-                    lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth)
-                        .map(line => `@@ITEM:${line}@@`));
-                }
-                continue;
-            }
+        for (const { row, rowExtras, basePrice, notes, quantity } of groupReceiptRows(categoryRows)) {
             const baseTotal = Math.round(basePrice * quantity * 100) / 100;
             const itemParts = wrapReceiptItemParts(`${quantity}x ${row.prodotto}`, baseTotal, receiptWidth);
             lines.push(...itemParts.nameLines.map(line => `@@ITEM:${line}@@`));
@@ -375,6 +502,11 @@ async function sendOrderToPrinters(order, printers, {
         if (completed.has(printer.name)) continue;
         const profile = printer.name.trim().toLocaleLowerCase("it-IT") === "cucina" ? "cucina" : "sala";
         const printerReceiptOptions = { ...receiptOptions, profile };
+        if (receiptOptions.tipoStampa === "variazione" && profile === "sala") {
+            await onPrinterPrinted(printer.name);
+            completed.add(printer.name);
+            continue;
+        }
         if (profile === "cucina" && receiptRowsForProfile(order, printerReceiptOptions).length === 0) {
             await onPrinterPrinted(printer.name);
             completed.add(printer.name);
@@ -430,7 +562,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             }
             transaction.set(lockRef, {
                 instanceId,
-                leaseUntil: Timestamp.fromMillis(Date.now() + LEASE_MILLISECONDS)
+                leaseUntil: Timestamp.fromMillis(Date.now() + LEASE_MILLISECONDS),
+                capabilities: ["variazione"]
             });
             return true;
         }).then(acquired => {
@@ -492,7 +625,22 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                             .filter(document => document.data().stampaCucina !== false)
                             .map(document => document.id)
                     );
-                    return { categoryOrder, productCategories, productIngredients, kitchenCategories };
+                    const variationCategories = new Set(
+                        categorySnapshot.docs
+                            .filter(document => (
+                                document.data().stampaVariazioni === undefined
+                                    ? document.data().stampaCucina !== false
+                                    : document.data().stampaVariazioni === true
+                            ))
+                            .map(document => document.id)
+                    );
+                    return {
+                        categoryOrder,
+                        productCategories,
+                        productIngredients,
+                        kitchenCategories,
+                        variationCategories
+                    };
                 })
                 .catch(error => {
                     console.error("Unable to load menu categories for receipt:", error.code || error.name || "unknown");
@@ -500,7 +648,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                         categoryOrder: [],
                         productCategories: {},
                         productIngredients: {},
-                        kitchenCategories: null
+                        kitchenCategories: null,
+                        variationCategories: new Set()
                     };
                 })
                 .then(menuData => {
@@ -607,16 +756,17 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 attemptCount: (job.attemptCount || 0) + 1,
                 lastError: FieldValue.delete()
             });
+            const printMessage = job.tipoStampa === "variazione"
+                ? "Variazione in stampa per la cucina."
+                : job.tipoStampa === "ristampa"
+                    ? "Ristampa inviata alla stampante."
+                    : job.tipoStampa === "aggiunta"
+                        ? "Aggiunta inviata alla stampante."
+                        : "Comanda inviata alla stampante.";
             transaction.update(orderRef, {
                 stampaCompletata: false,
                 stampaInCoda: anotherQueuedJob,
-                messaggioStampa: anotherQueuedJob
-                    ? "Comanda in attesa di stampa automatica."
-                    : job.tipoStampa === "ristampa"
-                        ? "Ristampa inviata alla stampante."
-                        : job.tipoStampa === "aggiunta"
-                            ? "Aggiunta inviata alla stampante."
-                        : "Comanda inviata alla stampante."
+                messaggioStampa: anotherQueuedJob ? "Comanda in attesa di stampa automatica." : printMessage
             });
             return {
                 jobRef,
@@ -627,6 +777,10 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 stampanti: job.stampanti,
                 motivo: job.motivo,
                 righe: job.righe,
+                aggiunte: job.aggiunte,
+                tolte: job.tolte,
+                cambiate: job.cambiate,
+                createdAt: job.createdAt,
                 printedPrinters: Array.isArray(job.printedPrinters) ? [...job.printedPrinters] : []
             };
         });
@@ -661,7 +815,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             const completed = !error;
             const label = job.tipoStampa === "ristampa"
                 ? "Ristampa"
-                : job.tipoStampa === "aggiunta" ? "Aggiunta" : "Comanda";
+                : job.tipoStampa === "aggiunta" ? "Aggiunta" : job.tipoStampa === "variazione" ? "Variazione" : "Comanda";
             transaction.update(job.jobRef, {
                 status: completed ? "printed" : "failed",
                 printedAt: completed ? Timestamp.now() : FieldValue.delete(),
@@ -676,6 +830,14 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                     stampaInCoda: anotherQueuedJob,
                     messaggioStampa: anotherQueuedJob
                         ? "Comanda in attesa di stampa automatica."
+                        : job.tipoStampa === "variazione"
+                            ? completed
+                                ? job.nessunaPizzaStampabile
+                                    ? "Variazione senza pizze: nessuna stampa"
+                                    : "Variazione completata."
+                                : job.printedPrinters.length > 0
+                                    ? "Variazione riuscita su almeno una stampante, ma non su tutte. Verifica la connessione e premi Riprova sulla Home."
+                                    : "Variazione non riuscita. Verifica le stampanti e premi Riprova sulla Home."
                         : job.tipoStampa === "aggiunta"
                         ? completed
                             ? "Aggiunta completata."
@@ -703,16 +865,27 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
             return true;
         }
         try {
+            const receiptOptions = {
+                tipoStampa: job.tipoStampa,
+                motivo: job.motivo,
+                righe: job.righe,
+                aggiunte: job.aggiunte || [],
+                tolte: job.tolte || [],
+                cambiate: job.cambiate || [],
+                createdAt: job.createdAt,
+                ...(await getReceiptMenuData())
+            };
+            if (job.tipoStampa === "variazione") {
+                job.nessunaPizzaStampabile = receiptRowsForProfile(job.order, {
+                    ...receiptOptions,
+                    profile: "cucina"
+                }).length === 0;
+            }
             await sendOrderToPrinters(job.order, selected, {
                 alreadyPrinted: job.printedPrinters,
                 print: submitPrint,
                 onPrinterPrinted: printerName => recordPrinterPrinted(job, printerName),
-                receiptOptions: {
-                    tipoStampa: job.tipoStampa,
-                    motivo: job.motivo,
-                    righe: job.righe,
-                    ...(await getReceiptMenuData())
-                }
+                receiptOptions
             });
         } catch (error) {
             await finishJob(job, error);

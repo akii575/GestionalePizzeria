@@ -24,6 +24,9 @@ test("menu editor page loads protected navigation, accessible editor and shared 
     assert.match(editor, /setTimeout\(hideUndoToast, 6000\)/);
     assert.match(page, /aria-label="Nuovo"/);
     assert.match(page, /id="menu-undo-toast"/);
+    assert.match(page, /id="menu-variation-print" name="stampaVariazioni" type="checkbox"/);
+    assert.match(page, /Stampa nelle variazioni \(modifiche ordine\)/);
+    assert.match(editor, /menu-variation-print/);
     assert.match(styles, /\.menu-delete-button \{(?=[^}]*color: #A32D2D)(?=[^}]*background: #FCEBEB)(?=[^}]*border-color: #F7C1C1)[^}]*\}/);
     assert.match(styles, /@media \(max-width: 359px\)[\s\S]*\.menu-new-label/);
 });

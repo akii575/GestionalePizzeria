@@ -308,3 +308,76 @@ test("the queue drain prints consecutive added jobs and clears the queued messag
     assert.equal(database.documents("orders").get("7").stampaInCoda, false);
     assert.equal(database.documents("orders").get("7").messaggioStampa, "Aggiunta completata.");
 });
+
+test("variation jobs print only to cucina and Sala completes without printing", async () => {
+    const variation = {
+        numero: 7,
+        tipoStampa: "variazione",
+        createdAt: "2026-11-24T17:35:00.000Z",
+        aggiunte: [
+            { prodotto: "Pizza aggiunta", categoria: "pizze", prezzoBase: 5, totale: 5 },
+            { prodotto: "Acqua", categoria: "bibite", prezzoBase: 2, totale: 2 }
+        ],
+        tolte: [],
+        cambiate: [],
+        status: "queued",
+        attemptCount: 0,
+        printedPrinters: []
+    };
+    const database = createDatabase({
+        menuCategorie: {
+            pizze: { nome: "Pizze", ordine: 0, stampaCucina: false, stampaVariazioni: true },
+            bibite: { nome: "Bibite", ordine: 1, stampaCucina: false }
+        },
+        orders: { "7": order() },
+        printerJobs: { "000000000007-01": variation }
+    });
+    const prints = [];
+    const agent = createPrinterAgent(database, {
+        getPrinters: async () => readyPrinters("Cucina", "Sala"),
+        printOrder: async (_order, printer, receipt) => prints.push({ printer: printer.name, receipt })
+    });
+
+    await runOneTick(agent);
+
+    assert.deepEqual(prints.map(print => print.printer), ["Cucina"]);
+    assert.match(prints[0].receipt, /@@BIG:VARIAZIONE #7@@/);
+    assert.match(prints[0].receipt, /PIZZA AGGIUNTA/);
+    assert.doesNotMatch(prints[0].receipt, /ACQUA/);
+    assert.equal(database.documents("printerJobs").get("000000000007-01").status, "printed");
+});
+
+test("variation jobs with no printable categories complete without printing", async () => {
+    const database = createDatabase({
+        menuCategorie: {
+            bibite: { nome: "Bibite", ordine: 0, stampaCucina: false }
+        },
+        orders: { "7": order() },
+        printerJobs: {
+            "000000000007-01": {
+                numero: 7,
+                tipoStampa: "variazione",
+                aggiunte: [{ prodotto: "Acqua", categoria: "bibite", prezzoBase: 2, totale: 2 }],
+                tolte: [],
+                cambiate: [],
+                status: "queued",
+                attemptCount: 0,
+                printedPrinters: []
+            }
+        }
+    });
+    let printCount = 0;
+    const agent = createPrinterAgent(database, {
+        getPrinters: async () => readyPrinters("Cucina", "Sala"),
+        printOrder: async () => { printCount++; }
+    });
+
+    await runOneTick(agent);
+
+    assert.equal(printCount, 0);
+    assert.equal(database.documents("printerJobs").get("000000000007-01").status, "printed");
+    assert.equal(
+        database.documents("orders").get("7").messaggioStampa,
+        "Variazione senza pizze: nessuna stampa"
+    );
+});
