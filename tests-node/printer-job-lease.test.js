@@ -462,14 +462,36 @@ test("an actively leased secondary print job still blocks individual order delet
     assert.equal(database.documents("printerJobs").has("000000000007-01"), true);
 });
 
-test("order updates reject a secondary print job even when its lease expired", async () => {
+test("order updates proceed when a secondary print job has an expired lease", async () => {
     database = createDatabase({
-        orders: { "7": { numero: 7, dataOra: "2026-10-12T12:00:00.000Z" } },
+        orders: { "7": storedOrder({ righe: [{ prodotto: "Margherita" }] }) },
         printerJobs: {
             "000000000007-01": {
                 numero: 7,
                 status: "printing",
                 leaseUntil: lease(Date.now() - 1)
+            }
+        }
+    });
+
+    const response = await invoke(orderHandler, "PUT", { numero: "7" }, {
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 7",
+        righe: [{ prodotto: "Margherita" }]
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(database.documents("printerJobs").get("000000000007-01").status, "printing");
+});
+
+test("order updates still reject a secondary print job with a live lease", async () => {
+    database = createDatabase({
+        orders: { "7": storedOrder({ righe: [{ prodotto: "Margherita" }] }) },
+        printerJobs: {
+            "000000000007-01": {
+                numero: 7,
+                status: "printing",
+                leaseUntil: lease(Date.now() + 60_000)
             }
         }
     });
