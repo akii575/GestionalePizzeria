@@ -1741,7 +1741,6 @@ button {
 .prodotto-btn .ingredienti-wrapper {
     min-height: 0;
     flex: 1 1 0;
-    overflow: hidden;
     margin-top: 4px;
 }
 

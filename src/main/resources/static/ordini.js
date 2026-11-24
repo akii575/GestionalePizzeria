@@ -1143,7 +1143,7 @@ function aggiornaRigheIngredienti(pagina) {
             - (esaurito?.offsetHeight || 0)
             - (Number.parseFloat(stileEsaurito?.marginTop) || 0)
             - (Number.parseFloat(stileWrapper.marginTop) || 0);
-        const righe = Math.max(0, Math.min(2, Math.floor(Math.max(0, altezzaDisponibile) / altezzaRiga)));
+        const righe = Math.max(0, Math.min(4, Math.floor(Math.max(0, altezzaDisponibile) / altezzaRiga)));
         wrapper.hidden = righe === 0;
         wrapper.style.setProperty("--ingredienti-righe", String(righe));
         wrapper.style.setProperty("--ingredienti-altezza", `${righe * altezzaRiga}px`);
