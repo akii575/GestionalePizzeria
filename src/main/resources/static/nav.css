@@ -811,10 +811,53 @@ body.has-civico7-network-banner .app-page-header {
         height: calc(100dvh - 84px);
     }
 
+    body.app-shell main.container .composer-main {
+        grid-template-rows: max-content max-content minmax(0, 1fr) max-content;
+    }
+
+    body.app-shell main.container .composer-main > .intestazione-compatta {
+        flex-shrink: 0;
+        min-height: 48px;
+    }
+
+    body.app-shell main.container .composer-main > .tab-container {
+        flex-shrink: 0;
+        min-height: max-content;
+    }
+
+    body.app-shell main.container .composer-main > .extra-section > .extra-intestazione {
+        flex-shrink: 0;
+        min-height: 40px;
+    }
+
+    body.app-shell main.container .composer-main > .prodotti-wrapper {
+        display: flex;
+        min-height: 0;
+        margin-bottom: 0;
+    }
+
+    body.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti {
+        height: 100%;
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+
+    body.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti::-webkit-scrollbar {
+        display: block;
+        width: 6px;
+        height: 0;
+    }
+
+    body.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti::-webkit-scrollbar:horizontal {
+        display: none;
+    }
+
     body.app-shell main.container .composer-main:not(.intestazione-chiusa) {
         overflow-y: auto;
         overscroll-behavior-y: contain;
-        grid-template-rows: auto auto auto auto minmax(268px, 1fr) auto;
+        grid-template-rows: max-content max-content minmax(268px, 1fr) max-content;
     }
 
     body.app-shell main.container .composer-main:not(.intestazione-chiusa) .prodotti-wrapper {

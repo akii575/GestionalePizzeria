@@ -609,7 +609,12 @@ test("wide desktop layouts use the space beside the sidebar", () => {
     assert.match(navigation, /body\.app-shell main\.container \.composer-summary > \.riepilogo-card > \.riepilogo #riepilogo-items\s*\{[^}]*overflow-y:\s*auto;/);
     assert.match(navigation, /@media \(orientation: landscape\) and \(max-height: 820px\)[\s\S]*?body\.app-shell main\.container > \.app-page-header h1\s*\{[^}]*font-size:\s*20px;/);
     assert.match(navigation, /@media \(min-width: 900px\) and \(orientation: landscape\) and \(max-height: 820px\)[\s\S]*?height:\s*calc\(100dvh - 84px\);/);
-    assert.match(navigation, /\.composer-main:not\(\.intestazione-chiusa\)\s*\{[^}]*overflow-y:\s*auto;[^}]*grid-template-rows:\s*auto auto auto auto minmax\(268px, 1fr\) auto;/);
+    assert.match(navigation, /\.composer-main\s*\{[^}]*grid-template-rows:\s*max-content max-content minmax\(0, 1fr\) max-content;/);
+    assert.match(navigation, /\.composer-main > \.intestazione-compatta\s*\{[^}]*flex-shrink:\s*0;[^}]*min-height:\s*48px;/);
+    assert.match(navigation, /\.composer-main > \.tab-container\s*\{[^}]*flex-shrink:\s*0;[^}]*min-height:\s*max-content;/);
+    assert.match(navigation, /\.composer-main > \.extra-section > \.extra-intestazione\s*\{[^}]*flex-shrink:\s*0;[^}]*min-height:\s*40px;/);
+    assert.match(navigation, /\.composer-main > \.prodotti-wrapper > #prodotti\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
+    assert.match(navigation, /\.composer-main:not\(\.intestazione-chiusa\)\s*\{[^}]*overflow-y:\s*auto;[^}]*grid-template-rows:\s*max-content max-content minmax\(268px, 1fr\) max-content;/);
     assert.match(navigation, /\.composer-main:not\(\.intestazione-chiusa\) #prodotti\s*\{[^}]*height:\s*268px;[^}]*overflow-y:\s*auto;/);
     assert.match(navigation, /\.composer-main:not\(\.intestazione-chiusa\) \.pagina-prodotti\s*\{[^}]*height:\s*404px;[^}]*grid-template-rows:\s*repeat\(3, 128px\);/);
     assert.match(orderStyles, /grid-template-columns: repeat\(auto-fill, minmax\(150px, 1fr\)\);/);
