@@ -295,6 +295,41 @@ test("the order header stays open while a text input has focus", () => {
     );
 });
 
+test("product taps close incomplete desktop headers and summarize missing fields", () => {
+    assert.equal(
+        deveChiudereIntestazione("tavolo", {}, { motivo: "prodotto", chiudiSuProdotto: true }),
+        true
+    );
+    assert.equal(
+        deveChiudereIntestazione("banco", {}, { motivo: "prodotto", chiudiSuProdotto: true }),
+        true
+    );
+    assert.equal(
+        deveChiudereIntestazione("banco", {}, { motivo: "prodotto" }),
+        false
+    );
+    assert.equal(
+        deveChiudereIntestazione("tavolo", {}, {
+            motivo: "prodotto",
+            inputAttivo: true,
+            chiudiSuProdotto: true
+        }),
+        false
+    );
+    assert.equal(
+        riepilogoIntestazione("tavolo", { tavolo: "", numeroPersone: "" }, { mostraCampiMancanti: true }),
+        "Tavolo ? · scegli tavolo e persone"
+    );
+    assert.equal(
+        riepilogoIntestazione("banco", {}, { mostraCampiMancanti: true }),
+        "Banco · manca il cognome"
+    );
+    assert.equal(
+        riepilogoIntestazione("consegna", {}, { mostraCampiMancanti: true }),
+        "Consegna · mancano indirizzo/telefono"
+    );
+});
+
 test("pickup and delivery headers close on blur only after required fields are complete", () => {
     const ritiro = { nome: "Rossi", telefono: "3331234567", telefonoValido: true };
     const consegna = {
@@ -447,7 +482,7 @@ test("order entry wires selector events, first-product collapse, reset and note 
     assert.match(script, /gestioneTavoli\.scegli\(numero\);\s*aggiornaSelettoreTavoli\(\)/);
     assert.match(script, /impostaValoreControllo\(numeroPersone, String\(persone\), "input"\)/);
     assert.match(script, /intestazione\.addEventListener\("focusout",[\s\S]*?aggiornaStatoIntestazione\("sfocatura"\)/);
-    assert.match(script, /deveChiudereIntestazione\(tipoOrdine\.value, datiIntestazioneCorrenti\(\), \{ inputAttivo, motivo \}\)/);
+    assert.match(script, /deveChiudereIntestazione\(tipoOrdine\.value,\s*datiIntestazioneCorrenti\(\),\s*\{\s*inputAttivo,\s*motivo,\s*chiudiSuProdotto:\s*window\.matchMedia\("\(min-width: 800px\)"\)\.matches\s*\}\)/);
     assert.match(script, /intestazioneCompatta\.addEventListener\("click", apriIntestazione\)/);
     assert.match(script, /noteToggle\.addEventListener\("click"/);
     assert.match(script, /note\.dispatchEvent\(new Event\("input", \{ bubbles: true \}\)\)/);
@@ -847,6 +882,15 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(script, /function aggiornaRighePaginaProdotti\([\s\S]*?matchMedia\("\(min-width: 600px\)"\)[\s\S]*?aggiornaRigheIngredienti\(pagina\)/);
     assert.match(script, /function aggiornaRigheIngredienti\([\s\S]*?bottone\.clientHeight[\s\S]*?stileBottone\.paddingTop[\s\S]*?stileBottone\.paddingBottom[\s\S]*?intestazione\.offsetHeight[\s\S]*?stileWrapper\.marginTop[\s\S]*?Math\.min\(5,[\s\S]*?Math\.floor\(Math\.max\(0, altezzaDisponibile\) \/ altezzaRiga\)/);
     assert.match(script, /function aggiornaIndicatoreProdotti\([\s\S]*?Math\.ceil\(griglia\.querySelectorAll\("\.prodotto-btn"\)\.length \/ 9\)/);
+    assert.match(script, /chiudiSuProdotto:\s*window\.matchMedia\("\(min-width: 800px\)"\)\.matches/);
+    assert.match(navigationStyle, /@media \(min-width: 800px\)[\s\S]*?body\.orders-composer-page\.app-shell\s*\{[^}]*height:\s*100dvh;[^}]*overflow:\s*hidden;/);
+    assert.match(navigationStyle, /body\.orders-composer-page\.app-shell main\.container\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*hidden;/);
+    assert.match(navigationStyle, /body\.orders-composer-page\.app-shell main\.container \.composer-main:not\(\.intestazione-chiusa\)\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*45%\)\s*40px\s*minmax\(120px,\s*1fr\)\s*40px;[^}]*gap:\s*6px;[^}]*overflow:\s*hidden;/);
+    assert.match(navigationStyle, /body\.orders-composer-page\.app-shell main\.container \.composer-main:not\(\.intestazione-chiusa\) > \.tavolo-input\s*\{[^}]*min-height:\s*0;[^}]*max-height:\s*100%;[^}]*overflow-y:\s*auto;/);
+    assert.match(navigationStyle, /body\.orders-composer-page\.app-shell main\.container \.composer-main:not\(\.intestazione-chiusa\) > \.extra-section\s*\{[^}]*height:\s*40px;[^}]*min-height:\s*40px;[^}]*max-height:\s*40px;/);
+    assert.match(navigationStyle, /body\.orders-composer-page\.app-shell main\.container \.composer-summary > \.riepilogo-card > \.riepilogo-totale-riga\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between;/);
+    assert.match(script, /intestazioneCompatta\.classList\.toggle\([\s\S]*?"dati-mancanti"[\s\S]*?mostraCampiMancanti && !datiCompleti/);
+    assert.match(stile, /\.intestazione-compatta\.dati-mancanti\s*\{[^}]*color:\s*#b91c1c;/);
     assert.match(navigationStyle, /@media \(min-width: 1024px\)[\s\S]*?\.prodotto-btn \.prodotto-nome\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1;/);
     assert.match(navigationStyle, /@media \(min-width: 600px\)[\s\S]*?\.prodotto-btn\s*\{[^}]*padding:\s*clamp\(8px,\s*4cqi,\s*16px\);[\s\S]*?\.prodotto-btn strong\s*\{[^}]*font-size:\s*clamp\(15px,\s*7cqi,\s*22px\);[\s\S]*?\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*font-size:\s*clamp\(14px,\s*6cqi,\s*20px\);/);
     assert.match(navigationStyle, /@media \(min-width: 600px\)[\s\S]*?\.prodotto-btn \.ingredienti-wrapper\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin-top:\s*4px;[^}]*\}[\s\S]*?\.prodotto-btn \.ingredienti\s*\{[^}]*max-height:\s*var\(--ingredienti-altezza,\s*6\.75em\);[^}]*margin:\s*0;[^}]*font-size:\s*clamp\(12px,\s*5cqi,\s*16px\);[^}]*line-height:\s*1\.35;[^}]*-webkit-line-clamp:\s*var\(--ingredienti-righe,\s*5\);/);

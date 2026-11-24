@@ -1268,6 +1268,10 @@ button {
     touch-action: manipulation;
 }
 
+.intestazione-compatta.dati-mancanti {
+    color: #b91c1c;
+}
+
 .intestazione-compatta[hidden] {
     display: none;
 }

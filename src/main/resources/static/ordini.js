@@ -860,14 +860,29 @@ function apriIntestazione() {
     intestazioneCompatta.hidden = true;
 }
 function chiudiIntestazione() {
-    intestazioneCompattaTesto.textContent = riepilogoIntestazione(tipoOrdine.value, datiIntestazioneCorrenti());
+    const dati = datiIntestazioneCorrenti();
+    const mostraCampiMancanti = window.matchMedia("(min-width: 800px)").matches;
+    const datiCompleti = datiOrdineCompleti(tipoOrdine.value, dati);
+    intestazioneCompattaTesto.textContent = riepilogoIntestazione(
+        tipoOrdine.value,
+        dati,
+        { mostraCampiMancanti }
+    );
+    intestazioneCompatta.classList.toggle(
+        "dati-mancanti",
+        mostraCampiMancanti && !datiCompleti
+    );
     intestazione.classList.add("visually-hidden");
     composerMain.classList.add("intestazione-chiusa");
     intestazioneCompatta.hidden = false;
 }
 function aggiornaStatoIntestazione(motivo = "cambio") {
     const inputAttivo = document.activeElement?.matches("input, textarea, select") === true;
-    if (deveChiudereIntestazione(tipoOrdine.value, datiIntestazioneCorrenti(), { inputAttivo, motivo })) {
+    if (deveChiudereIntestazione(tipoOrdine.value, datiIntestazioneCorrenti(), {
+        inputAttivo,
+        motivo,
+        chiudiSuProdotto: window.matchMedia("(min-width: 800px)").matches
+    })) {
         chiudiIntestazione();
     }
 }
