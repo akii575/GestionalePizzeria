@@ -57,6 +57,7 @@ const extraRicercaVuota = document.getElementById("extra-ricerca-vuota");
 const noteRigaConteggio = document.getElementById("note-riga-conteggio");
 const extraFreccia = document.getElementById("extra-freccia");
 const extraDettagli = document.getElementById("extra-dettagli");
+const extraDettagliProdotto = document.getElementById("extra-dettagli-prodotto");
 const senzaIngredienti = document.getElementById("senza-ingredienti");
 const senzaIngredientiLista = document.getElementById("senza-ingredienti-lista");
 const noteRiga = document.getElementById("note-riga");
@@ -996,9 +997,11 @@ function renderGrigliaExtra() {
         "aria-label",
         `${extraProdotto.textContent}${rigaAttiva?.componibile ? "" : ` · Senza (${conteggioSenza})`} · Extra (${conteggioExtra}) · Note (${conteggioNote})`
     );
+    extraDettagliProdotto.textContent = extraProdotto.textContent;
     extraIntestazione.setAttribute("aria-expanded", String(extraAperto));
     sezioneExtra.classList.toggle("extra-aperto", extraAperto);
     extraDettagli.hidden = !extraAperto || sezioneExtra.hidden;
+    aggiornaPosizionePannelloExtra();
     extraRicerca.hidden = !stato.extra.length;
     extraLista.replaceChildren();
     const extraVisibili = filtraExtra(stato.extra, extraRicerca.value);
@@ -1037,8 +1040,18 @@ function renderGrigliaExtra() {
     renderNoteRiga(rigaAttiva, supportaNoteRiga);
 }
 function aggiornaPosizionePannelloExtra() {
-    const destinazione = mediaPannelloExtra.matches ? prodottiWrapper : sezioneExtra;
+    const destinazione = mediaPannelloExtra.matches ? composerMain : sezioneExtra;
     if (extraDettagli.parentElement !== destinazione) destinazione.appendChild(extraDettagli);
+    if (mediaPannelloExtra.matches) {
+        const altezzaBarraExtra = sezioneExtra.getBoundingClientRect().height;
+        const spazioTraRighe = Number.parseFloat(window.getComputedStyle(composerMain).rowGap) || 0;
+        extraDettagli.style.setProperty(
+            "--extra-pannello-inset-bottom",
+            `${altezzaBarraExtra + spazioTraRighe}px`
+        );
+    } else {
+        extraDettagli.style.removeProperty("--extra-pannello-inset-bottom");
+    }
 }
 function chiudiPannelloExtra() {
     if (!extraAperto) return;

@@ -2980,6 +2980,7 @@ body {
     }
 
     .composer-main {
+        position: relative;
         min-height: 0;
         grid-template-rows: auto auto minmax(0, 1fr) auto;
         gap: 6px;
@@ -2994,13 +2995,16 @@ body {
         overflow: hidden;
     }
 
-    .prodotti-wrapper > .extra-dettagli:not([hidden]) {
+    .composer-main > .extra-dettagli:not([hidden]) {
         position: absolute;
-        z-index: 20;
-        inset: 0;
+        z-index: 30;
+        top: 0;
+        right: 0;
+        bottom: var(--extra-pannello-inset-bottom, 46px);
+        left: 0;
         display: flex;
         min-width: 0;
-        min-height: 0;
+        min-height: 80%;
         flex-direction: column;
         gap: 8px;
         overflow-x: hidden;
@@ -3013,12 +3017,29 @@ body {
         overscroll-behavior: contain;
     }
 
+    .composer-main > .extra-section {
+        position: relative;
+        z-index: 31;
+    }
+
     .extra-dettagli__toolbar {
         display: flex;
         min-width: 0;
         flex: 0 0 auto;
         align-items: center;
         gap: 8px;
+    }
+
+    .extra-dettagli-prodotto {
+        display: block;
+        min-width: 0;
+        max-width: 36%;
+        flex: 0 1 auto;
+        overflow: hidden;
+        font-size: 14px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .extra-dettagli__toolbar .extra-ricerca {
