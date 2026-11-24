@@ -822,6 +822,10 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
         path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.css"),
         "utf8"
     );
+    const navigationStyle = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "nav.css"),
+        "utf8"
+    );
 
     assert.match(pagina, /id="btn-ingredienti"[\s\S]*aria-pressed="true"[\s\S]*<svg/);
     assert.match(script, /className = "prodotto-btn__meta"/);
@@ -838,4 +842,9 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(stile, /\.tab-container \.tab\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/s);
     assert.match(stile, /\.composer-summary\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*3fr\) minmax\(0,\s*7fr\);[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\) minmax\(18px,\s*auto\) 20px 36px;/s);
     assert.match(stile, /\.ingredienti-nascosti \.prodotto-btn\s*\{[^}]*min-height:\s*64px;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-quantita\s*\{[^}]*top:\s*4px;[^}]*right:\s*4px;[^}]*left:\s*auto;[^}]*width:\s*20px;[^}]*height:\s*20px;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.prodotto-nome\s*\{[^}]*font-size:\s*14px;[^}]*font-weight:\s*600;[^}]*line-height:\s*1\.2;[^}]*text-overflow:\s*ellipsis;[^}]*overflow-wrap:\s*normal;[^}]*word-break:\s*normal;[^}]*-webkit-line-clamp:\s*2;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn\.ha-quantita \.prodotto-nome\s*\{[^}]*padding-right:\s*20px;[^}]*padding-left:\s*0;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*font-size:\s*14px;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.ingredienti\s*\{[^}]*font-size:\s*11\.5px;[^}]*-webkit-line-clamp:\s*2;/);
 });

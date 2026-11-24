@@ -1407,3 +1407,54 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
         -webkit-line-clamp: 2;
     }
 }
+
+@media (max-width: 600px) {
+    .prodotto-btn {
+        padding: 8px;
+    }
+
+    .prodotto-btn .prodotto-btn__meta {
+        margin-top: 0;
+    }
+
+    .prodotto-quantita {
+        top: 4px;
+        right: 4px;
+        left: auto;
+        width: 20px;
+        min-width: 20px;
+        height: 20px;
+    }
+
+    .prodotto-btn .prodotto-nome {
+        display: -webkit-box;
+        width: 100%;
+        min-width: 0;
+        max-height: 2.4em;
+        overflow: hidden;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .prodotto-btn.ha-quantita .prodotto-nome {
+        padding-right: 20px;
+        padding-left: 0;
+    }
+
+    .prodotto-btn .prezzo-prodotto {
+        font-size: 14px;
+    }
+
+    .prodotto-btn .ingredienti {
+        font-size: 11.5px;
+        line-height: 1.2;
+        -webkit-line-clamp: 2;
+    }
+}
