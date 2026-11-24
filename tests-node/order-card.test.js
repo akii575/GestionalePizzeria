@@ -35,7 +35,7 @@ test("all order services use the same compact and expanded card structure", () =
         assert.match(html, /class="order-card"/);
         assert.match(html, /class="order-card__compact-row"/);
         assert.match(html, /class="order-card__details"/);
-        assert.match(html, /class="order-card__actions"/);
+        assert.match(html, /class="order-card__actions(?: order-card__actions--table)?"/);
         const contactCount = order.tipo === "consegna" ? 2 : 0;
         assert.equal((html.match(/class="order-card__delivery-contact"/g) || []).length, contactCount);
         assert.doesNotMatch(html, /class="order-card__header"|class="order-card__number"|class="order-card__total"/);
@@ -43,7 +43,28 @@ test("all order services use the same compact and expanded card structure", () =
         assert.equal((html.match(/data-modifica=/g) || []).length, 1);
         assert.equal((html.match(/data-ristampa=/g) || []).length, 1);
         assert.equal((html.match(/data-elimina=/g) || []).length, 1);
+        assert.equal((html.match(/data-tavolo-chiuso=/g) || []).length, order.tipo === "tavolo" ? 1 : 0);
     }
+});
+
+test("closed table cards show their paid time, subdued total and reopen action", () => {
+    const html = render({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 3",
+        tavoloChiuso: true,
+        chiusoAlle: "2026-10-27T18:41:00.000Z",
+        totale: 31
+    });
+
+    assert.match(html, /order-card--closed/);
+    assert.match(html, /order-card__compact-state--paid-table">pagato · 19:41/);
+    assert.match(html, /order-card__compact-total--closed">31,00\s*€/);
+    assert.match(html, /data-tavolo-chiuso="false"[^>]*>Riapri tavolo/);
+});
+
+test("table payment actions are not rendered without edit access", () => {
+    const html = render({ tipo: "tavolo" }, { canEdit: false });
+    assert.doesNotMatch(html, /data-tavolo-chiuso=/);
 });
 
 test("edit links keep their origin and open the shared order composer", () => {

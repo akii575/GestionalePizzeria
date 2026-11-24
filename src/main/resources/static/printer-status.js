@@ -46,7 +46,7 @@
 
     function updateSummary(today) {
         summaryElements.tavoli.value.textContent = today.tavoli;
-        summaryElements.tavoli.label.textContent = `Tavoli · ${today.coperti} coperti`;
+        summaryElements.tavoli.label.textContent = `Tavoli · ${today.coperti} coperti · ${today.tavoliPagati} pagati`;
         summaryElements.consegne.value.textContent = today.consegneDaFare;
         summaryElements.consegne.label.textContent = `Consegne da fare · ${today.consegneInCorso} in giro`;
         summaryElements.ritiri.value.textContent = today.ritiri;

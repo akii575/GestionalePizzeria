@@ -36,6 +36,7 @@ const {
     normalizzaNumeroTavolo,
     nomeTavoloDaNumero,
     numeroTavoloDaNome,
+    calcolaTavoliOccupati,
     creaGestoreTavoli,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
@@ -329,6 +330,21 @@ test("custom table selection accepts 1 through 99 and keeps its label in sync", 
     assert.equal(selezione.numeroPersonalizzato, "23");
     assert.equal(selezione.numero, "23");
     assert.equal(selezione.errore, "");
+});
+
+test("occupied tables omit closed orders and retain the most recent open order", () => {
+    const orders = [
+        { numero: 4, tipo: "tavolo", tavoloOCliente: "Tavolo 3", dataOra: "2026-11-24T18:00:00.000Z" },
+        { numero: 10, tipo: "sala", tavoloOCliente: "Tavolo 3", dataOra: "2026-11-24T18:30:00.000Z" },
+        { numero: 11, tipo: "tavolo", tavoloOCliente: "Tavolo 3", dataOra: "2026-11-24T19:00:00.000Z", tavoloChiuso: true },
+        { numero: 12, tipo: "tavolo", tavoloOCliente: "Tavolo 5", dataOra: "2026-11-24T19:30:00.000Z", tavoloChiuso: true }
+    ];
+
+    const occupied = calcolaTavoliOccupati(orders);
+
+    assert.equal(occupied.get("3").ordine.numero, 10);
+    assert.equal(occupied.get("3").numeroOrdini, 2);
+    assert.equal(occupied.has("5"), false);
 });
 
 test("invalid custom table numbers show the required validation message", () => {

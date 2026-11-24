@@ -95,6 +95,12 @@ const orderCard = (() => {
     }
 
     function compactState(order, type) {
+        if (type === "tavolo" && order.tavoloChiuso === true) {
+            return {
+                state: "paid-table",
+                label: `pagato · ${formatTime(order.chiusoAlle)}`
+            };
+        }
         if (type === "consegna" && order.statoPagamento !== "pagato" && order.statoPagamento !== "pos") {
             const print = printSummary(order);
             if (print.state !== "printed") return print;
@@ -239,12 +245,16 @@ const orderCard = (() => {
         return items.length ? `<div class="order-card__detail-status">${items.join("")}</div>` : "";
     }
 
-    function renderActions(order, canEdit) {
+    function renderActions(order, type, canEdit) {
         if (!canEdit) return "";
         const number = Number(order.numero);
         const path = typeof window === "undefined" || !window.location ? "" : window.location.pathname;
         const origine = /^\/(gestionale|consegne|tavoli|ritiri|banco)(?:\.html)?$/.exec(path)?.[1] || "gestionale";
-        return `<div class="order-card__actions"><a href="/ordini.html?modifica=${number}&amp;da=${origine}" data-modifica="${number}">Modifica</a><button type="button" data-ristampa="${number}" aria-haspopup="dialog">Ristampa</button><button type="button" data-elimina="${number}" class="pericolo" aria-label="Elimina ordine"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`;
+        const tableAction = type === "tavolo"
+            ? `<button type="button" data-tavolo-chiuso="${String(order.tavoloChiuso !== true)}" data-numero="${number}">${order.tavoloChiuso === true ? "Riapri tavolo" : "Pagato e libero"}</button>`
+            : "";
+        const tableActionClass = type === "tavolo" ? " order-card__actions--table" : "";
+        return `<div class="order-card__actions${tableActionClass}"><a href="/ordini.html?modifica=${number}&amp;da=${origine}" data-modifica="${number}">Modifica</a><button type="button" data-ristampa="${number}" aria-haspopup="dialog">Ristampa</button>${tableAction}<button type="button" data-elimina="${number}" class="pericolo" aria-label="Elimina ordine"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`;
     }
 
     function deliveryStatus(order) {
@@ -432,8 +442,9 @@ const orderCard = (() => {
         const compactTotal = deliveryMode
             ? euro.format(deliveryAmount)
             : euro.format(Number(order.totale || 0));
+        const closedTable = type === "tavolo" && order.tavoloChiuso === true;
         return `
-            <article class="order-card${expanded ? " order-card--expanded" : ""}${deliveryMode ? " order-card--delivery-mode" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
+            <article class="order-card${expanded ? " order-card--expanded" : ""}${deliveryMode ? " order-card--delivery-mode" : ""}${closedTable ? " order-card--closed" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
                 <div class="order-card__compact-row">
                     <button class="order-card__toggle" type="button" data-order-number="${escapeHtml(orderNumber)}" aria-expanded="${String(expanded)}" aria-controls="${detailId}">
                         ${renderServiceTile(order, type, serviceTime)}
@@ -443,7 +454,7 @@ const orderCard = (() => {
                         </span>
                     </button>
                     <span class="order-card__compact-status">
-                        <span class="order-card__compact-total"${compactTotalAttributes}>${compactTotal}</span>
+                        <span class="order-card__compact-total${closedTable ? " order-card__compact-total--closed" : ""}"${compactTotalAttributes}>${compactTotal}</span>
                         ${compactStatus}
                     </span>
                 </div>
@@ -457,7 +468,7 @@ const orderCard = (() => {
                         ${deliveryFee}
                         ${note}
                     </section>
-                    ${renderActions(order, canEdit)}
+                    ${renderActions(order, type, canEdit)}
                 </div>
             </article>
         `;

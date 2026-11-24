@@ -11,6 +11,10 @@ const styles = fs.readFileSync(
     path.join(__dirname, "../src/main/resources/static/home.css"),
     "utf8"
 );
+const printerStatus = fs.readFileSync(
+    path.join(__dirname, "../src/main/resources/static/printer-status.js"),
+    "utf8"
+);
 const primaryAction = page.match(/<div class="home-actions">([\s\S]*?)<\/div>/)?.[1];
 
 test("home presents one primary action, linked summary cards and printer status", () => {
@@ -40,5 +44,7 @@ test("home presents one primary action, linked summary cards and printer status"
     assert.match(page, /<h2 id="printer-title">Stampa<\/h2>/);
     assert.match(page, /id="printer-status"/);
     assert.match(page, /src="\/printer-status\.js"/);
+    assert.match(printerStatus, /today\.tavoliPagati/);
+    assert.match(printerStatus, /coperti · \$\{today\.tavoliPagati\} pagati/);
     assert.doesNotMatch(page, /controllo ordini ogni 10 secondi|installa-stampa-automatica\.bat/i);
 });
