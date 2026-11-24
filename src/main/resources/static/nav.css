@@ -1935,3 +1935,30 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
         min-height: 44px;
     }
 }
+
+:root {
+    --prodotti-altezza-massima: 132px;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    :root {
+        --prodotti-altezza-massima: 150px;
+    }
+}
+
+@media (min-width: 1024px) {
+    :root {
+        --prodotti-altezza-massima: 190px;
+    }
+}
+
+.pagina-prodotti,
+.ricerca-risultati .pagina-prodotti {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, var(--prodotti-altezza-riga, 132px)));
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-auto-rows: auto;
+    align-content: start;
+    align-items: stretch;
+}

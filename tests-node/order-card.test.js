@@ -669,11 +669,13 @@ test("wide desktop layouts use the space beside the sidebar", () => {
     assert.match(navigation, /\.composer-main > \.extra-section > \.extra-intestazione\s*\{[^}]*flex-shrink:\s*0;[^}]*min-height:\s*40px;/);
     assert.match(navigation, /main\.container \.composer-main > \.prodotti-wrapper > #prodotti\s*\{[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;[^}]*scroll-snap-type:\s*x mandatory;/);
     assert.match(navigation, /\.composer-main\.intestazione-chiusa > \.prodotti-wrapper > #prodotti\s*\{[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;[^}]*scroll-snap-type:\s*x mandatory;/);
-    assert.match(navigation, /@media \(min-width: 800px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?composer-main\.intestazione-chiusa > \.prodotti-wrapper > #prodotti\s*\{[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;[^}]*scroll-snap-type:\s*x mandatory;[\s\S]*?composer-main\.intestazione-chiusa \.pagina-prodotti\s*\{[^}]*grid-template-rows:\s*repeat\(var\(--prodotti-righe,\s*3\), minmax\(0, 1fr\)\);[^}]*grid-auto-flow:\s*column;[^}]*grid-auto-columns:\s*calc\(\(100% - 16px\) \/ 3\);/);
     assert.match(navigation, /\.composer-main:not\(\.intestazione-chiusa\)\s*\{[^}]*overflow-y:\s*auto;[^}]*grid-template-rows:\s*max-content max-content minmax\(268px, 1fr\) max-content;/);
-    assert.match(navigation, /\.pagina-prodotti\s*\{[^}]*--prodotti-righe:\s*3;[^}]*grid-template-rows:\s*repeat\(var\(--prodotti-righe\), minmax\(0, 1fr\)\);[^}]*grid-auto-flow:\s*column;[^}]*grid-auto-columns:\s*calc\(\(100% - 16px\) \/ 3\);/);
     assert.doesNotMatch(navigation, /grid-auto-columns:\s*calc\(\(100% - (?:24|32)px\) \/ [45]/);
     assert.doesNotMatch(navigation, /--prodotti-righe:\s*[45]/);
+    assert.match(navigation, /\.pagina-prodotti,\s*\.ricerca-risultati \.pagina-prodotti\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);[^}]*grid-template-rows:\s*repeat\(3,\s*minmax\(0,\s*var\(--prodotti-altezza-riga,\s*132px\)\)\);[^}]*grid-auto-flow:\s*row;[^}]*align-content:\s*start;/);
+    assert.match(navigation, /:root\s*\{\s*--prodotti-altezza-massima:\s*132px;/);
+    assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1023px\)\s*\{\s*:root\s*\{\s*--prodotti-altezza-massima:\s*150px;/);
+    assert.match(navigation, /@media \(min-width: 1024px\)\s*\{\s*:root\s*\{\s*--prodotti-altezza-massima:\s*190px;/);
     assert.match(orderStyles, /\.griglia-prodotti\.is-dragging\s*\{[^}]*scroll-snap-type:\s*none;/);
     assert.match(navigation, /\.prodotto-btn\s*\{[^}]*scroll-snap-align:\s*start;/);
     assert.match(orderStyles, /\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*grid-row:\s*2;/);
@@ -684,7 +686,7 @@ test("wide desktop layouts use the space beside the sidebar", () => {
     assert.match(orderScript, /Math\.abs\(spostamento\) < 5/);
     assert.match(orderScript, /griglia\.classList\.add\("is-dragging"\)[\s\S]*?ignoraClick = true;/);
     assert.match(orderScript, /creaBottoneProdotto\(prodotto\)[\s\S]*?bottone\.classList\.add\("ricerca-risultato"\)/);
-    assert.match(orderScript, /ricercaRisultati\.appendChild\(pagina\)/);
+    assert.match(orderScript, /renderPagineProdotti\(ricercaRisultati,\s*trovati/);
     assert.match(orderScript, /abilitaTrascinamentoOrizzontale\(ricercaRisultati\)/);
     assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1024px\)/);
 });

@@ -118,6 +118,15 @@ const prodottiUI = (() => {
             .map(voce => voce.prodotto);
     }
 
+    function creaPagineProdotti(prodotti) {
+        const elenco = Array.isArray(prodotti) ? prodotti : [];
+        const pagine = [];
+        for (let inizio = 0; inizio < elenco.length; inizio += 9) {
+            pagine.push(elenco.slice(inizio, inizio + 9));
+        }
+        return pagine;
+    }
+
     function filtraExtra(extra, testo) {
         const query = normalizza(testo);
         const parole = query.split(" ");
@@ -728,6 +737,7 @@ const prodottiUI = (() => {
         applicaClienteIndirizzo,
         normalizza,
         filtraProdotti,
+        creaPagineProdotti,
         filtraExtra,
         trovaComponibileSenzaIngredienti,
         ammetteExtra,
