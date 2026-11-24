@@ -1371,6 +1371,18 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
 }
 
 @media (min-width: 600px) {
+    .prodotto-btn {
+        padding: clamp(8px, 4cqi, 16px);
+    }
+
+    .prodotto-btn strong {
+        font-size: clamp(15px, 7cqi, 22px);
+    }
+
+    .prodotto-btn .prezzo-prodotto {
+        font-size: clamp(14px, 6cqi, 20px);
+    }
+
     .prodotto-btn .ingredienti-wrapper {
         flex: 0 0 auto;
         margin-top: 4px;
@@ -1379,7 +1391,7 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
     .prodotto-btn .ingredienti {
         max-height: var(--ingredienti-altezza, 6.75em);
         margin: 0;
-        font-size: 13px;
+        font-size: clamp(12px, 5cqi, 16px);
         line-height: 1.35;
         -webkit-line-clamp: var(--ingredienti-righe, 5);
     }
@@ -1439,12 +1451,6 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
 
     .prodotto-btn.ha-quantita .ingredienti {
         padding-right: 20px;
-    }
-}
-
-@container (min-width: 235px) {
-    .prodotto-btn strong {
-        font-size: 18px;
     }
 }
 
