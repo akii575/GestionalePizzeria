@@ -826,9 +826,14 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(pagina, /id="btn-ingredienti"[\s\S]*aria-pressed="true"[\s\S]*<svg/);
     assert.match(script, /className = "prodotto-btn__meta"/);
     assert.match(script, /className = "prodotto-quantita"/);
+    assert.match(script, /badge\.textContent = String\(quantita\)/);
     assert.match(script, /badge\?\.remove\(\)/);
     assert.match(stile, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(170px,\s*1fr\)\)/);
-    assert.match(stile, /\.prodotto-quantita\s*\{[^}]*position:\s*absolute;[^}]*background:\s*#1a5ea9;/);
-    assert.match(stile, /\.prodotto-btn\.ha-quantita \.prodotto-btn__meta\s*\{[^}]*padding-right:\s*30px;/);
+    assert.match(stile, /\.prodotto-quantita\s*\{[^}]*top:\s*-6px;[^}]*left:\s*-6px;[^}]*width:\s*22px;[^}]*height:\s*22px;[^}]*background:\s*#1a5ea9;/);
+    assert.match(stile, /\.prodotto-btn strong\s*\{[^}]*max-height:\s*2\.3em;[^}]*grid-column:\s*1 \/ -1;[^}]*overflow-wrap:\s*break-word;[^}]*text-overflow:\s*clip;/s);
+    assert.match(stile, /\.prodotto-btn strong::before\s*\{[^}]*float:\s*right;[^}]*width:\s*56px;[^}]*height:\s*1\.15em;/s);
+    assert.match(stile, /\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1;[^}]*white-space:\s*nowrap;/s);
+    assert.match(stile, /\.tab-container \.tab\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/s);
+    assert.match(stile, /\.composer-summary\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*3fr\) minmax\(0,\s*7fr\);[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\) minmax\(18px,\s*auto\) 20px 36px;/s);
     assert.match(stile, /\.ingredienti-nascosti \.prodotto-btn\s*\{[^}]*min-height:\s*64px;/);
 });

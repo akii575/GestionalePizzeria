@@ -1123,11 +1123,11 @@ function renderProdotti() {
         pagina.appendChild(bottone);
     });
     prodotti.appendChild(pagina);
-    requestAnimationFrame(aggiornaRigheNomeCard);
 }
 function aggiornaBadgeQuantitaProdotto(bottone) {
     const quantita = quantitaProdotto(stato.righe, bottone.dataset.prodotto);
     let badge = bottone.querySelector(".prodotto-quantita");
+    const intestazioneProdotto = bottone.querySelector(".prodotto-btn__meta");
     bottone.classList.toggle("ha-quantita", quantita > 0);
     if (quantita === 0) {
         badge?.remove();
@@ -1136,24 +1136,13 @@ function aggiornaBadgeQuantitaProdotto(bottone) {
     if (!badge) {
         badge = document.createElement("span");
         badge.className = "prodotto-quantita";
-        bottone.append(badge);
+        intestazioneProdotto.prepend(badge);
     }
     badge.textContent = String(quantita);
     badge.setAttribute("aria-label", `${quantita} già nell'ordine`);
 }
 function aggiornaBadgeQuantitaProdotti() {
     prodotti.querySelectorAll(".prodotto-btn").forEach(aggiornaBadgeQuantitaProdotto);
-}
-function aggiornaRigheNomeCard() {
-    prodotti.querySelectorAll(".prodotto-btn").forEach(bottone => {
-        const nome = bottone.querySelector(".prodotto-nome");
-        if (!nome) return;
-        const altezzaRiga = Number.parseFloat(getComputedStyle(nome).lineHeight);
-        bottone.classList.toggle(
-            "nome-su-due-righe",
-            Number.isFinite(altezzaRiga) && nome.getBoundingClientRect().height > altezzaRiga * 1.5
-        );
-    });
 }
 function leggiIngredientiVisibili() {
     try {
@@ -1772,7 +1761,6 @@ bottoneIngredienti.addEventListener("click", () => {
     ingredientiVisibili = !ingredientiVisibili;
     aggiornaToggleIngredienti();
 });
-window.addEventListener("resize", () => requestAnimationFrame(aggiornaRigheNomeCard));
 prodotti.addEventListener("pointerdown", evento => {
     if (evento.pointerType !== "mouse" || evento.button !== 0) return;
     trascinamentoProdotti = {
