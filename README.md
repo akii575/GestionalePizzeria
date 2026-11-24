@@ -56,9 +56,9 @@ Crea prima l'utente in Firebase Authentication > Users, poi assegna il ruolo con
 npm run set-staff -- staff@example.com
 ```
 
-Lo staff puo' usare tutte le funzioni del gestionale, incluse gestione ordini,
-ristampe, stampanti e reset numeri. Nelle pagine Ritiri, Banco, Tavoli e Tutti gli
-ordini non vede il riepilogo "Totale visualizzato"; il conteggio degli ordini e'
+Lo staff puo' usare le funzioni del gestionale, incluse gestione ordini, ristampe
+e stampanti, ma non puo' azzerare gli ordini o la numerazione. Nelle pagine Ritiri,
+Banco, Tavoli e Tutti gli ordini non vede il riepilogo "Totale visualizzato"; il conteggio degli ordini e'
 visibile. Il totale delle consegne, i totali delle singole comande e gli scontrini
 restano invariati. Se un account ha entrambi i claim `admin: true` e `staff: true`,
 prevale admin e il riepilogo resta visibile. Per revocare il ruolo usa
@@ -150,8 +150,9 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   staff accedono a tutto, i consegnatori solo alla pagina dedicata e gli altri
   ricevono "Accesso negato".
 - Le API verificano una sessione Firebase Admin: i claim `admin` e `staff`
-  consentono tutte le operazioni, mentre `delivery` consente solo la lettura degli
-  ordini di tipo consegna. Se sono presenti sia `admin` sia `staff`, prevale admin.
+  consentono le operazioni gestionali, ma il reset degli ordini e' riservato ad
+  `admin`; `delivery` consente solo la lettura degli ordini di tipo consegna. Se
+  sono presenti sia `admin` sia `staff`, prevale admin.
   Le sessioni sono cookie `HttpOnly`, `Secure` e `SameSite=Lax`; le operazioni di
   modifica controllano anche l'origine.
 - Le Firestore Security Rules consentono agli admin lettura e scrittura; i

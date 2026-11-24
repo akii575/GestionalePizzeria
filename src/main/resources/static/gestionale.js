@@ -234,8 +234,25 @@ if (window.paymentUI) {
         onError: errore => mostraStato(errore.message, "errore")
     });
 }
-document.getElementById("reset-numeri").addEventListener("click", async () => {
-    if (!window.confirm("Il reset eliminera' tutti gli ordini presenti e riportera' la numerazione a 1. Continuare?")) return;
+const resetButton = document.getElementById("reset-numeri");
+const resetDialog = document.getElementById("reset-numeri-dialog");
+const resetPhrase = document.getElementById("reset-numeri-phrase");
+const resetConfirm = document.getElementById("reset-numeri-confirm");
+resetConfirm.disabled = true;
+resetPhrase.addEventListener("input", () => {
+    resetConfirm.disabled = resetPhrase.value !== "RESET";
+});
+resetButton.addEventListener("click", () => {
+    if (window.currentAccount?.admin !== true) return;
+    resetPhrase.value = "";
+    resetConfirm.disabled = true;
+    resetDialog.showModal();
+    resetPhrase.focus();
+});
+document.getElementById("reset-numeri-cancel").addEventListener("click", () => resetDialog.close());
+resetConfirm.addEventListener("click", async () => {
+    if (window.currentAccount?.admin !== true || resetPhrase.value !== "RESET") return;
+    resetDialog.close();
     try {
         const risposta = await fetch("/api/reset-numeri", { method: "POST" });
         if (!risposta.ok) throw new Error("Reset non riuscito.");
@@ -247,6 +264,7 @@ document.getElementById("reset-numeri").addEventListener("click", async () => {
 });
 async function avvia() {
     if (!await window.authReady || !window.currentAccount) return;
+    resetButton.hidden = window.currentAccount.admin !== true;
     let erroreMenu = null;
     try {
         const risposta = await fetch("/api/menu", { cache: "no-store" });

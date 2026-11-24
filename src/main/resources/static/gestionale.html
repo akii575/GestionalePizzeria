@@ -22,7 +22,7 @@
 <main class="dashboard">
     <header class="dashboard-header">
         <div><h1>Tutti gli ordini</h1></div>
-        <nav><a href="/">Home</a><a href="/ordini.html">Nuova comanda</a><a href="/consegne.html">Consegne</a><a href="/ritiri.html">Ritiri</a><a href="/banco.html">Banco</a><a href="/tavoli.html">Tavoli</a><button id="aggiorna" type="button">Aggiorna</button><button id="reset-numeri" type="button" class="pericolo">Reset ordini</button></nav>
+        <nav><a href="/">Home</a><a href="/ordini.html">Nuova comanda</a><a href="/consegne.html">Consegne</a><a href="/ritiri.html">Ritiri</a><a href="/banco.html">Banco</a><a href="/tavoli.html">Tavoli</a><button id="aggiorna" type="button">Aggiorna</button><button id="reset-numeri" type="button" class="pericolo" hidden>Reset ordini</button></nav>
     </header>
     <section class="filtri" aria-label="Filtri ordini">
         <label for="filtro"><span class="filtri__etichetta">Cerca tavolo, cliente, recapito o prodotto</span><input id="filtro" type="search" aria-label="Cerca tavolo, cliente, recapito o prodotto" placeholder="Tavolo, indirizzo o prodotto..."></label>
@@ -42,6 +42,16 @@
     <p id="stato" role="status"></p>
     <section id="lista-ordini" class="lista-ordini" aria-live="polite"></section>
 </main>
+<dialog id="reset-numeri-dialog" class="reset-confirm-dialog" aria-labelledby="reset-numeri-dialog-title">
+    <h2 id="reset-numeri-dialog-title">Reset ordini</h2>
+    <p>Verranno eliminati tutti gli ordini della giornata e i relativi job di stampa. La numerazione ripartira' da 1. L'operazione non e' reversibile.</p>
+    <label for="reset-numeri-phrase">Scrivi RESET per confermare</label>
+    <input id="reset-numeri-phrase" type="text" autocomplete="off" spellcheck="false">
+    <div class="reset-confirm-dialog__actions">
+        <button id="reset-numeri-cancel" type="button">Annulla</button>
+        <button id="reset-numeri-confirm" class="pericolo" type="button" disabled>Elimina ordini</button>
+    </div>
+</dialog>
 <script src="/maps-ui.js"></script>
 <script src="/pagamento-ui.js"></script>
 <script src="/order-card.js"></script>
