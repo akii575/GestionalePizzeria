@@ -48,6 +48,11 @@ const riprovaModifica = document.getElementById("riprova-modifica");
 const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
 const extraLista = document.getElementById("extra-lista");
+const extraListaContenitore = document.getElementById("extra-lista-contenitore");
+const extraPaginazione = document.getElementById("extra-paginazione");
+const extraPaginaPrecedente = document.getElementById("extra-pagina-precedente");
+const extraPaginaIndicatore = document.getElementById("extra-pagina-indicatore");
+const extraPaginaSuccessiva = document.getElementById("extra-pagina-successiva");
 const extraIntestazione = document.getElementById("extra-intestazione");
 const extraProdotto = document.getElementById("extra-prodotto");
 const extraSenzaConteggio = document.getElementById("extra-senza-conteggio");
@@ -987,10 +992,40 @@ function extraSelezionato(extra, riga) {
         (elemento.id || elemento.nome) === (extra.id || extra.nome)
     ) || false;
 }
+function paginaExtraCorrente(numeroPagine = extraLista.children.length) {
+    if (!numeroPagine || !extraLista.clientWidth) return 0;
+    return Math.min(
+        numeroPagine - 1,
+        Math.max(0, Math.round(extraLista.scrollLeft / extraLista.clientWidth))
+    );
+}
+function aggiornaPaginazioneExtra() {
+    const numeroPagine = extraLista.children.length;
+    const pagina = paginaExtraCorrente(numeroPagine);
+    extraPaginaIndicatore.textContent = `${pagina + 1}/${Math.max(1, numeroPagine)}`;
+    extraPaginaIndicatore.setAttribute(
+        "aria-label",
+        `Pagina ${pagina + 1} di ${Math.max(1, numeroPagine)}`
+    );
+    extraPaginaPrecedente.disabled = pagina === 0;
+    extraPaginaSuccessiva.disabled = pagina >= numeroPagine - 1;
+    extraPaginazione.hidden = !mediaPannelloExtra.matches || numeroPagine === 0;
+    extraListaContenitore.classList.toggle(
+        "ha-altre-pagine",
+        numeroPagine > 1 && pagina < numeroPagine - 1
+    );
+}
+function spostaPaginaExtra(delta) {
+    const numeroPagine = extraLista.children.length;
+    if (!numeroPagine || !extraLista.clientWidth) return;
+    const pagina = Math.min(
+        numeroPagine - 1,
+        Math.max(0, paginaExtraCorrente(numeroPagine) + delta)
+    );
+    extraLista.scrollLeft = pagina * extraLista.clientWidth;
+}
 function renderGrigliaExtra() {
-    const paginaCorrente = extraLista.clientWidth
-        ? Math.round(extraLista.scrollLeft / extraLista.clientWidth)
-        : 0;
+    const paginaCorrente = paginaExtraCorrente();
     const rigaAttiva = stato.righe[stato.rigaAttiva];
     const ingredienti = Array.isArray(rigaAttiva?.ingredienti) ? rigaAttiva.ingredienti : [];
     const supportaNoteRiga = ingredienti.length > 0 || rigaAttiva?.ammetteExtra === true;
@@ -1022,8 +1057,18 @@ function renderGrigliaExtra() {
     const extraVisibili = filtraExtra(stato.extra, extraRicerca.value);
     extraRicercaVuota.hidden = !extraRicerca.value.trim() || extraVisibili.length > 0;
     extraLista.hidden = !extraVisibili.length;
-    const colonne = mediaGrigliaExtra.matches ? 3 : 4;
-    const righe = mediaGrigliaExtra.matches ? 4 : 3;
+    const desktop = mediaPannelloExtra.matches;
+    extraPaginazione.hidden = !desktop || !extraVisibili.length;
+    const gap = 8;
+    const altezzaCard = 64;
+    const righe = desktop
+        ? Math.max(1, Math.floor((extraLista.clientHeight + gap) / (altezzaCard + gap)))
+        : mediaGrigliaExtra.matches ? 4 : 3;
+    const colonne = desktop
+        ? Math.max(1, Math.floor((extraLista.clientWidth - 8 + gap) / (140 + gap)))
+        : mediaGrigliaExtra.matches ? 3 : 4;
+    if (desktop) extraLista.style.setProperty("--extra-righe", String(righe));
+    else extraLista.style.removeProperty("--extra-righe");
     const elementiPerPagina = colonne * righe;
     for (let inizio = 0; inizio < extraVisibili.length; inizio += elementiPerPagina) {
         const pagina = document.createElement("div");
@@ -1051,6 +1096,7 @@ function renderGrigliaExtra() {
     if (extraLista.children.length) {
         extraLista.scrollLeft = Math.min(paginaCorrente, extraLista.children.length - 1) * extraLista.clientWidth;
     }
+    aggiornaPaginazioneExtra();
     renderSenzaIngredienti(rigaAttiva, ingredienti);
     renderNoteRiga(rigaAttiva, supportaNoteRiga);
 }
@@ -2105,6 +2151,11 @@ aggiornaPulsanteNote();
 aggiornaTipoOrdine();
 aggiornaPosizionePannelloExtra();
 window.addEventListener("resize", aggiornaPosizionePannelloExtra);
+window.addEventListener("resize", renderGrigliaExtra);
+mediaPannelloExtra.addEventListener("change", renderGrigliaExtra);
+extraPaginaPrecedente.addEventListener("click", () => spostaPaginaExtra(-1));
+extraPaginaSuccessiva.addEventListener("click", () => spostaPaginaExtra(1));
+extraLista.addEventListener("scroll", aggiornaPaginazioneExtra, { passive: true });
 extraFatto.addEventListener("click", () => {
     chiudiPannelloExtra();
     extraIntestazione.focus({ preventScroll: true });
@@ -2114,7 +2165,14 @@ extraIntestazione.addEventListener("click", () => {
     if (!extraAperto) extraRicerca.value = "";
     renderRiepilogo();
 });
-extraRicerca.addEventListener("input", renderGrigliaExtra);
+extraRicerca.addEventListener("input", () => {
+    if (mediaPannelloExtra.matches) {
+        extraLista.classList.add("is-dragging");
+        extraLista.scrollLeft = 0;
+        extraLista.classList.remove("is-dragging");
+    }
+    renderGrigliaExtra();
+});
 riprovaModifica.addEventListener("click", inizializzaModifica);
 invia.addEventListener("click", apriConferma);
 document.getElementById("conferma-invio").addEventListener("click", inviaOrdine);

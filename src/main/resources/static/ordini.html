@@ -291,7 +291,14 @@
                                 <div id="note-riga-lista" class="note-riga-lista" role="group" aria-label="Note per la pizza"></div>
                             </div>
                             <p id="extra-ricerca-vuota" class="extra-ricerca-vuota" role="status" hidden>Nessun extra trovato</p>
-                            <div id="extra-lista" class="griglia-extra" aria-label="Extra disponibili"></div>
+                            <div id="extra-lista-contenitore" class="extra-lista-contenitore">
+                                <div id="extra-lista" class="griglia-extra" aria-label="Extra disponibili"></div>
+                            </div>
+                            <div id="extra-paginazione" class="extra-paginazione" hidden>
+                                <button id="extra-pagina-precedente" type="button" aria-label="Pagina extra precedente" disabled>‹</button>
+                                <span id="extra-pagina-indicatore" aria-live="polite" aria-atomic="true">1/1</span>
+                                <button id="extra-pagina-successiva" type="button" aria-label="Pagina extra successiva" disabled>›</button>
+                            </div>
                         </div>
                     </section>
                 </div>

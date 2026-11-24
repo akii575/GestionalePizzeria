@@ -372,10 +372,17 @@ test("product details show removals, extras and notes without ingredients", () =
             note: ["Ben cotta"]
         }]
     });
+    const styles = fs.readFileSync(
+        path.join(__dirname, "../src/main/resources/static/theme.css"),
+        "utf8"
+    );
 
     assert.match(html, /class="order-card__without-ingredients">senza Basilico<\/small>/);
     assert.match(html, /class="order-card__extra">\+ Olive<\/small>/);
     assert.match(html, /class="order-card__product-note">Ben cotta<\/small>/);
+    assert.match(styles, /\.order-card__without-ingredients\s*\{[^}]*font-weight:\s*700;/);
+    assert.match(styles, /\.order-card__product-note\s*\{[^}]*font-weight:\s*700;/);
+    assert.match(styles, /\.order-card__extra\s*\{[^}]*font-weight:\s*400;/);
     assert.doesNotMatch(html, /Pomodoro|Basilico<\/small>[\s\S]*ingredienti/i);
 });
 
@@ -757,6 +764,32 @@ test("order summary rows are grouped with a compact one-item remove action", () 
     assert.match(script, /if \(evento\.currentTarget === riepilogoSheetLista && riepilogoSheetAperto\)[\s\S]*?chiudiRiepilogoSheet\(false\)[\s\S]*?sezioneExtra\.scrollIntoView/);
     assert.match(page, /id="extra-ricerca" class="extra-ricerca" type="search" placeholder="Cerca extra/);
     assert.match(page, /id="extra-ricerca-vuota" class="extra-ricerca-vuota" role="status" hidden>Nessun extra trovato/);
+});
+
+test("desktop extra grid fills the panel and paginates dynamically", () => {
+    const directory = path.join(__dirname, "../src/main/resources/static");
+    const page = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
+    const styles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
+    const navigation = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
+    const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+
+    assert.match(page, /id="extra-lista-contenitore"[\s\S]*id="extra-lista"[\s\S]*id="extra-paginazione"[\s\S]*id="extra-pagina-precedente"[\s\S]*id="extra-pagina-indicatore"[\s\S]*id="extra-pagina-successiva"/);
+    assert.match(styles, /\.extra-lista-contenitore\s*\{[^}]*display:\s*contents;/);
+    assert.match(styles, /@media \(min-width: 800px\)[\s\S]*?\.extra-dettagli > \.extra-lista-contenitore\s*\{[^}]*display:\s*flex;[^}]*min-height:\s*0;[^}]*flex:\s*1 1 auto;/);
+    assert.match(styles, /\.extra-lista-contenitore \.griglia-extra\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*0;[^}]*flex:\s*1 1 auto;/);
+    assert.match(styles, /#extra-lista \.pagina-extra\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(140px,\s*1fr\)\);[^}]*grid-template-rows:\s*repeat\(var\(--extra-righe,\s*1\),\s*64px\);/);
+    assert.match(styles, /\.extra-lista-contenitore\.ha-altre-pagine::after\s*\{[^}]*position:\s*absolute;[^}]*pointer-events:\s*none;/);
+    assert.match(styles, /\.extra-paginazione button\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+    assert.match(navigation, /\.composer-layout\s*\{[^}]*height:\s*calc\(100dvh - 106px\)/);
+    assert.match(styles, /\.composer-main > \.extra-dettagli:not\(\[hidden\]\)\s*\{[^}]*bottom:\s*var\(--extra-pannello-inset-bottom,\s*46px\)/);
+    assert.match(script, /Math\.floor\(\(extraLista\.clientHeight \+ gap\) \/ \(altezzaCard \+ gap\)\)/);
+    assert.match(script, /extraPaginaPrecedente\.disabled = pagina === 0;[\s\S]*extraPaginaSuccessiva\.disabled = pagina >= numeroPagine - 1;/);
+    assert.match(script, /extraListaContenitore\.classList\.toggle\([\s\S]*?"ha-altre-pagine"/);
+    assert.match(script, /extraLista\.addEventListener\("scroll", aggiornaPaginazioneExtra/);
+    assert.match(script, /if \(mediaPannelloExtra\.matches\) \{\s*extraLista\.classList\.add\("is-dragging"\);\s*extraLista\.scrollLeft = 0;\s*extraLista\.classList\.remove\("is-dragging"\);\s*\}\s*renderGrigliaExtra\(\);/);
+
+    const listHeightAt1280x800 = 800 - 106 - 46 - 22 - 44 - 36 - 36 - 44 - 4 * 8;
+    assert.equal(Math.floor((listHeightAt1280x800 + 8) / (64 + 8)), 6);
 });
 
 test("portrait order summary sheet opens accessibly and removes rows through shared rendering", () => {

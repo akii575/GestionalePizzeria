@@ -182,6 +182,11 @@ test("extra search ignores accents and case", () => {
     assert.deepEqual(filtraExtra(extras, "MOZZ"), [extras[0]]);
     assert.deepEqual(filtraExtra(extras, "FRIARIELLI"), [extras[2]]);
     assert.deepEqual(filtraExtra(extras, "salsìccia"), [extras[1]]);
+    assert.deepEqual(
+        filtraExtra([{ nome: "capperi" }, { nome: "Bocconcino" }, { nome: "alici" }], "")
+            .map(extra => extra.nome),
+        ["alici", "Bocconcino", "capperi"]
+    );
 });
 
 test("composable rows require at least one selected ingredient", () => {
@@ -221,6 +226,23 @@ test("summary rows use the same fixed grid and touch-sized remove button", () =>
     assert.match(styles, /\.riepilogo-prezzo\s*\{[^}]*font-variant-numeric:\s*tabular-nums;[^}]*text-align:\s*right;/s);
     assert.match(ordersPage, /voce\.className = "riepilogo-item"/);
     assert.match(ordersPage, /riepilogo-item__descrizione/);
+});
+
+test("order variations and selected chips are bold while extras stay normal", () => {
+    const directory = path.join(__dirname, "../src/main/resources/static");
+    const styles = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
+    const ordersPage = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+
+    assert.match(styles, /\.senza-chip\.selezionato\s*\{[^}]*font-weight:\s*700;/);
+    assert.match(styles, /\.note-chip\.selezionato\s*\{[^}]*font-weight:\s*700;/);
+    assert.match(styles, /\.riepilogo-senza,\s*\.conferma-riga \.conferma-senza\s*\{[^}]*font-weight:\s*700;/);
+    assert.match(styles, /\.riepilogo-note-riga,\s*\.conferma-riga \.conferma-nota-riga\s*\{[^}]*font-weight:\s*700;/);
+    assert.match(styles, /\.riepilogo-item__descrizione \.riepilogo-extra\s*\{[^}]*font-weight:\s*400;/);
+    assert.match(styles, /\.conferma-riga \.conferma-extra\s*\{[^}]*font-weight:\s*400;/);
+    assert.match(ordersPage, /class="riepilogo-senza"/);
+    assert.match(ordersPage, /class="riepilogo-note-riga"/);
+    assert.match(ordersPage, /class="conferma-senza"/);
+    assert.match(ordersPage, /class="conferma-nota-riga"/);
 });
 
 test("selecting a delivery address fills customer fields and displays its profile", () => {
