@@ -1032,7 +1032,7 @@ body.has-civico7-network-banner .app-page-header {
     }
 
     body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa {
-        grid-template-rows: 40px 40px minmax(0, 1fr) auto;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
         gap: 6px;
     }
 
@@ -1336,7 +1336,7 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
     }
 
     body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa {
-        grid-template-rows: 40px 40px minmax(0, 1fr) auto;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
         gap: 6px;
     }
 }
@@ -1757,6 +1757,11 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
 }
 
 @media (min-width: 1440px) {
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .intestazione-compatta {
+        position: static;
+        top: auto;
+    }
+
     body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .tab-container {
         position: static;
         top: auto;
