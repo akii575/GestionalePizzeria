@@ -1,4 +1,12 @@
-const stato = { categoria: "pizze", menu: [], extra: [], righe: [], rigaAttiva: null };
+const stato = { categoria: "pizze", menu: [], extra: [], righe: [], rigaAttiva: null, chiaveInvio: nuovaChiaveInvio() };
+// Una chiave per ogni bozza di comanda: se lo stesso invio arriva due volte
+// (doppio tocco o rete instabile) il server restituisce l'ordine gia' creato.
+function nuovaChiaveInvio() {
+    const cryptoApi = globalThis.crypto;
+    if (cryptoApi && typeof cryptoApi.randomUUID === "function") return cryptoApi.randomUUID();
+    const hex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20)}`;
+}
 const statoTavoliOccupati = {
     ordini: new Map(),
     versione: null,
@@ -1898,12 +1906,14 @@ async function inviaOrdine() {
         return;
     }
     mostraMessaggio("Invio ordine in corso...", "");
+    let richiestaPartita = false;
     try {
         if (navigator.onLine === false) throw new TypeError("offline");
+        richiestaPartita = true;
         const risposta = await fetch("/api/ordini", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(ordine)
+            body: JSON.stringify({ ...ordine, idempotencyKey: stato.chiaveInvio })
         });
         const dati = await risposta.json();
         if (!risposta.ok) throw new Error(dati.errore || "Invio non riuscito.");
@@ -1914,6 +1924,7 @@ async function inviaOrdine() {
         );
         stato.righe = [];
         stato.rigaAttiva = null;
+        stato.chiaveInvio = nuovaChiaveInvio();
         costoConsegna = 0;
         aggiornaBottoneCostoConsegna();
         document.getElementById("cliente-ritiro").value = "";
@@ -1933,7 +1944,9 @@ async function inviaOrdine() {
         const senzaConnessione = navigator.onLine === false || errore instanceof TypeError;
         mostraMessaggio(
             senzaConnessione
-                ? "Comanda NON inviata: manca la connessione. Riprova appena torna internet."
+                ? richiestaPartita
+                    ? "Connessione persa durante l'invio: la comanda potrebbe essere gia' arrivata. Riprova: se era gia' arrivata non verra' duplicata."
+                    : "Comanda NON inviata: manca la connessione. Riprova appena torna internet."
                 : errore.message,
             "errore"
         );
@@ -2248,6 +2261,7 @@ document.getElementById("btn-annulla").addEventListener("click", () => {
     }
     stato.righe = [];
     stato.rigaAttiva = null;
+    stato.chiaveInvio = nuovaChiaveInvio();
     chiudiRisultatiClientiIndirizzo();
     clientiAbituali.reset();
     costoConsegna = 0;
