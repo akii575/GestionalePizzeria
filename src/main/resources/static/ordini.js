@@ -62,6 +62,8 @@ const senzaIngredientiLista = document.getElementById("senza-ingredienti-lista")
 const noteRiga = document.getElementById("note-riga");
 const noteRigaLista = document.getElementById("note-riga-lista");
 const mediaGrigliaExtra = window.matchMedia("(max-width: 699px)");
+const prodottiWrapper = document.querySelector(".prodotti-wrapper");
+const prodottiIndicatore = document.getElementById("prodotti-indicatore");
 let extraAperto = false;
 let prodottoCoperto = null;
 const tipoOrdine = document.getElementById("tipo-ordine");
@@ -109,6 +111,8 @@ const bottoneIngredienti = document.getElementById("btn-ingredienti");
 const ricercaModale = document.getElementById("ricerca-modale");
 const ricercaInput = document.getElementById("ricerca-input");
 const ricercaRisultati = document.getElementById("ricerca-risultati");
+const ricercaWrapper = ricercaRisultati.parentElement;
+const ricercaPagine = document.getElementById("ricerca-pagine");
 const ricercaTasti = document.getElementById("ricerca-tasti");
 const ricercaMoltiplicatore = document.getElementById("ricerca-moltiplicatore");
 const ricercaMessaggio = document.getElementById("ricerca-messaggio");
@@ -164,8 +168,6 @@ let costoConsegna = 0;
 const chiaveIngredientiVisibili = "civico7-ordini-ingredienti-visibili";
 let ingredientiVisibili = leggiIngredientiVisibili();
 let statoMoltiplicatore = creaStatoMoltiplicatore();
-let trascinamentoProdotti = null;
-let ignoraClickDopoTrascinamento = false;
 let trascinamentoExtra = null;
 let ignoraClickDopoTrascinamentoExtra = false;
 const cacheClienti = new Map();
@@ -1073,56 +1075,77 @@ function renderNoteRiga(riga, supportaNote) {
 function renderProdotti() {
     prodotti.innerHTML = "";
     prodotti.scrollTop = 0;
+    prodotti.scrollLeft = 0;
     const disponibili = stato.menu
         .filter(prodotto => !isCoperto(prodotto) && prodotto.categoria === stato.categoria)
         .sort((a, b) => a.ordine - b.ordine || a.nome.localeCompare(b.nome, "it"));
     const pagina = document.createElement("div");
     pagina.className = "pagina-prodotti";
     disponibili.forEach(prodotto => {
-        const bottone = document.createElement("button");
-        bottone.className = "prodotto-btn";
-        bottone.type = "button";
-        bottone.dataset.prodotto = prodotto.nome;
-        bottone.disabled = prodotto.disponibile === false;
-        bottone.classList.toggle("esaurito", prodotto.disponibile === false);
-
-        const intestazioneProdotto = document.createElement("span");
-        intestazioneProdotto.className = "prodotto-btn__meta";
-        const nome = document.createElement("strong");
-        nome.className = "prodotto-nome";
-        nome.textContent = prodotto.nome;
-        const prezzo = document.createElement("span");
-        prezzo.className = "prezzo-prodotto";
-        prezzo.textContent = euro.format(Number(prodotto.prezzo));
-        intestazioneProdotto.append(nome, prezzo);
-        bottone.append(intestazioneProdotto);
-
-        if (prodotto.disponibile === false) {
-            const esaurito = document.createElement("span");
-            esaurito.className = "prodotto-esaurito";
-            esaurito.textContent = "Esaurito";
-            bottone.append(esaurito);
-        }
-
-        const descrizioneIngredienti = Array.isArray(prodotto.ingredienti)
-            ? prodotto.ingredienti.join(", ")
-            : "";
-        if (descrizioneIngredienti) {
-            const wrapperIngredienti = document.createElement("span");
-            wrapperIngredienti.className = "ingredienti-wrapper";
-            const ingredienti = document.createElement("span");
-            ingredienti.className = "ingredienti";
-            ingredienti.textContent = descrizioneIngredienti;
-            ingredienti.title = descrizioneIngredienti;
-            wrapperIngredienti.append(ingredienti);
-            bottone.append(wrapperIngredienti);
-        }
-
-        aggiornaBadgeQuantitaProdotto(bottone);
+        const bottone = creaBottoneProdotto(prodotto);
         bottone.addEventListener("click", () => aggiungiProdotto(prodotto, "griglia"));
         pagina.appendChild(bottone);
     });
     prodotti.appendChild(pagina);
+    aggiornaIndicatoreProdotti(prodotti, prodottiWrapper, prodottiIndicatore);
+}
+function creaBottoneProdotto(prodotto) {
+    const bottone = document.createElement("button");
+    bottone.className = "prodotto-btn";
+    bottone.type = "button";
+    bottone.dataset.prodotto = prodotto.nome;
+    bottone.disabled = prodotto.disponibile === false;
+    bottone.classList.toggle("esaurito", prodotto.disponibile === false);
+
+    const intestazioneProdotto = document.createElement("span");
+    intestazioneProdotto.className = "prodotto-btn__meta";
+    const nome = document.createElement("strong");
+    nome.className = "prodotto-nome";
+    nome.textContent = prodotto.nome;
+    const prezzo = document.createElement("span");
+    prezzo.className = "prezzo-prodotto";
+    prezzo.textContent = euro.format(Number(prodotto.prezzo));
+    intestazioneProdotto.append(nome, prezzo);
+    bottone.append(intestazioneProdotto);
+
+    if (prodotto.disponibile === false) {
+        const esaurito = document.createElement("span");
+        esaurito.className = "prodotto-esaurito";
+        esaurito.textContent = "Esaurito";
+        bottone.append(esaurito);
+    }
+
+    const descrizioneIngredienti = Array.isArray(prodotto.ingredienti)
+        ? prodotto.ingredienti.join(", ")
+        : "";
+    if (descrizioneIngredienti) {
+        const wrapperIngredienti = document.createElement("span");
+        wrapperIngredienti.className = "ingredienti-wrapper";
+        const ingredienti = document.createElement("span");
+        ingredienti.className = "ingredienti";
+        ingredienti.textContent = descrizioneIngredienti;
+        ingredienti.title = descrizioneIngredienti;
+        wrapperIngredienti.append(ingredienti);
+        bottone.append(wrapperIngredienti);
+    }
+
+    aggiornaBadgeQuantitaProdotto(bottone);
+    return bottone;
+}
+function aggiornaIndicatoreProdotti(griglia, wrapper, indicatore) {
+    const larghezza = griglia.clientWidth;
+    const scorrimentoMassimo = griglia.scrollWidth - larghezza;
+    const ciSonoAltriProdotti = larghezza > 0 && scorrimentoMassimo > 2;
+    wrapper.classList.toggle("ha-altri-prodotti", ciSonoAltriProdotti);
+    indicatore.hidden = !ciSonoAltriProdotti;
+    if (!ciSonoAltriProdotti) return;
+
+    const pagine = Math.ceil(griglia.scrollWidth / larghezza);
+    const posizione = scorrimentoMassimo > 0
+        ? Math.round((griglia.scrollLeft / scorrimentoMassimo) * (pagine - 1))
+        : 0;
+    indicatore.textContent = `${posizione + 1}/${pagine}`;
+    indicatore.setAttribute("aria-label", `Pagina ${posizione + 1} di ${pagine}`);
 }
 function aggiornaBadgeQuantitaProdotto(bottone) {
     const quantita = quantitaProdotto(stato.righe, bottone.dataset.prodotto);
@@ -1193,20 +1216,32 @@ function aggiornaDisplayMoltiplicatore() {
 function renderRisultatiRicerca() {
     const testo = ricercaInput.value;
     const trovati = filtraProdotti(stato.menu.filter(prodotto => !isCoperto(prodotto)), testo);
-    ricercaRisultati.innerHTML = "";
+    ricercaRisultati.replaceChildren();
+    ricercaRisultati.scrollLeft = 0;
     ricercaMessaggio.textContent = "";
-    if (!testo.trim()) return;
-    if (!trovati.length) {
-        ricercaRisultati.innerHTML = '<p class="ricerca-vuota">Nessun prodotto trovato</p>';
+    if (!testo.trim()) {
+        aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
         return;
     }
+    if (!trovati.length) {
+        const vuoto = document.createElement("p");
+        vuoto.className = "ricerca-vuota";
+        vuoto.textContent = "Nessun prodotto trovato";
+        ricercaRisultati.appendChild(vuoto);
+        aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
+        return;
+    }
+    const pagina = document.createElement("div");
+    pagina.className = "pagina-prodotti";
     trovati.forEach(prodotto => {
-        const bottone = document.createElement("button");
-        bottone.type = "button";
-        bottone.className = "ricerca-risultato";
-        bottone.disabled = prodotto.disponibile === false;
-        bottone.classList.toggle("esaurito", prodotto.disponibile === false);
-        bottone.innerHTML = `<span class="ricerca-nome">${escapeHtml(prodotto.nome)}</span><span class="ricerca-categoria">${escapeHtml(etichetteCategorie[prodotto.categoria] || prodotto.categoriaNome || prodotto.categoria)}</span><span class="ricerca-prezzo">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>${prodotto.disponibile === false ? '<span class="ricerca-esaurito">Esaurito</span>' : ""}`;
+        const bottone = creaBottoneProdotto(prodotto);
+        bottone.classList.add("ricerca-risultato");
+        const categoria = document.createElement("span");
+        categoria.className = "ricerca-categoria";
+        categoria.textContent = etichetteCategorie[prodotto.categoria] || prodotto.categoriaNome || prodotto.categoria;
+        const ingredienti = bottone.querySelector(".ingredienti-wrapper");
+        if (ingredienti) ingredienti.before(categoria);
+        else bottone.append(categoria);
         bottone.addEventListener("click", () => {
             const quantita = quantitaDaApplicare(statoMoltiplicatore);
             const moltiplicatoreArmato = statoMoltiplicatore.armato;
@@ -1226,8 +1261,10 @@ function renderRisultatiRicerca() {
                 : `Aggiunto: ${prodotto.nome}`;
             mostraMessaggio(descrizioneAggiunta, "successo");
         });
-        ricercaRisultati.appendChild(bottone);
+        pagina.appendChild(bottone);
     });
+    ricercaRisultati.appendChild(pagina);
+    aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
 }
 function gestisciTastoMoltiplicatore(evento) {
     const tasto = evento.target.closest("[data-moltiplicatore]");
@@ -1757,47 +1794,63 @@ tabsCategorie.addEventListener("click", evento => {
         .forEach(elemento => elemento.classList.toggle("active", elemento === tab));
     renderProdotti();
 });
+function abilitaTrascinamentoOrizzontale(griglia) {
+    let trascinamento = null;
+    let ignoraClick = false;
+    griglia.addEventListener("pointerdown", evento => {
+        if (evento.pointerType !== "mouse" || evento.button !== 0) return;
+        trascinamento = {
+            inizioX: evento.clientX,
+            scrollIniziale: griglia.scrollLeft,
+            iniziato: false
+        };
+    });
+    document.addEventListener("pointermove", evento => {
+        if (!trascinamento) return;
+        const spostamento = evento.clientX - trascinamento.inizioX;
+        if (!trascinamento.iniziato && Math.abs(spostamento) < 5) return;
+        trascinamento.iniziato = true;
+        griglia.classList.add("is-dragging");
+        griglia.scrollLeft = trascinamento.scrollIniziale - spostamento;
+        evento.preventDefault();
+    });
+    function terminaTrascinamento() {
+        if (!trascinamento) return;
+        const trascinata = trascinamento.iniziato;
+        trascinamento = null;
+        griglia.classList.remove("is-dragging");
+        if (!trascinata) return;
+        ignoraClick = true;
+        setTimeout(() => (ignoraClick = false), 0);
+    }
+    document.addEventListener("pointerup", terminaTrascinamento);
+    document.addEventListener("pointercancel", terminaTrascinamento);
+    griglia.addEventListener(
+        "click",
+        evento => {
+            if (!ignoraClick) return;
+            evento.preventDefault();
+            evento.stopImmediatePropagation();
+        },
+        true
+    );
+}
+abilitaTrascinamentoOrizzontale(prodotti);
+abilitaTrascinamentoOrizzontale(ricercaRisultati);
+prodotti.addEventListener("scroll", () => {
+    aggiornaIndicatoreProdotti(prodotti, prodottiWrapper, prodottiIndicatore);
+}, { passive: true });
+ricercaRisultati.addEventListener("scroll", () => {
+    aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
+}, { passive: true });
+window.addEventListener("resize", () => {
+    aggiornaIndicatoreProdotti(prodotti, prodottiWrapper, prodottiIndicatore);
+    aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
+});
 bottoneIngredienti.addEventListener("click", () => {
     ingredientiVisibili = !ingredientiVisibili;
     aggiornaToggleIngredienti();
 });
-prodotti.addEventListener("pointerdown", evento => {
-    if (evento.pointerType !== "mouse" || evento.button !== 0) return;
-    trascinamentoProdotti = {
-        inizioX: evento.clientX,
-        scrollIniziale: prodotti.scrollLeft,
-        iniziato: false
-    };
-});
-document.addEventListener("pointermove", evento => {
-    if (!trascinamentoProdotti) return;
-    const spostamento = evento.clientX - trascinamentoProdotti.inizioX;
-    if (!trascinamentoProdotti.iniziato && Math.abs(spostamento) < 5) return;
-    trascinamentoProdotti.iniziato = true;
-    prodotti.classList.add("is-dragging");
-    prodotti.scrollLeft = trascinamentoProdotti.scrollIniziale - spostamento;
-    evento.preventDefault();
-});
-function terminaTrascinamentoProdotti() {
-    if (!trascinamentoProdotti) return;
-    const trascinato = trascinamentoProdotti.iniziato;
-    trascinamentoProdotti = null;
-    prodotti.classList.remove("is-dragging");
-    if (!trascinato) return;
-    ignoraClickDopoTrascinamento = true;
-    setTimeout(() => (ignoraClickDopoTrascinamento = false), 0);
-}
-document.addEventListener("pointerup", terminaTrascinamentoProdotti);
-document.addEventListener("pointercancel", terminaTrascinamentoProdotti);
-prodotti.addEventListener(
-    "click",
-    evento => {
-        if (!ignoraClickDopoTrascinamento) return;
-        evento.preventDefault();
-        evento.stopImmediatePropagation();
-    },
-    true
-);
 extraLista.addEventListener("pointerdown", evento => {
     if (evento.pointerType !== "mouse" || evento.button !== 0) return;
     trascinamentoExtra = {

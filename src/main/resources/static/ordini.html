@@ -266,6 +266,7 @@
                     </nav>
                     <div class="prodotti-wrapper">
                         <section id="prodotti" class="griglia-prodotti" aria-live="polite"></section>
+                        <div id="prodotti-indicatore" class="prodotti-indicatore" aria-live="polite" hidden></div>
                     </div>
                     <section class="extra-section" id="extra-section">
                         <button id="extra-intestazione" class="extra-intestazione" type="button" aria-expanded="false" aria-controls="extra-dettagli">
@@ -411,7 +412,10 @@
                     </button>
                 </div>
                 <div class="ricerca-corpo">
-                    <div id="ricerca-risultati" class="ricerca-risultati"></div>
+                    <div class="prodotti-wrapper ricerca-risultati-wrapper">
+                        <div id="ricerca-risultati" class="ricerca-risultati griglia-prodotti"></div>
+                        <div id="ricerca-pagine" class="prodotti-indicatore" aria-live="polite" hidden></div>
+                    </div>
                     <section class="ricerca-tastierino" aria-label="Moltiplicatore prodotti">
                         <output id="ricerca-moltiplicatore" class="ricerca-moltiplicatore" aria-live="polite">—</output>
                         <div id="ricerca-tasti" class="ricerca-tasti">

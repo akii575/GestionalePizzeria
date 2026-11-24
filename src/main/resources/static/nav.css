@@ -1121,3 +1121,289 @@ body.has-civico7-network-banner .app-page-header {
         height: 36px;
     }
 }
+
+.prodotti-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.griglia-prodotti {
+    position: relative;
+    display: block;
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline-start: 4px;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    cursor: grab;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper {
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti::-webkit-scrollbar {
+    display: none;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .prodotti-wrapper > #prodotti {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .prodotti-wrapper > #prodotti::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.griglia-prodotti.is-dragging {
+    cursor: grabbing;
+    scroll-behavior: auto;
+    scroll-snap-type: none;
+    user-select: none;
+}
+
+.griglia-prodotti::-webkit-scrollbar {
+    display: none;
+}
+
+.pagina-prodotti {
+    --prodotti-righe: 3;
+    box-sizing: border-box;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    grid-template-columns: none;
+    grid-template-rows: repeat(var(--prodotti-righe), minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 16px) / 3);
+    grid-auto-rows: auto;
+    align-content: stretch;
+    align-items: stretch;
+    gap: 8px;
+    padding: 4px;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti > .pagina-prodotti {
+    width: 100%;
+    height: 100%;
+    grid-template-columns: none;
+    grid-template-rows: repeat(var(--prodotti-righe), minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 16px) / 3);
+    grid-auto-rows: auto;
+}
+
+.prodotto-btn {
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-height: none;
+    flex-direction: column;
+    overflow: hidden;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti .prodotto-btn {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+}
+
+.prodotto-btn strong {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+}
+
+.prodotti-indicatore {
+    display: flex;
+    height: 16px;
+    min-height: 16px;
+    flex: 0 0 16px;
+    align-items: center;
+    justify-content: center;
+    color: var(--theme-muted, #68717d);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+}
+
+.prodotti-indicatore[hidden] {
+    display: none;
+}
+
+.prodotti-wrapper.ha-altri-prodotti::after {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    bottom: 16px;
+    width: 18px;
+    background: linear-gradient(90deg, transparent, rgba(20, 33, 48, 0.12));
+    content: "";
+    pointer-events: none;
+}
+
+.ricerca-risultati-wrapper {
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    margin: 0;
+}
+
+.ricerca-risultati.griglia-prodotti {
+    min-width: 0;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.ricerca-risultati .pagina-prodotti {
+    --prodotti-righe: 3;
+}
+
+.ricerca-risultati .ricerca-categoria {
+    display: block;
+    margin-top: 3px;
+    color: var(--theme-muted, #68717d);
+    font-size: 11px;
+    line-height: 1.15;
+}
+
+.ricerca-risultati > .ricerca-vuota {
+    display: grid;
+    min-height: 100%;
+    place-items: center;
+}
+
+@media (min-width: 1024px) {
+    .pagina-prodotti {
+        --prodotti-righe: 4;
+        grid-auto-columns: calc((100% - 24px) / 4);
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti > .pagina-prodotti {
+        grid-auto-columns: calc((100% - 24px) / 4);
+    }
+}
+
+@media (min-width: 1440px) {
+    .pagina-prodotti {
+        grid-auto-columns: calc((100% - 32px) / 5);
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti > .pagina-prodotti {
+        grid-auto-columns: calc((100% - 32px) / 5);
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa {
+        grid-template-rows: 40px 40px minmax(0, 1fr) auto;
+        gap: 6px;
+    }
+}
+
+@media (min-height: 600px) {
+    html.ingredienti-nascosti .pagina-prodotti {
+        --prodotti-righe: 4;
+    }
+
+    html.ingredienti-nascosti .ricerca-risultati .pagina-prodotti {
+        --prodotti-righe: 4;
+    }
+}
+
+@media (min-width: 1024px) and (min-height: 600px) {
+    html.ingredienti-nascosti .pagina-prodotti {
+        --prodotti-righe: 5;
+    }
+
+    html.ingredienti-nascosti .ricerca-risultati .pagina-prodotti {
+        --prodotti-righe: 5;
+    }
+}
+
+@media (max-width: 767px) {
+    body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper:not(.ricerca-risultati-wrapper) {
+        height: 420px;
+        min-height: 420px;
+        flex: 0 0 420px;
+    }
+
+    .orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti {
+        height: auto;
+        flex: 1 1 auto;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+    body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper:not(.ricerca-risultati-wrapper) {
+        height: 420px;
+        min-height: 420px;
+    }
+}
+
+@media (max-width: 700px) {
+    .ricerca-risultati-wrapper {
+        order: 0;
+        height: auto;
+        flex: 1 1 auto;
+    }
+}
+
+@media (max-width: 767px) {
+    .prodotto-btn .ingredienti {
+        font-size: 11px;
+        line-height: 1.15;
+        -webkit-line-clamp: 3;
+    }
+}
+
+@media (max-height: 560px) {
+    .prodotto-btn .ingredienti {
+        font-size: 11px;
+        line-height: 1.2;
+        -webkit-line-clamp: 2;
+    }
+}

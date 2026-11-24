@@ -23,7 +23,8 @@ test("order templates escape names and the legacy edit page only redirects", () 
     assert.match(orderScript, /nome\.textContent = prodotto\.nome/);
     assert.match(orderScript, /prezzo\.textContent = euro\.format\(Number\(prodotto\.prezzo\)\)/);
     assert.match(orderScript, /bottone\.disabled = prodotto\.disponibile === false/);
-    assert.match(orderScript, /ricerca-esaurito">Esaurito/);
+    assert.match(orderScript, /esaurito\.className = "prodotto-esaurito"/);
+    assert.match(orderScript, /esaurito\.textContent = "Esaurito"/);
     assert.match(orderScript, /tab\.textContent = categoria\.nome \|\| labels\.get\(categoria\.id\) \|\| categoria\.id/);
     assert.match(orderPage, /src="\/html-utils\.js"[\s\S]*?src="\/ordini\.js"/);
     assert.match(legacyPage, /src="\/modifica-redirect\.js"/);
