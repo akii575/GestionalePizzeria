@@ -849,11 +849,13 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(navigationStyle, /@media \(min-width: 1024px\)[\s\S]*?\.prodotto-btn \.prodotto-nome\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1;/);
     assert.match(navigationStyle, /@media \(min-width: 1440px\)[\s\S]*?\.prodotto-btn \.ingredienti-wrapper\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin-top:\s*4px;[^}]*\}[\s\S]*?\.prodotto-btn \.ingredienti\s*\{[^}]*max-height:\s*var\(--ingredienti-altezza, 4\.8em\);[^}]*margin:\s*0;[^}]*line-height:\s*1\.2;[^}]*-webkit-line-clamp:\s*var\(--ingredienti-righe, 4\);/);
     assert.doesNotMatch(stile, /\.prodotto-btn \.ingredienti-wrapper\s*\{[^}]*overflow:\s*hidden;/);
-    assert.match(pagina, /class="extra-dettagli__toolbar"[\s\S]*id="extra-ricerca"[\s\S]*id="extra-fatto"[^>]*>Fatto<\/button>/);
-    assert.match(script, /function aggiornaPosizionePannelloExtra\(\)[\s\S]*?mediaPannelloExtra\.matches \? prodottiWrapper : sezioneExtra/);
+    assert.match(pagina, /class="extra-dettagli__toolbar"[\s\S]*id="extra-dettagli-prodotto"[\s\S]*id="extra-ricerca"[\s\S]*id="extra-fatto"[^>]*>Fatto<\/button>/);
+    assert.match(script, /function aggiornaPosizionePannelloExtra\(\)[\s\S]*?mediaPannelloExtra\.matches \? composerMain : sezioneExtra/);
+    assert.match(script, /const altezzaBarraExtra = sezioneExtra\.getBoundingClientRect\(\)\.height;[\s\S]*?--extra-pannello-inset-bottom/);
+    assert.match(script, /extraDettagliProdotto\.textContent = extraProdotto\.textContent/);
     assert.match(script, /extraFatto\.addEventListener\("click",[\s\S]*?chiudiPannelloExtra\(\)/);
     assert.match(script, /tabsCategorie\.addEventListener\("click", evento => \{[\s\S]*?chiudiPannelloExtra\(\);/);
-    assert.match(stile, /@media \(min-width: 800px\)[\s\S]*?\.prodotti-wrapper > \.extra-dettagli:not\(\[hidden\]\)\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*overflow-y:\s*auto;/);
+    assert.match(stile, /@media \(min-width: 800px\)[\s\S]*?\.composer-main > \.extra-dettagli:not\(\[hidden\]\)\s*\{[^}]*position:\s*absolute;[^}]*bottom:\s*var\(--extra-pannello-inset-bottom,[^;]*;[^}]*min-height:\s*80%;[^}]*overflow-y:\s*auto;/);
     assert.match(stile, /@media \(min-width: 800px\) and \(max-height: 560px\)[\s\S]*?\.composer-summary\s*\{[^}]*box-sizing:\s*border-box;[^}]*min-width:\s*0;[^}]*max-width:\s*100%;[^}]*padding:\s*0 8px;/);
     assert.match(stile, /@media \(min-width: 800px\) and \(max-height: 560px\)[\s\S]*?\.composer-summary \.riepilogo-totale\s*\{[^}]*font-size:\s*clamp\(11px,\s*1\.6vw,\s*14px\);[^}]*white-space:\s*nowrap;/);
     assert.match(navigationStyle, /@media \(min-width: 1440px\)[\s\S]*?composer-main\.intestazione-chiusa\s*\{[^}]*grid-template-rows:\s*auto auto minmax\(0, 1fr\) auto;/);
