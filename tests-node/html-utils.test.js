@@ -20,7 +20,8 @@ test("order templates escape names and the legacy edit page only redirects", () 
     const redirectScript = fs.readFileSync(path.join(staticDirectory, "modifica-redirect.js"), "utf8");
 
     assert.match(orderScript, /<strong>\$\{escapeHtml\(extra\.nome\)\}<\/strong><span>\$\{escapeHtml\(euro\.format\(Number\(extra\.prezzo\)\)\)\}/);
-    assert.match(orderScript, /<strong>\$\{escapeHtml\(prodotto\.nome\)\}<\/strong><span class="prezzo-prodotto">\$\{escapeHtml\(euro\.format\(Number\(prodotto\.prezzo\)\)\)\}/);
+    assert.match(orderScript, /nome\.textContent = prodotto\.nome/);
+    assert.match(orderScript, /prezzo\.textContent = euro\.format\(Number\(prodotto\.prezzo\)\)/);
     assert.match(orderScript, /bottone\.disabled = prodotto\.disponibile === false/);
     assert.match(orderScript, /ricerca-esaurito">Esaurito/);
     assert.match(orderScript, /tab\.textContent = categoria\.nome \|\| labels\.get\(categoria\.id\) \|\| categoria\.id/);

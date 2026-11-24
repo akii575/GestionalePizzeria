@@ -411,6 +411,7 @@ body.app-shell nav.app-bottom-nav {
             --app-mobile-gutter: 12px;
             --app-mobile-gutter-negative: -12px;
         }
+
     }
 
     body.app-shell .app-page-header {
@@ -899,5 +900,224 @@ body.has-civico7-network-banner .app-page-header {
 @media (max-width: 767px) {
     .civico7-network-banner {
         padding-top: calc(10px + env(safe-area-inset-top));
+    }
+}
+
+@media (min-width: 800px) and (max-width: 1439px) {
+    body.app-shell main {
+        box-sizing: border-box;
+        width: calc(100% - 68px);
+        margin-left: 68px;
+    }
+
+    body.app-shell .app-sidebar {
+        width: 68px;
+        align-items: center;
+        padding: max(8px, env(safe-area-inset-top)) 4px max(8px, env(safe-area-inset-bottom));
+    }
+
+    .app-sidebar .app-brand {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        margin-bottom: 6px;
+    }
+
+    body.app-shell nav.app-sidebar-links {
+        flex: 1 1 auto;
+        min-height: 0;
+        gap: 4px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    body.app-shell nav.app-sidebar-links > .app-nav-item {
+        min-height: 33px;
+        justify-content: center;
+        padding: 5px 4px;
+    }
+
+    .app-sidebar .app-nav-item span {
+        display: none;
+    }
+
+    .app-sidebar-actions .auth-logout,
+    .app-sidebar-actions .app-reset {
+        min-height: 33px;
+        justify-content: center;
+        padding-inline: 4px;
+        font-size: 0;
+    }
+
+    .app-sidebar-actions {
+        flex: 0 0 auto;
+        gap: 4px;
+    }
+
+    .app-sidebar-actions .auth-logout::before,
+    .app-sidebar-actions .app-reset::before {
+        flex: 0 0 24px;
+        margin-right: 0;
+    }
+
+    .app-sidebar-account-email {
+        display: grid;
+        min-height: 33px;
+        place-items: center;
+        padding: 4px;
+    }
+
+    .app-sidebar-account-email-value {
+        display: none;
+    }
+
+    .app-sidebar-account-email > svg {
+        display: block;
+        width: 20px;
+        height: 20px;
+    }
+
+    body.orders-composer-page.app-shell main.container {
+        width: calc(100% - 68px);
+        margin-left: 68px;
+        padding: 8px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-layout {
+        height: calc(100dvh - 106px);
+        min-height: 0;
+        grid-template-columns: minmax(0, 1fr) 260px;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary {
+        position: sticky;
+        top: 8px;
+        height: 100%;
+        max-height: calc(100dvh - 16px);
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+    body.orders-composer-page.app-shell main.container .composer-layout {
+        grid-template-columns: minmax(0, 1fr) 300px;
+    }
+}
+
+@media (min-width: 1280px) and (max-width: 1439px) {
+    body.orders-composer-page.app-shell main.container .composer-layout {
+        grid-template-columns: minmax(0, 1fr) 320px;
+    }
+}
+
+@media (min-width: 1440px) {
+    body.orders-composer-page.app-shell main.container .composer-layout {
+        height: calc(100dvh - 138px);
+        grid-template-columns: minmax(0, 1fr) 320px;
+    }
+}
+
+@media (min-width: 800px) and (max-width: 1439px) and (orientation: landscape) and (max-height: 820px) {
+    body.orders-composer-page.app-shell main.container .composer-main > .intestazione-compatta {
+        top: 0;
+        min-height: 40px;
+        height: 40px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main > .tab-container,
+    body.orders-composer-page.app-shell main.container .composer-main > .tab-container .tab {
+        min-height: 40px;
+        height: 40px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa {
+        grid-template-rows: 40px 40px minmax(0, 1fr) auto;
+        gap: 6px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .tab-container {
+        top: 0;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa .extra-section,
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa .extra-intestazione {
+        height: 40px;
+        min-height: 40px;
+    }
+}
+
+@media (min-width: 800px) and (orientation: landscape) and (max-height: 560px) {
+    body.orders-composer-page.app-shell main.container .composer-layout {
+        height: calc(100dvh - 16px);
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .intestazione-compatta {
+        top: 0;
+        min-height: 40px;
+        height: 40px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .tab-container {
+        top: 0;
+        min-height: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .prodotti-wrapper {
+        display: flex;
+        height: auto;
+        min-height: 0;
+        flex: 1 1 0;
+        overflow: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .prodotti-wrapper > #prodotti {
+        height: 100%;
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .extra-section {
+        height: 40px;
+        min-height: 40px;
+        flex: 0 0 40px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .extra-section .extra-intestazione {
+        height: 40px;
+        min-height: 40px;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa .pagina-prodotti {
+        height: auto;
+        grid-template-rows: none;
+        grid-auto-rows: minmax(96px, auto);
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa .prodotto-btn {
+        height: auto;
+        min-height: 96px;
+        max-height: none;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa .prodotto-btn.nome-su-due-righe .ingredienti {
+        -webkit-line-clamp: 1;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-summary > .barra-conto > .btn-invia {
+        min-height: 36px;
+        height: 36px;
     }
 }

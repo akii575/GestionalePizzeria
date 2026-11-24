@@ -251,6 +251,11 @@ const prodottiUI = (() => {
         };
     }
 
+    function quantitaProdotto(righe, nomeProdotto) {
+        if (!Array.isArray(righe) || typeof nomeProdotto !== "string") return 0;
+        return righe.filter(riga => riga?.prodotto === nomeProdotto).length;
+    }
+
     function preparaRipetizione(ultimoOrdine, menu, extraMenu, postiDisponibili) {
         const disponibili = new Map((menu || []).map(prodotto => [prodotto.nome, prodotto]));
         const extraDisponibili = new Map((extraMenu || []).map(extra => [extra.nome, extra]));
@@ -691,6 +696,7 @@ const prodottiUI = (() => {
         creaPayloadComanda,
         puoSalvareModifica,
         aggiungiProdotti,
+        quantitaProdotto,
         preparaRipetizione,
         impostaRigaAttiva,
         raggruppaRigheConferma,
