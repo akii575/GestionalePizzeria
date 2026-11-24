@@ -120,12 +120,18 @@ const prodottiUI = (() => {
 
     function filtraExtra(extra, testo) {
         const query = normalizza(testo);
-        if (!query) return extra || [];
         const parole = query.split(" ");
-        return (extra || []).filter(elemento => {
-            const nome = normalizza(elemento?.nome);
-            return parole.every(parola => nome.includes(parola));
-        });
+        return (extra || [])
+            .filter(elemento => {
+                if (!query) return true;
+                const nome = normalizza(elemento?.nome);
+                return parole.every(parola => nome.includes(parola));
+            })
+            .sort((a, b) => String(a?.nome || "").localeCompare(
+                String(b?.nome || ""),
+                "it-IT",
+                { sensitivity: "base" }
+            ));
     }
 
     function trovaComponibileSenzaIngredienti(righe) {

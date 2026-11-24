@@ -182,6 +182,11 @@ test("extra search ignores accents and case", () => {
     assert.deepEqual(filtraExtra(extras, "MOZZ"), [extras[0]]);
     assert.deepEqual(filtraExtra(extras, "FRIARIELLI"), [extras[2]]);
     assert.deepEqual(filtraExtra(extras, "salsìccia"), [extras[1]]);
+    assert.deepEqual(
+        filtraExtra([{ nome: "capperi" }, { nome: "Bocconcino" }, { nome: "alici" }], "")
+            .map(extra => extra.nome),
+        ["alici", "Bocconcino", "capperi"]
+    );
 });
 
 test("composable rows require at least one selected ingredient", () => {

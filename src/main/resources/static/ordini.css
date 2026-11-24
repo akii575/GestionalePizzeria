@@ -555,6 +555,12 @@ button {
 .griglia-extra::-webkit-scrollbar {
     display: none;
 }
+.extra-lista-contenitore {
+    display: contents;
+}
+.extra-paginazione {
+    display: none;
+}
 .pagina-extra {
     box-sizing: border-box;
     display: grid;
@@ -3075,9 +3081,89 @@ body {
     }
 
     .extra-dettagli > .senza-ingredienti,
-    .extra-dettagli > .note-riga,
-    .extra-dettagli > .griglia-extra {
+    .extra-dettagli > .note-riga {
         flex: 0 0 auto;
+        margin: 0;
+    }
+
+    .extra-dettagli > .extra-lista-contenitore {
+        position: relative;
+        display: flex;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+    }
+
+    .extra-lista-contenitore .griglia-extra {
+        height: auto;
+        min-height: 0;
+        flex: 1 1 auto;
+    }
+
+    .extra-lista-contenitore.ha-altre-pagine::after {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 28px;
+        background: linear-gradient(90deg, transparent, rgb(255 255 255 / 92%));
+        content: "";
+        pointer-events: none;
+    }
+
+    #extra-lista .pagina-extra {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        grid-template-rows: repeat(var(--extra-righe, 1), 64px);
+        align-content: start;
+    }
+
+    #extra-lista .extra-card {
+        height: 64px;
+        min-height: 64px;
+    }
+
+    .extra-paginazione:not([hidden]) {
+        display: flex;
+        min-width: 0;
+        flex: 0 0 44px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .extra-paginazione[hidden] {
+        display: none;
+    }
+
+    .extra-paginazione button {
+        box-sizing: border-box;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
+        padding: 0;
+        border: 1px solid var(--theme-line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--theme-ink);
+        font: inherit;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .extra-paginazione button:disabled {
+        cursor: not-allowed;
+        opacity: .4;
+    }
+
+    .extra-paginazione span {
+        flex: 1 1 auto;
+        color: var(--theme-muted);
+        font-size: 13px;
+        text-align: center;
     }
 
     .griglia-prodotti {
