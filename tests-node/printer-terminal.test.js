@@ -343,7 +343,10 @@ test("variation receipts contain only filtered additions, removals and changed p
     assert.match(receipt, /@@ITEM:\s{2}! BEN COTTA@@/);
     assert.match(receipt, /@@ITEM:\s{2}\+ BUFALA@@/);
     assert.match(receipt, /--- TOGLIERE ---[\s\S]*@@ITEM:1X DIAVOLA@@/);
-    assert.match(receipt, /--- CAMBIARE ---[\s\S]*@@ITEM:1X CAPRICCIOSA@@[\s\S]*ORA: - SENZA FUNGHI/);
+    assert.match(
+        receipt,
+        /--- CAMBIARE ---[\s\S]*@@ITEM:1X CAPRICCIOSA@@\r?\n@@ITEM:\s{2}ORA:@@\r?\n@@ITEM:\s{2}- SENZA FUNGHI@@\r?\n@@ITEM:\s{2}! BEN COTTA@@\r?\n@@ITEM:\s{2}\+ BUFALA@@/
+    );
     assert.match(receipt, /@@BIG:ORARIO 20:30@@$/);
     assert.doesNotMatch(receipt, /NON MODIFICATA/);
 

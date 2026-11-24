@@ -279,20 +279,26 @@ function formatVariationChange(change, quantity, width) {
     const lines = [
         ...wrapReceiptText(`${quantity}x ${dopo.prodotto}`, width).map(line => `@@ITEM:${line}@@`)
     ];
-    const details = [
-        ...(Array.isArray(dopo.senza) ? dopo.senza : [])
-            .filter(value => typeof value === "string" && value.trim())
-            .map(value => `- SENZA ${value}`),
-        ...(Array.isArray(dopo.note) ? dopo.note : [])
-            .filter(value => typeof value === "string" && value.trim())
-            .map(value => `! ${value}`),
-        ...(Array.isArray(dopo.extra) ? dopo.extra : [])
-            .map(receiptExtra)
-            .filter(extra => extra.name.trim())
-            .map(extra => `+ ${extra.name}`)
-    ];
-    if (details.length) {
-        lines.push(...wrapReceiptPrefix("  ORA: ", details.join("  "), width)
+    const senza = (Array.isArray(dopo.senza) ? dopo.senza : [])
+        .filter(value => typeof value === "string" && value.trim());
+    const notes = (Array.isArray(dopo.note) ? dopo.note : [])
+        .filter(value => typeof value === "string" && value.trim());
+    const extras = (Array.isArray(dopo.extra) ? dopo.extra : [])
+        .map(receiptExtra)
+        .filter(extra => extra.name.trim());
+    if (senza.length || notes.length || extras.length) {
+        lines.push("@@ITEM:  ORA:@@");
+    }
+    for (const ingredient of senza) {
+        lines.push(...wrapReceiptPrefix("  - SENZA ", ingredient.toLocaleUpperCase("it-IT"), width)
+            .map(line => `@@ITEM:${line}@@`));
+    }
+    for (const note of notes) {
+        lines.push(...wrapReceiptPrefix("  ! ", note.toLocaleUpperCase("it-IT"), width)
+            .map(line => `@@ITEM:${line}@@`));
+    }
+    for (const extra of extras) {
+        lines.push(...wrapReceiptPrefix("  + ", extra.name, width)
             .map(line => `@@ITEM:${line}@@`));
     }
     return lines;
