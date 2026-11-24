@@ -646,13 +646,20 @@ function aggiornaSelettoreTavoli() {
         mostraMessaggio("", "");
     }
 }
-function dataOdiernaRoma() {
-    return new Intl.DateTimeFormat("en-CA", {
+// Giornata di servizio: fino alle 05:00 conta ancora come la sera prima (come lato server).
+function dataOdiernaRoma(adesso = new Date()) {
+    const parti = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
         timeZone: "Europe/Rome",
         year: "numeric",
         month: "2-digit",
-        day: "2-digit"
-    }).format(new Date());
+        day: "2-digit",
+        hour: "2-digit",
+        hourCycle: "h23"
+    }).formatToParts(adesso)
+        .filter(parte => parte.type !== "literal")
+        .map(parte => [parte.type, Number(parte.value)]));
+    const data = new Date(Date.UTC(parti.year, parti.month - 1, parti.day - (parti.hour < 5 ? 1 : 0)));
+    return data.toISOString().slice(0, 10);
 }
 async function aggiornaTavoliOccupati() {
     if (numeroModifica) return;

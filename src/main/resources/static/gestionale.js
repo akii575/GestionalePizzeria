@@ -155,12 +155,7 @@ async function eliminaOrdine(numero) {
 }
 function chiaveVersioneOrdini() {
     const dataSelezionata = document.getElementById("data").value;
-    const oggiRoma = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Europe/Rome",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-    }).format(new Date());
+    const oggiRoma = window.orderCard.currentServiceDate();
     return `${dataSelezionata || oggiRoma}|${tipoServizio || "tutti"}`;
 }
 async function aggiornaOrdiniAutomaticamente() {

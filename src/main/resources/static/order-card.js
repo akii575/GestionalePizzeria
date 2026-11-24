@@ -306,20 +306,27 @@ const orderCard = (() => {
         )).join(", ") || "Nessun prodotto";
     }
 
-    function currentDate() {
-        return new Intl.DateTimeFormat("en-CA", {
+    // Giornata di servizio: fino alle 05:00 conta ancora come la sera prima (come lato server).
+    function currentServiceDate(now = new Date()) {
+        const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
             timeZone: "Europe/Rome",
             year: "numeric",
             month: "2-digit",
-            day: "2-digit"
-        }).format(new Date());
+            day: "2-digit",
+            hour: "2-digit",
+            hourCycle: "h23"
+        }).formatToParts(now)
+            .filter(part => part.type !== "literal")
+            .map(part => [part.type, Number(part.value)]));
+        const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day - (parts.hour < 5 ? 1 : 0)));
+        return date.toISOString().slice(0, 10);
     }
 
     function bindDateFilter(input, button) {
         const label = button.querySelector("[data-date-label]");
-        if (!input.value) input.value = currentDate();
+        if (!input.value) input.value = currentServiceDate();
         function aggiornaEtichetta() {
-            const today = currentDate();
+            const today = currentServiceDate();
             const isToday = !input.value || input.value === today;
             const [, month, day] = (input.value || today).split("-");
             const dateLabel = isToday ? "Oggi" : `${day}/${month}`;
@@ -474,7 +481,7 @@ const orderCard = (() => {
         `;
     }
 
-    return Object.freeze({ bindDateFilter, bindReprints, createExpansionState, render });
+    return Object.freeze({ bindDateFilter, bindReprints, createExpansionState, currentServiceDate, render });
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = orderCard;
