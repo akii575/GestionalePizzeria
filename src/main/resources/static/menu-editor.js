@@ -131,7 +131,7 @@
                     product.categoriaId === category.id && product.archiviato !== true
                 )).length;
                 return `<div class="menu-row" data-id="${escapeHtml(category.id)}">
-                    ${rowMain(category.nome, `${productCount} prodotti · ${category.ammetteExtra ? "Ammette extra" : "Senza extra"}${category.stampaCucina === false ? " · Non in cucina" : ""}`)}
+                    ${rowMain(category.nome, `${productCount} prodotti · ${category.ammetteExtra ? "Ammette extra" : "Senza extra"}${category.stampaCucina === false ? " · Non in cucina" : ""}${(category.stampaVariazioni === undefined ? category.stampaCucina !== false : category.stampaVariazioni === true) ? "" : " · Non nelle variazioni"}`)}
                     <div class="menu-row-end">${editButton("categorie", category.id)}${archiveButton("categorie", category.id)}${deleteButton("categorie", category.id)}</div>
                     ${orderButtons(category.id, index, categories.length, "categorie")}
                 </div>`;
@@ -235,6 +235,7 @@
         document.getElementById("menu-composable-field").hidden = resource !== "prodotti";
         document.getElementById("menu-extra-allowed-field").hidden = resource !== "categorie";
         document.getElementById("menu-kitchen-print-field").hidden = resource !== "categorie";
+        document.getElementById("menu-variation-print-field").hidden = resource !== "categorie";
         document.getElementById("menu-available-field").hidden = resource === "categorie";
         categorySelect.innerHTML = activeCategories().map(category => (
             `<option value="${escapeHtml(category.id)}">${escapeHtml(category.nome)}</option>`
@@ -258,6 +259,8 @@
         document.getElementById("menu-composable").checked = item?.componibile === true;
         document.getElementById("menu-extra-allowed").checked = item?.ammetteExtra === true;
         document.getElementById("menu-kitchen-print").checked = item?.stampaCucina !== false;
+        document.getElementById("menu-variation-print").checked = item?.stampaVariazioni
+            ?? (item?.stampaCucina !== false);
         document.getElementById("menu-available").checked = item?.disponibile !== false;
         if (item?.categoriaId) categorySelect.value = item.categoriaId;
         document.getElementById("menu-archive").hidden = !item;
@@ -293,6 +296,7 @@
         } else {
             payload.ammetteExtra = document.getElementById("menu-extra-allowed").checked;
             payload.stampaCucina = document.getElementById("menu-kitchen-print").checked;
+            payload.stampaVariazioni = document.getElementById("menu-variation-print").checked;
         }
         return payload;
     }

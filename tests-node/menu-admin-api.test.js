@@ -265,6 +265,12 @@ test("menu admin API validates names, prices, ingredients, categories and unique
     });
     assert.equal(invalidKitchenFlag.statusCode, 400);
 
+    const invalidVariationFlag = await invoke("POST", {
+        token: "admin",
+        body: { risorsa: "categorie", nome: "Categoria nuova", ammetteExtra: false, stampaVariazioni: "no" }
+    });
+    assert.equal(invalidVariationFlag.statusCode, 400);
+
     const archivedCategory = await invoke("POST", {
         token: "admin",
         body: {
@@ -306,13 +312,14 @@ test("menu admin API creates and updates records while incrementing the menu ver
     const db = useDatabase();
     const createdCategory = await invoke("POST", {
         token: "admin",
-        body: { risorsa: "categorie", nome: "Bevande", ammetteExtra: false }
+        body: { risorsa: "categorie", nome: "Bevande", ammetteExtra: false, stampaCucina: false }
     });
     assert.equal(createdCategory.statusCode, 201);
     assert.equal(createdCategory.body.versione, 4);
     const categoryId = createdCategory.body.id;
     assert.equal(db.get("menuCategorie", categoryId).ordine, 3);
-    assert.equal(db.get("menuCategorie", categoryId).stampaCucina, true);
+    assert.equal(db.get("menuCategorie", categoryId).stampaCucina, false);
+    assert.equal(db.get("menuCategorie", categoryId).stampaVariazioni, false);
 
     const updatedCategory = await invoke("PUT", {
         token: "admin",
@@ -321,11 +328,13 @@ test("menu admin API creates and updates records while incrementing the menu ver
             id: "pizze",
             nome: "Pizze",
             ammetteExtra: true,
-            stampaCucina: false
+            stampaCucina: false,
+            stampaVariazioni: true
         }
     });
     assert.equal(updatedCategory.body.versione, 5);
     assert.equal(db.get("menuCategorie", "pizze").stampaCucina, false);
+    assert.equal(db.get("menuCategorie", "pizze").stampaVariazioni, true);
 
     const createdProduct = await invoke("POST", {
         token: "admin",
