@@ -842,9 +842,11 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(stile, /\.tab-container \.tab\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/s);
     assert.match(stile, /\.composer-summary\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*3fr\) minmax\(0,\s*7fr\);[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\) minmax\(18px,\s*auto\) 20px 36px;/s);
     assert.match(stile, /\.ingredienti-nascosti \.prodotto-btn\s*\{[^}]*min-height:\s*64px;/);
-    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-quantita\s*\{[^}]*top:\s*4px;[^}]*right:\s*4px;[^}]*left:\s*auto;[^}]*width:\s*20px;[^}]*height:\s*20px;/);
-    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.prodotto-nome\s*\{[^}]*font-size:\s*14px;[^}]*font-weight:\s*600;[^}]*line-height:\s*1\.2;[^}]*text-overflow:\s*ellipsis;[^}]*overflow-wrap:\s*normal;[^}]*word-break:\s*normal;[^}]*-webkit-line-clamp:\s*2;/);
-    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn\.ha-quantita \.prodotto-nome\s*\{[^}]*padding-right:\s*20px;[^}]*padding-left:\s*0;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-quantita\s*\{[^}]*top:\s*auto;[^}]*right:\s*4px;[^}]*bottom:\s*4px;[^}]*left:\s*auto;[^}]*width:\s*18px;[^}]*min-width:\s*18px;[^}]*height:\s*18px;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn\s*\{[^}]*padding:\s*8px 6px;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.prodotto-nome\s*\{[^}]*font-size:\s*13px;[^}]*font-weight:\s*600;[^}]*line-height:\s*1\.2;[^}]*letter-spacing:\s*-0\.2px;[^}]*text-overflow:\s*ellipsis;[^}]*overflow-wrap:\s*normal;[^}]*word-break:\s*normal;[^}]*-webkit-line-clamp:\s*2;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn\.ha-quantita \.prodotto-nome\s*\{[^}]*padding-left:\s*0;[^}]*padding-right:\s*0;/);
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*font-size:\s*14px;/);
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.ingredienti\s*\{[^}]*font-size:\s*11\.5px;[^}]*-webkit-line-clamp:\s*2;/);
+    assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn\.ha-quantita \.ingredienti\s*\{[^}]*padding-right:\s*20px;/);
 });
