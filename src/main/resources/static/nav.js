@@ -123,6 +123,8 @@
         }
         sidebar.append(sideNav);
 
+        let setMoreOpen = () => {};
+        let sidebarMoreButton = null;
         const sidebarActions = document.createElement("div");
         sidebarActions.className = "app-sidebar-actions";
         if (resetButton) {
@@ -131,11 +133,45 @@
         }
         const sidebarEmail = createAccountEmail("app-sidebar-account-email", accountEmail);
         if (sidebarEmail) sidebarActions.append(sidebarEmail);
+        if (!isDelivery) {
+            sidebarMoreButton = createButtonLink("Altro", "more", () => setMoreOpen(true));
+            sidebarMoreButton.classList.add("app-sidebar-more");
+            sidebarMoreButton.hidden = true;
+            sidebarMoreButton.setAttribute("aria-expanded", "false");
+            sidebarActions.append(sidebarMoreButton);
+        }
         sidebarActions.append(logoutButton);
         sidebar.append(sidebarActions);
         document.body.prepend(sidebar);
 
-        let setMoreOpen = () => {};
+        const compactSidebarMedia = typeof window.matchMedia === "function"
+            ? window.matchMedia(
+                "(min-width: 800px) and (max-width: 1439px) and (orientation: landscape) and (max-height: 560px)"
+            )
+            : null;
+        const aggiornaSidebarCompatta = () => {
+            if (!sidebarMoreButton) return;
+            sidebar.classList.toggle("has-overflow-menu", false);
+            sidebarMoreButton.hidden = true;
+            if (!compactSidebarMedia?.matches) return;
+            const necessitaAltro = sidebar.scrollHeight > sidebar.clientHeight
+                || sideNav.scrollHeight > sideNav.clientHeight;
+            sidebar.classList.toggle("has-overflow-menu", necessitaAltro);
+            sidebarMoreButton.hidden = !necessitaAltro;
+        };
+        if (sidebarMoreButton) {
+            window.addEventListener("resize", aggiornaSidebarCompatta);
+            if (window.ResizeObserver) {
+                new window.ResizeObserver(aggiornaSidebarCompatta).observe(sidebar);
+            }
+            if (resetButton) {
+                new MutationObserver(aggiornaSidebarCompatta).observe(resetButton, {
+                    attributes: true,
+                    attributeFilter: ["hidden"]
+                });
+            }
+        }
+
         const bottomNav = document.createElement("nav");
         bottomNav.className = "app-bottom-nav";
         bottomNav.setAttribute("aria-label", "Navigazione rapida");
@@ -210,9 +246,15 @@
             setMoreOpen = open => {
                 backdrop.hidden = !open;
                 moreToggle.setAttribute("aria-expanded", String(open));
+                sidebarMoreButton?.setAttribute("aria-expanded", String(open));
                 document.body.classList.toggle("app-more-open", open);
                 if (open) closeButton.focus();
+                else if (sidebarMoreButton && !sidebarMoreButton.hidden) sidebarMoreButton.focus();
+                else moreToggle.focus();
             };
+            const inizializzaSidebarCompatta = () => aggiornaSidebarCompatta();
+            if (window.requestAnimationFrame) window.requestAnimationFrame(inizializzaSidebarCompatta);
+            else inizializzaSidebarCompatta();
         }
     }
 
@@ -232,6 +274,7 @@
         const anchor = document.createElement("a");
         anchor.href = link.href;
         anchor.className = "app-nav-item";
+        anchor.setAttribute("data-icon", link.icon);
         anchor.title = link.label;
         anchor.setAttribute("aria-label", link.label);
         anchor.append(createIcon(link.icon));
@@ -249,6 +292,7 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "app-nav-item";
+        button.setAttribute("data-icon", iconName);
         button.title = label;
         button.setAttribute("aria-label", label);
         button.append(createIcon(iconName));
@@ -290,6 +334,8 @@
             search: ["M10.5 3a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15", "m16 16 5 5"]
         };
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", "20");
+        svg.setAttribute("height", "20");
         svg.setAttribute("viewBox", "0 0 24 24");
         svg.setAttribute("aria-hidden", "true");
         svg.setAttribute("focusable", "false");

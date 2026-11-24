@@ -25,7 +25,7 @@
         <nav><a href="/">Home</a><a href="/ordini.html">Nuova comanda</a><a href="/gestionale.html">Tutti gli ordini</a><a href="/consegne.html">Consegne</a><a href="/tavoli.html">Tavoli</a><a href="/banco.html">Banco</a><button id="aggiorna" type="button">Aggiorna</button><button id="reset-numeri" type="button" class="pericolo" hidden>Reset ordini</button></nav>
     </header>
     <section class="filtri" aria-label="Filtri ritiri">
-        <label for="filtro">Cerca cliente<input id="filtro" type="search" placeholder="Nome cliente..."></label>
+        <label for="filtro"><span class="filtri__etichetta">Cerca cliente</span><input id="filtro" type="search" aria-label="Cerca cliente" placeholder="Nome cliente..."></label>
         <div class="filtro-data">
             <input id="data" class="filtro-data__input" type="date" aria-label="Data ordini">
             <span id="apri-data" class="filtro-data__button" aria-hidden="true">
