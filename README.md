@@ -158,6 +158,9 @@ servizio valido e la configurazione Web Firebase per le funzioni e il login.
   consegnatori possono leggere solo documenti con `tipo == "consegna"`. L'SDK Admin
   delle API ha privilegi server, quindi ogni endpoint applica autonomamente lo
   stesso controllo e filtra i risultati.
+- Le pagine degli ordini, delle consegne e lo stato della serata mostrano una
+  giornata di servizio, dalle 05:00 alle 05:00 del giorno dopo (ora italiana): gli
+  ordini presi dopo mezzanotte restano nella serata in cui sono stati fatti.
 - Le nuove comande distinguono Tavolo, Banco, Ritiro e Consegna. Gli ordini al
   banco richiedono il cognome per identificare la comanda. I tavoli
   registrano anche il numero di persone; gli ordini storici `sala` restano

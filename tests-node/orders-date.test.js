@@ -2,7 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const auth = require("../lib/auth");
 const firebaseAdmin = require("../lib/firebase-admin");
-const { getRomeDayRange } = require("../lib/rome-day-range");
+const { currentServiceDayInRome, getRomeDayRange } = require("../lib/rome-day-range");
+const orderCard = require("../src/main/resources/static/order-card");
 const { apiRoute } = require("./api-router-helper");
 
 function makeDb(orders, queryLog, { version = 0 } = {}) {
@@ -75,25 +76,46 @@ function invoke(handler, query = {}) {
     });
 }
 
-test("Rome day ranges use local midnight and account for daylight-saving changes", () => {
+test("Rome service days start at 05:00 local time and account for daylight-saving changes", () => {
     assert.deepEqual(getRomeDayRange("2025-03-30"), {
-        start: "2025-03-29T23:00:00.000Z",
-        end: "2025-03-30T22:00:00.000Z"
+        start: "2025-03-30T03:00:00.000Z",
+        end: "2025-03-31T03:00:00.000Z"
+    });
+    assert.deepEqual(getRomeDayRange("2025-03-29"), {
+        start: "2025-03-29T04:00:00.000Z",
+        end: "2025-03-30T03:00:00.000Z"
     });
     assert.deepEqual(getRomeDayRange("2025-10-26"), {
-        start: "2025-10-25T22:00:00.000Z",
-        end: "2025-10-26T23:00:00.000Z"
+        start: "2025-10-26T04:00:00.000Z",
+        end: "2025-10-27T04:00:00.000Z"
     });
     assert.throws(() => getRomeDayRange("2025-02-29"), /data deve essere valida/);
     assert.throws(() => getRomeDayRange(["2025-03-30"]), /data deve essere valida/);
 });
 
+test("orders taken after midnight belong to the previous evening until 05:00", () => {
+    const cases = [
+        ["2026-11-24T22:30:00.000Z", "2026-11-24"],
+        ["2026-11-25T03:59:00.000Z", "2026-11-24"],
+        ["2026-11-25T04:00:00.000Z", "2026-11-25"],
+        ["2026-07-11T02:59:00.000Z", "2026-07-10"],
+        ["2026-03-01T03:00:00.000Z", "2026-02-28"]
+    ];
+    for (const [instant, expected] of cases) {
+        assert.equal(currentServiceDayInRome(new Date(instant)), expected, `server ${instant}`);
+        assert.equal(orderCard.currentServiceDate(new Date(instant)), expected, `browser ${instant}`);
+    }
+    const lateNight = getRomeDayRange(undefined, new Date("2026-11-25T00:30:00.000Z"));
+    assert.equal(lateNight.start, "2026-11-24T04:00:00.000Z");
+});
+
 test("order and delivery APIs query the selected Rome day and order by number descending", async t => {
     const orders = [
-        { numero: 7, tipo: "sala", dataOra: "2026-03-28T23:00:00.000Z" },
-        { numero: 8, tipo: "tavolo", dataOra: "2026-03-29T21:59:59.999Z" },
+        { numero: 7, tipo: "sala", dataOra: "2026-03-29T03:00:00.000Z" },
+        // 04:59 del 30 marzo, ora italiana: appartiene ancora alla serata del 29.
+        { numero: 8, tipo: "tavolo", dataOra: "2026-03-30T02:59:59.999Z" },
         { numero: 9, tipo: "consegna", dataOra: "2026-03-29T10:00:00.000Z" },
-        { numero: 10, tipo: "tavolo", dataOra: "2026-03-29T22:00:00.000Z" },
+        { numero: 10, tipo: "tavolo", dataOra: "2026-03-30T03:00:00.000Z" },
         { numero: 11, tipo: "consegna", dataOra: "2026-03-29T10:00:00.000Z" }
     ];
     const queryLog = [];
@@ -117,8 +139,8 @@ test("order and delivery APIs query the selected Rome day and order by number de
     assert.deepEqual(deliveries.body.ordini.map(order => order.numero), [11, 9]);
 
     const expectedRange = [
-        ["dataOra", ">=", "2026-03-28T23:00:00.000Z"],
-        ["dataOra", "<", "2026-03-29T22:00:00.000Z"]
+        ["dataOra", ">=", "2026-03-29T03:00:00.000Z"],
+        ["dataOra", "<", "2026-03-30T03:00:00.000Z"]
     ];
     assert.deepEqual(queryLog[0].filters.slice(0, 2), expectedRange);
     assert.deepEqual(queryLog[0].filters[2], ["tipo", "in", ["tavolo", "sala"]]);

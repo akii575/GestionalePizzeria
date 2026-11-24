@@ -243,6 +243,7 @@ test("gestionale skips calculating the daily total for staff", async () => {
             orderCard: {
                 bindReprints() {},
                 bindDateFilter() {},
+                currentServiceDate() { return "2026-11-24"; },
                 createExpansionState() {
                     return { isOpen() { return false; }, toggle() {} };
                 },

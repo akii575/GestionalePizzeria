@@ -81,6 +81,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
             orderCard: {
                 bindReprints() {},
                 bindDateFilter() {},
+                currentServiceDate() { return "2026-03-29"; },
                 createExpansionState() {
                     let openOrder = null;
                     return {

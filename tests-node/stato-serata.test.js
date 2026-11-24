@@ -198,7 +198,8 @@ test("evening status reports live printer lease, counts jobs and summarizes toda
             { numero: 6, dataOra: "2026-03-29T15:00:00.000Z", tipo: "consegna", statoConsegna: "consegnata", totale: 17 },
             { numero: 7, dataOra: "2026-03-29T16:00:00.000Z", tipo: "ritiro", totale: 18 },
             { numero: 8, dataOra: "2026-03-29T17:00:00.000Z", tipo: "banco", totale: 19 },
-            { numero: 9, dataOra: "2026-03-29T22:00:00.000Z", tipo: "banco", totale: 100 }
+            // 05:00 del 30 marzo, ora italiana: inizio della giornata di servizio successiva.
+            { numero: 9, dataOra: "2026-03-30T03:00:00.000Z", tipo: "banco", totale: 100 }
         ]
     });
     const handler = setup(t, db);
