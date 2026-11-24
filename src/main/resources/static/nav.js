@@ -46,11 +46,11 @@
             resetHeaderButton.setAttribute("aria-label", "Reset ordini");
             resetHeaderButton.title = "Reset ordini";
             resetHeaderButton.append(createIcon("reset"));
-            resetHeaderButton.hidden = resetButton.hidden;
+            resetHeaderButton.hidden = resetButton.hidden || account.admin !== true;
             resetHeaderButton.addEventListener("click", () => resetButton.click());
             actions.append(resetHeaderButton);
             new MutationObserver(() => {
-                resetHeaderButton.hidden = resetButton.hidden;
+                resetHeaderButton.hidden = resetButton.hidden || account.admin !== true;
             }).observe(resetButton, { attributes: true, attributeFilter: ["hidden"] });
         }
 
@@ -220,10 +220,10 @@
             for (const link of secondaryLinks) sheetLinks.append(createLink(link, currentHref));
             if (resetButton) {
                 const resetCopy = createButtonLink("Reset ordini", "reset", () => resetButton.click());
-                resetCopy.hidden = resetButton.hidden;
+                resetCopy.hidden = resetButton.hidden || account.admin !== true;
                 sheetLinks.append(resetCopy);
                 new MutationObserver(() => {
-                    resetCopy.hidden = resetButton.hidden;
+                    resetCopy.hidden = resetButton.hidden || account.admin !== true;
                 }).observe(resetButton, { attributes: true, attributeFilter: ["hidden"] });
             }
             const sheetEmail = createAccountEmail("app-more-account-email", accountEmail);

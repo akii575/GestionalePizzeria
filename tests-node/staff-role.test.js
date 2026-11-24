@@ -10,6 +10,7 @@ require.cache[firebasePath].exports = {
     }
 };
 const auth = require("../lib/auth");
+const firebaseAdmin = require("../lib/firebase-admin");
 
 function requestWithClaims(cookie = "valid") {
     return {
@@ -53,6 +54,76 @@ function invoke(handler, { method = "GET", headers = {}, body, query = {} } = {}
     });
 }
 
+function createResetDatabase() {
+    const collections = new Map();
+    const documents = name => {
+        if (!collections.has(name)) collections.set(name, new Map());
+        return collections.get(name);
+    };
+    const ref = (name, id) => ({
+        collectionName: name,
+        id: String(id),
+        async get() {
+            const value = documents(name).get(String(id));
+            return { exists: value !== undefined, data: () => value };
+        },
+        async set(value, options = {}) {
+            const current = documents(name).get(String(id)) || {};
+            documents(name).set(String(id), options.merge ? { ...current, ...value } : value);
+        },
+        async update(value) {
+            const current = documents(name).get(String(id)) || {};
+            documents(name).set(String(id), { ...current, ...value });
+        },
+        async delete() {
+            documents(name).delete(String(id));
+        }
+    });
+    const snapshot = entries => ({
+        empty: entries.length === 0,
+        docs: entries.map(([id, value]) => ({
+            id,
+            ref: ref("unused", id),
+            data: () => value
+        }))
+    });
+    const collection = name => ({
+        doc: id => ref(name, id),
+        limit() {
+            return { get: async () => snapshot([]) };
+        },
+        where() {
+            return { get: async () => snapshot([]) };
+        }
+    });
+    return {
+        collection,
+        async runTransaction(callback) {
+            return callback({
+                get: documentRef => documentRef.get(),
+                set: (documentRef, value, options) => documentRef.set(value, options),
+                update: (documentRef, value) => documentRef.update(value)
+            });
+        },
+        batch() {
+            const operations = [];
+            return {
+                set(documentRef, value, options) {
+                    operations.push(() => documentRef.set(value, options));
+                    return this;
+                },
+                delete(documentRef) {
+                    operations.push(() => documentRef.delete());
+                    return this;
+                },
+                async commit() {
+                    await Promise.all(operations.map(operation => operation()));
+                }
+            };
+        }
+    };
+}
+
 test("staff access accepts admins and staff but rejects delivery and accounts without claims", async t => {
     services = {
         auth: {
@@ -84,6 +155,39 @@ test("staff access accepts admins and staff but rejects delivery and accounts wi
         await auth.requireDeliveryAccess(requestWithClaims("delivery-session")),
         { delivery: true }
     );
+});
+
+test("only admins can reset order numbers", async t => {
+    t.mock.method(auth, "requireStaffAccess", async () => ({ staff: true }));
+    t.mock.method(auth, "requireAdmin", async request => {
+        if (request.headers["x-test-role"] !== "admin") {
+            const error = new Error("Accesso negato.");
+            error.statusCode = 403;
+            throw error;
+        }
+        return { admin: true };
+    });
+    t.mock.method(auth, "requireSameOrigin", () => {});
+    t.mock.method(firebaseAdmin, "getFirebaseServices", () => ({ db: createResetDatabase() }));
+    const handler = apiRoute("reset-numeri");
+    const responseOptions = {
+        method: "POST",
+        headers: {
+            "x-test-role": "staff",
+            origin: "https://example.test",
+            host: "example.test"
+        }
+    };
+
+    const staffResponse = await invoke(handler, responseOptions);
+    assert.equal(staffResponse.statusCode, 403);
+    assert.equal(staffResponse.body.errore, "Accesso negato.");
+
+    const adminResponse = await invoke(handler, {
+        ...responseOptions,
+        headers: { ...responseOptions.headers, "x-test-role": "admin" }
+    });
+    assert.equal(adminResponse.statusCode, 200);
 });
 
 test("staff can create a Firebase session", async t => {

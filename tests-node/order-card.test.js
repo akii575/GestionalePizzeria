@@ -304,12 +304,7 @@ test("date filter defaults to today and opens a selectable date", () => {
         querySelector() { return defaultLabel; },
         title: ""
     });
-    const today = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Europe/Rome",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-    }).format(new Date());
+    const today = orderCard.currentServiceDate();
     assert.equal(defaultInput.value, today);
     assert.equal(defaultLabel.textContent, "Oggi");
 
