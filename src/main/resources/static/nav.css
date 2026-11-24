@@ -1786,3 +1786,30 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
         max-height: 140px;
     }
 }
+
+@media (min-width: 1024px) {
+    .prodotto-btn .prodotto-nome {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: start;
+        justify-self: start;
+    }
+
+    .prodotto-btn .prodotto-nome::before {
+        display: none;
+    }
+}
+
+@media (min-width: 1440px) {
+    .prodotto-btn .ingredienti-wrapper {
+        flex: 0 0 auto;
+        margin-top: 4px;
+    }
+
+    .prodotto-btn .ingredienti {
+        max-height: var(--ingredienti-altezza, 4.8em);
+        margin: 0;
+        line-height: 1.2;
+        -webkit-line-clamp: var(--ingredienti-righe, 4);
+    }
+}

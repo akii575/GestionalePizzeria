@@ -845,6 +845,17 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(stile, /\.riepilogo-item__descrizione \.seleziona-riga\s*\{[^}]*display:\s*-webkit-box;[^}]*white-space:\s*normal;[^}]*-webkit-line-clamp:\s*2;/s);
     assert.match(stile, /\.ingredienti-nascosti \.prodotto-btn\s*\{[^}]*min-height:\s*64px;/);
     assert.match(script, /function aggiornaRighePaginaProdotti\([\s\S]*?Math\.max\(3,[\s\S]*?\(altezzaDisponibile \+ spazioRighe\) \/ \(118 \+ spazioRighe\)/);
+    assert.match(script, /function aggiornaRigheIngredienti\([\s\S]*?bottone\.clientHeight[\s\S]*?stileBottone\.paddingTop[\s\S]*?stileBottone\.paddingBottom[\s\S]*?intestazione\.offsetHeight[\s\S]*?stileWrapper\.marginTop[\s\S]*?Math\.min\(4,[\s\S]*?Math\.floor\(Math\.max\(0, altezzaDisponibile\) \/ altezzaRiga\)/);
+    assert.match(navigationStyle, /@media \(min-width: 1024px\)[\s\S]*?\.prodotto-btn \.prodotto-nome\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1;/);
+    assert.match(navigationStyle, /@media \(min-width: 1440px\)[\s\S]*?\.prodotto-btn \.ingredienti-wrapper\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin-top:\s*4px;[^}]*\}[\s\S]*?\.prodotto-btn \.ingredienti\s*\{[^}]*max-height:\s*var\(--ingredienti-altezza, 4\.8em\);[^}]*margin:\s*0;[^}]*line-height:\s*1\.2;[^}]*-webkit-line-clamp:\s*var\(--ingredienti-righe, 4\);/);
+    assert.doesNotMatch(stile, /\.prodotto-btn \.ingredienti-wrapper\s*\{[^}]*overflow:\s*hidden;/);
+    assert.match(pagina, /class="extra-dettagli__toolbar"[\s\S]*id="extra-ricerca"[\s\S]*id="extra-fatto"[^>]*>Fatto<\/button>/);
+    assert.match(script, /function aggiornaPosizionePannelloExtra\(\)[\s\S]*?mediaPannelloExtra\.matches \? prodottiWrapper : sezioneExtra/);
+    assert.match(script, /extraFatto\.addEventListener\("click",[\s\S]*?chiudiPannelloExtra\(\)/);
+    assert.match(script, /tabsCategorie\.addEventListener\("click", evento => \{[\s\S]*?chiudiPannelloExtra\(\);/);
+    assert.match(stile, /@media \(min-width: 800px\)[\s\S]*?\.prodotti-wrapper > \.extra-dettagli:not\(\[hidden\]\)\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*overflow-y:\s*auto;/);
+    assert.match(stile, /@media \(min-width: 800px\) and \(max-height: 560px\)[\s\S]*?\.composer-summary\s*\{[^}]*box-sizing:\s*border-box;[^}]*min-width:\s*0;[^}]*max-width:\s*100%;[^}]*padding:\s*0 8px;/);
+    assert.match(stile, /@media \(min-width: 800px\) and \(max-height: 560px\)[\s\S]*?\.composer-summary \.riepilogo-totale\s*\{[^}]*font-size:\s*clamp\(11px,\s*1\.6vw,\s*14px\);[^}]*white-space:\s*nowrap;/);
     assert.match(navigationStyle, /@media \(min-width: 1440px\)[\s\S]*?composer-main\.intestazione-chiusa\s*\{[^}]*grid-template-rows:\s*auto auto minmax\(0, 1fr\) auto;/);
     assert.match(navigationStyle, /@media \(min-width: 1440px\)[\s\S]*?composer-main\.intestazione-chiusa > \.intestazione-compatta\s*\{[^}]*position:\s*static;[^}]*top:\s*auto;/);
     assert.match(navigationStyle, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 820px\)[\s\S]*?composer-main\.intestazione-chiusa\s*\{[^}]*grid-template-rows:\s*auto auto minmax\(0, 1fr\) auto;/);
