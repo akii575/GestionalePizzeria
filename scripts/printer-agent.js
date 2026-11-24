@@ -559,6 +559,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
     let listenerRetryAttempt = 0;
     let securityTimer = null;
     let lockTimer = null;
+    let retryTimer = null;
+    let retryTimerDueAt = null;
     let running = false;
 
     async function acquireLock() {
@@ -700,6 +702,29 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         ));
     }
 
+    function retryAfterMillis(retryAfter) {
+        return retryAfter && typeof retryAfter.toMillis === "function"
+            ? retryAfter.toMillis()
+            : Number.NaN;
+    }
+
+    function scheduleRetryDrain(retryAfter) {
+        const dueAt = retryAfterMillis(retryAfter);
+        if (!Number.isFinite(dueAt) || dueAt <= Date.now()) return;
+        if (retryTimer && retryTimerDueAt <= dueAt) return;
+        if (retryTimer) clearTimeout(retryTimer);
+        retryTimerDueAt = dueAt;
+        retryTimer = setTimeout(() => {
+            retryTimer = null;
+            retryTimerDueAt = null;
+            return drainQueue();
+        }, Math.max(0, dueAt - Date.now()));
+    }
+
+    function isRetryDelayed(job) {
+        return retryAfterMillis(job.retryAfter) > Date.now();
+    }
+
     async function recoverExpiredJob() {
         const snapshot = await jobs.where("status", "==", "printing").limit(1).get();
         if (snapshot.empty) return false;
@@ -753,6 +778,10 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
 
             for (const candidate of snapshot.docs) {
                 const candidateJob = candidate.data();
+                if (isRetryDelayed(candidateJob)) {
+                    scheduleRetryDrain(candidateJob.retryAfter);
+                    continue;
+                }
                 if (!hasMissingPrinter(candidateJob, printers)
                         && !readyUnprintedPrinters(candidateJob, printers).length) {
                     continue;
@@ -766,6 +795,10 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                         return null;
                     }
                     const job = jobSnapshot.data();
+                    if (isRetryDelayed(job)) {
+                        scheduleRetryDrain(job.retryAfter);
+                        return null;
+                    }
                     if (!hasMissingPrinter(job, printers)
                             && !readyUnprintedPrinters(job, printers).length) {
                         return null;
@@ -787,7 +820,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                         claimedBy: instanceId,
                         leaseUntil: Timestamp.fromMillis(Date.now() + LEASE_MILLISECONDS),
                         attemptCount: (job.attemptCount || 0) + 1,
-                        lastError: FieldValue.delete()
+                        lastError: FieldValue.delete(),
+                        retryAfter: FieldValue.delete()
                     });
                     const printMessage = job.tipoStampa === "variazione"
                         ? "Variazione in stampa per la cucina."
@@ -814,6 +848,7 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                         tolte: job.tolte,
                         cambiate: job.cambiate,
                         createdAt: job.createdAt,
+                        attemptCount: (job.attemptCount || 0) + 1,
                         printedPrinters: Array.isArray(job.printedPrinters) ? [...job.printedPrinters] : []
                     };
                 });
@@ -861,7 +896,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 failedAt: completed ? FieldValue.delete() : Timestamp.now(),
                 leaseUntil: FieldValue.delete(),
                 claimedBy: FieldValue.delete(),
-                lastError: error ? lastError : FieldValue.delete()
+                lastError: error ? lastError : FieldValue.delete(),
+                retryAfter: FieldValue.delete()
             });
             if (orderSnapshot.exists) {
                 transaction.update(job.orderRef, {
@@ -923,6 +959,33 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         });
     }
 
+    async function requeueAfterTransientFailure(job, retryAfter) {
+        await db.runTransaction(async transaction => {
+            const jobSnapshot = await transaction.get(job.jobRef);
+            if (!jobSnapshot.exists || jobSnapshot.data().claimedBy !== instanceId
+                    || jobSnapshot.data().status !== "printing") {
+                return;
+            }
+            const orderSnapshot = await transaction.get(job.orderRef);
+            transaction.update(job.jobRef, {
+                status: "queued",
+                retryAfter,
+                leaseUntil: FieldValue.delete(),
+                claimedBy: FieldValue.delete(),
+                lastError: FieldValue.delete(),
+                failedAt: FieldValue.delete(),
+                printedAt: FieldValue.delete()
+            });
+            if (orderSnapshot.exists) {
+                transaction.update(job.orderRef, {
+                    stampaCompletata: false,
+                    stampaInCoda: true,
+                    messaggioStampa: "Stampa non riuscita, nuovo tentativo automatico tra pochi secondi."
+                });
+            }
+        });
+    }
+
     async function processOneJob() {
         const job = await claimNextJob(printers);
         if (!job) return false;
@@ -952,8 +1015,15 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                     receiptOptions
                 });
             } catch (error) {
-                await finishJob(job, error);
-                lastError = "Una o più stampanti non hanno ricevuto la comanda.";
+                if (job.attemptCount < 3) {
+                    const retryAfter = Timestamp.fromMillis(Date.now() + 5_000 * job.attemptCount);
+                    await requeueAfterTransientFailure(job, retryAfter);
+                    scheduleRetryDrain(retryAfter);
+                    lastError = "Una o più stampanti non hanno ricevuto la comanda; nuovo tentativo automatico in coda.";
+                } else {
+                    await finishJob(job, error);
+                    lastError = "Una o più stampanti non hanno ricevuto la comanda.";
+                }
                 console.error(`Printing order #${job.numero} failed:`, error.code || error.name || "unknown");
                 await refreshPrinters();
                 return true;
@@ -1138,7 +1208,8 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
                 lastError: FieldValue.delete(),
                 failedAt: FieldValue.delete(),
                 leaseUntil: FieldValue.delete(),
-                claimedBy: FieldValue.delete()
+                claimedBy: FieldValue.delete(),
+                retryAfter: FieldValue.delete()
             });
             batch.update(orderRef, {
                 stampaCompletata: false,
@@ -1176,9 +1247,12 @@ function createPrinterAgent(db, { getPrinters, printOrder } = {}) {
         clearInterval(securityTimer);
         clearInterval(lockTimer);
         clearTimeout(listenerRetryTimer);
+        clearTimeout(retryTimer);
         securityTimer = null;
         lockTimer = null;
         listenerRetryTimer = null;
+        retryTimer = null;
+        retryTimerDueAt = null;
         await Promise.all([drainPromise, securityPromise, lockPromise].filter(Boolean));
         await db.runTransaction(async transaction => {
             const snapshot = await transaction.get(lockRef);
