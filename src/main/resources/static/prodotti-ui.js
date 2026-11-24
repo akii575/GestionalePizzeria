@@ -118,6 +118,22 @@ const prodottiUI = (() => {
             .map(voce => voce.prodotto);
     }
 
+    function filtraExtra(extra, testo) {
+        const query = normalizza(testo);
+        if (!query) return extra || [];
+        const parole = query.split(" ");
+        return (extra || []).filter(elemento => {
+            const nome = normalizza(elemento?.nome);
+            return parole.every(parola => nome.includes(parola));
+        });
+    }
+
+    function trovaComponibileSenzaIngredienti(righe) {
+        return (righe || []).findIndex(riga => (
+            riga?.componibile === true && (!Array.isArray(riga.extra) || riga.extra.length === 0)
+        ));
+    }
+
     function ammetteExtra(prodotto) {
         return prodotto?.ammetteExtra === true;
     }
@@ -152,6 +168,7 @@ const prodottiUI = (() => {
             categoria: prodotto.categoria,
             ingredienti: prodotto.ingredienti || [],
             ammetteExtra: conExtra,
+            componibile: prodotto.componibile === true,
             extra: [],
             senza: [],
             note: []
@@ -183,6 +200,7 @@ const prodottiUI = (() => {
                     categoria: prodotto?.categoria || riga.categoria || "",
                     ingredienti,
                     ammetteExtra: prodotto?.ammetteExtra === true,
+                    componibile: prodotto?.componibile === true,
                     extra,
                     senza: normalizzaSenzaIngredienti(riga.senza, ingredienti),
                     note: normalizzaNoteRiga(riga.note),
@@ -625,6 +643,8 @@ const prodottiUI = (() => {
         applicaClienteIndirizzo,
         normalizza,
         filtraProdotti,
+        filtraExtra,
+        trovaComponibileSenzaIngredienti,
         ammetteExtra,
         isCoperto,
         calcolaCoperto,

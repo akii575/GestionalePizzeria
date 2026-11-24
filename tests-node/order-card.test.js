@@ -671,8 +671,8 @@ test("order summary rows are grouped with a compact one-item remove action", () 
 
     assert.match(page, /id="extra-intestazione" class="extra-intestazione" type="button" aria-expanded="false" aria-controls="extra-dettagli"/);
     assert.match(page, /id="extra-dettagli" class="extra-dettagli" hidden/);
-    assert.match(styles, /\.riepilogo-item\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*30px minmax\(0,\s*1fr\) auto 32px;/);
-    assert.match(styles, /\.riepilogo-item \.rimuovi\s*\{[^}]*width:\s*32px;[^}]*min-height:\s*32px;[^}]*background:\s*transparent;[^}]*font-size:\s*22px;/);
+    assert.match(styles, /\.riepilogo-item\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*32px minmax\(0,\s*1fr\) auto 36px;[^}]*align-items:\s*start;[^}]*column-gap:\s*8px;/);
+    assert.match(styles, /\.riepilogo-item \.rimuovi\s*\{[^}]*width:\s*36px;[^}]*min-height:\s*36px;[^}]*background:\s*transparent;[^}]*font-size:\s*22px;/);
     assert.doesNotMatch(styles, /#riepilogo-items \.riepilogo-item\s*\{|#riepilogo-items \.rimuovi\s*\{/);
     assert.match(script, /const extra = nomiExtra\(riga\.extra\)\.join\(", "\);/);
     assert.match(script, /return `<div class="conferma-riga"><strong>\$\{quantitaTesto\}/);
@@ -682,7 +682,8 @@ test("order summary rows are grouped with a compact one-item remove action", () 
     assert.ok(aggiunta);
     assert.doesNotMatch(aggiunta[1], /scrollIntoView|\.focus\(/);
     assert.match(script, /if \(evento\.currentTarget === riepilogoSheetLista && riepilogoSheetAperto\)[\s\S]*?chiudiRiepilogoSheet\(false\)[\s\S]*?sezioneExtra\.scrollIntoView/);
-    assert.doesNotMatch(script, /Nessun extra/);
+    assert.match(page, /id="extra-ricerca" class="extra-ricerca" type="search" placeholder="Cerca extra/);
+    assert.match(page, /id="extra-ricerca-vuota" class="extra-ricerca-vuota" role="status" hidden>Nessun extra trovato/);
 });
 
 test("portrait order summary sheet opens accessibly and removes rows through shared rendering", () => {

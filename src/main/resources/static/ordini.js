@@ -44,6 +44,8 @@ const extraIntestazione = document.getElementById("extra-intestazione");
 const extraProdotto = document.getElementById("extra-prodotto");
 const extraSenzaConteggio = document.getElementById("extra-senza-conteggio");
 const extraConteggio = document.getElementById("extra-conteggio");
+const extraRicerca = document.getElementById("extra-ricerca");
+const extraRicercaVuota = document.getElementById("extra-ricerca-vuota");
 const noteRigaConteggio = document.getElementById("note-riga-conteggio");
 const extraFreccia = document.getElementById("extra-freccia");
 const extraDettagli = document.getElementById("extra-dettagli");
@@ -106,6 +108,8 @@ const { escapeHtml } = window.htmlUtils;
 const {
     NOTE_RIGA,
     filtraProdotti,
+    filtraExtra,
+    trovaComponibileSenzaIngredienti,
     isCoperto,
     calcolaCoperto,
     preparaRigheModifica,
@@ -835,30 +839,37 @@ function renderGrigliaExtra() {
     const supportaNoteRiga = ingredienti.length > 0 || rigaAttiva?.ammetteExtra === true;
     sezioneExtra.hidden = !stato.extra.length && !ingredienti.length && !supportaNoteRiga;
     const nomeProdotto = rigaAttiva?.prodotto || "Seleziona un prodotto";
+    const nomeComponibile = nomeProdotto.replace(/\s+da comporre$/i, "");
+    extraProdotto.textContent = rigaAttiva?.componibile
+        ? `Componi: ${nomeComponibile} — scegli gli ingredienti`
+        : nomeProdotto;
     const conteggioSenza = Array.isArray(rigaAttiva?.senza) ? rigaAttiva.senza.length : 0;
     const conteggioExtra = Array.isArray(rigaAttiva?.extra) ? rigaAttiva.extra.length : 0;
     const conteggioNote = Array.isArray(rigaAttiva?.note) ? rigaAttiva.note.length : 0;
-    extraProdotto.textContent = nomeProdotto;
     extraSenzaConteggio.textContent = `Senza (${conteggioSenza})`;
+    extraSenzaConteggio.hidden = rigaAttiva?.componibile === true;
     extraConteggio.textContent = `Extra (${conteggioExtra})`;
     noteRigaConteggio.textContent = `Note (${conteggioNote})`;
     extraFreccia.textContent = extraAperto ? "▴" : "▾";
     extraIntestazione.setAttribute(
         "aria-label",
-        `${nomeProdotto} · Senza (${conteggioSenza}) · Extra (${conteggioExtra}) · Note (${conteggioNote})`
+        `${extraProdotto.textContent}${rigaAttiva?.componibile ? "" : ` · Senza (${conteggioSenza})`} · Extra (${conteggioExtra}) · Note (${conteggioNote})`
     );
     extraIntestazione.setAttribute("aria-expanded", String(extraAperto));
     sezioneExtra.classList.toggle("extra-aperto", extraAperto);
     extraDettagli.hidden = !extraAperto;
-    extraLista.hidden = !stato.extra.length;
+    extraRicerca.hidden = !stato.extra.length;
     extraLista.replaceChildren();
+    const extraVisibili = filtraExtra(stato.extra, extraRicerca.value);
+    extraRicercaVuota.hidden = !extraRicerca.value.trim() || extraVisibili.length > 0;
+    extraLista.hidden = !extraVisibili.length;
     const colonne = mediaGrigliaExtra.matches ? 3 : 4;
     const righe = mediaGrigliaExtra.matches ? 4 : 3;
     const elementiPerPagina = colonne * righe;
-    for (let inizio = 0; inizio < stato.extra.length; inizio += elementiPerPagina) {
+    for (let inizio = 0; inizio < extraVisibili.length; inizio += elementiPerPagina) {
         const pagina = document.createElement("div");
         pagina.className = "pagina-extra";
-        stato.extra.slice(inizio, inizio + elementiPerPagina).forEach(extra => {
+        extraVisibili.slice(inizio, inizio + elementiPerPagina).forEach(extra => {
             const bottone = document.createElement("button");
             const rigaAttiva = stato.righe[stato.rigaAttiva];
             bottone.type = "button";
@@ -886,7 +897,7 @@ function renderGrigliaExtra() {
 }
 function renderSenzaIngredienti(riga, ingredienti) {
     senzaIngredientiLista.replaceChildren();
-    senzaIngredienti.hidden = !riga || !ingredienti.length;
+    senzaIngredienti.hidden = !riga || riga.componibile === true || !ingredienti.length;
     if (!riga || !ingredienti.length) return;
     const selezionati = new Set((Array.isArray(riga.senza) ? riga.senza : [])
         .filter(ingrediente => typeof ingrediente === "string")
@@ -957,7 +968,8 @@ function aggiungiProdotto(prodotto) {
         mostraMessaggio(`Massimo 100 prodotti per comanda: puoi aggiungerne ancora ${limite.disponibili}`, "errore");
         return false;
     }
-    extraAperto = false;
+    extraRicerca.value = "";
+    extraAperto = prodotto.componibile === true;
     const primoProdotto = stato.righe.length === 0;
     const risultato = aggiungiProdotti(stato.righe, stato.rigaAttiva, prodotto);
     stato.righe = risultato.righe;
@@ -1132,6 +1144,7 @@ function rimuoviRigaRiepilogo(evento) {
     if (!riga || !evento.currentTarget.contains(riga)) return;
     const risultato = impostaRigaAttiva(stato.righe, Number(riga.dataset.rigaAttiva));
     stato.rigaAttiva = risultato.rigaAttiva;
+    extraRicerca.value = "";
     extraAperto = true;
     renderRiepilogo();
     if (evento.currentTarget === riepilogoSheetLista && riepilogoSheetAperto) {
@@ -1363,6 +1376,19 @@ function validaDatiOrdine() {
 function apriConferma() {
     if (numeroModifica && !puoSalvareModifica(payloadOriginaleModifica)) return;
     if (!stato.righe.length) return;
+    const indiceComponibileNonCompleto = trovaComponibileSenzaIngredienti(stato.righe);
+    if (indiceComponibileNonCompleto >= 0) {
+        const riga = stato.righe[indiceComponibileNonCompleto];
+        stato.rigaAttiva = indiceComponibileNonCompleto;
+        extraRicerca.value = "";
+        extraAperto = true;
+        renderRiepilogo();
+        mostraMessaggio(`Scegli almeno un ingrediente per: ${riga.prodotto}`, "errore");
+        riepilogo.querySelector(
+            `.riepilogo-item[data-riga-attiva="${indiceComponibileNonCompleto}"]`
+        )?.scrollIntoView({ block: "nearest" });
+        return;
+    }
     const consegna = tipoOrdine.value === "consegna";
     const ritiro = tipoOrdine.value === "ritiro";
     if (!validaDatiOrdine()) return;
@@ -1519,6 +1545,7 @@ tabsCategorie.addEventListener("click", evento => {
     const tab = evento.target.closest(".tab[data-tab]");
     if (!tab || !tabsCategorie.contains(tab)) return;
     stato.categoria = tab.dataset.tab;
+    extraRicerca.value = "";
     tabsCategorie.querySelectorAll(".tab[data-tab]")
         .forEach(elemento => elemento.classList.toggle("active", elemento === tab));
     renderProdotti();
@@ -1718,8 +1745,10 @@ aggiornaPulsanteNote();
 aggiornaTipoOrdine();
 extraIntestazione.addEventListener("click", () => {
     extraAperto = !extraAperto;
+    if (!extraAperto) extraRicerca.value = "";
     renderRiepilogo();
 });
+extraRicerca.addEventListener("input", renderGrigliaExtra);
 riprovaModifica.addEventListener("click", inizializzaModifica);
 invia.addEventListener("click", apriConferma);
 document.getElementById("conferma-invio").addEventListener("click", inviaOrdine);
