@@ -2846,9 +2846,10 @@ body {
     font-size: 16px;
     font-weight: 600;
     line-height: 1.15;
-    overflow-wrap: break-word;
+    overflow-wrap: normal;
     text-overflow: clip;
     word-break: normal;
+    hyphens: none;
 }
 
 .prodotto-btn strong::before {
@@ -2882,8 +2883,8 @@ body {
 .prodotto-quantita {
     position: absolute;
     z-index: 1;
-    top: -6px;
-    left: -6px;
+    top: 6px;
+    left: 6px;
     display: grid;
     width: 22px;
     min-width: 22px;
@@ -2912,6 +2913,43 @@ body {
     line-height: 1.35;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+}
+
+.prodotto-btn.ha-quantita .prodotto-nome {
+    padding-left: 28px;
+}
+
+@media (max-width: 1023px) {
+    .prodotto-btn__meta {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 4px;
+    }
+
+    .prodotto-btn .prodotto-nome {
+        display: -webkit-box;
+        grid-column: 1;
+        grid-row: 1;
+        max-height: 2.3em;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+    }
+
+    .prodotto-btn .prodotto-nome::before {
+        display: none;
+    }
+
+    .prodotto-btn .prezzo-prodotto {
+        grid-column: 1;
+        grid-row: 2;
+        justify-self: start;
+        margin-top: 0;
+        color: var(--theme-blue, #1a5ea9);
+        font-size: 15px;
+    }
 }
 
 .ingredienti-nascosti .prodotto-btn {

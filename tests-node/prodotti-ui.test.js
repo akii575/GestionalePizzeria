@@ -829,10 +829,12 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(script, /badge\.textContent = String\(quantita\)/);
     assert.match(script, /badge\?\.remove\(\)/);
     assert.match(stile, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(170px,\s*1fr\)\)/);
-    assert.match(stile, /\.prodotto-quantita\s*\{[^}]*top:\s*-6px;[^}]*left:\s*-6px;[^}]*width:\s*22px;[^}]*height:\s*22px;[^}]*background:\s*#1a5ea9;/);
-    assert.match(stile, /\.prodotto-btn strong\s*\{[^}]*max-height:\s*2\.3em;[^}]*grid-column:\s*1 \/ -1;[^}]*overflow-wrap:\s*break-word;[^}]*text-overflow:\s*clip;/s);
+    assert.match(stile, /\.prodotto-quantita\s*\{[^}]*top:\s*6px;[^}]*left:\s*6px;[^}]*width:\s*22px;[^}]*height:\s*22px;[^}]*background:\s*#1a5ea9;/);
+    assert.match(stile, /\.prodotto-btn strong\s*\{[^}]*max-height:\s*2\.3em;[^}]*grid-column:\s*1 \/ -1;[^}]*overflow-wrap:\s*normal;[^}]*text-overflow:\s*clip;[^}]*word-break:\s*normal;[^}]*hyphens:\s*none;/s);
     assert.match(stile, /\.prodotto-btn strong::before\s*\{[^}]*float:\s*right;[^}]*width:\s*56px;[^}]*height:\s*1\.15em;/s);
     assert.match(stile, /\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1;[^}]*white-space:\s*nowrap;/s);
+    assert.match(stile, /\.prodotto-btn\.ha-quantita \.prodotto-nome\s*\{[^}]*padding-left:\s*28px;/);
+    assert.match(stile, /@media \(max-width: 1023px\)[\s\S]*\.prodotto-btn__meta\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)[\s\S]*\.prodotto-btn \.prodotto-nome\s*\{[^}]*-webkit-line-clamp:\s*2;[^}]*overflow-wrap:\s*normal;[^}]*word-break:\s*normal;[^}]*hyphens:\s*none;[\s\S]*\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*2;[^}]*font-size:\s*15px;/);
     assert.match(stile, /\.tab-container \.tab\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/s);
     assert.match(stile, /\.composer-summary\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*3fr\) minmax\(0,\s*7fr\);[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\) minmax\(18px,\s*auto\) 20px 36px;/s);
     assert.match(stile, /\.ingredienti-nascosti \.prodotto-btn\s*\{[^}]*min-height:\s*64px;/);
