@@ -105,6 +105,7 @@ const confermaRighe = document.getElementById("conferma-righe");
 const confermaTotale = document.getElementById("conferma-totale");
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const bottoneRicerca = document.getElementById("btn-ricerca");
+const bottoneIngredienti = document.getElementById("btn-ingredienti");
 const ricercaModale = document.getElementById("ricerca-modale");
 const ricercaInput = document.getElementById("ricerca-input");
 const ricercaRisultati = document.getElementById("ricerca-risultati");
@@ -125,6 +126,7 @@ const {
     creaPayloadComanda,
     puoSalvareModifica,
     aggiungiProdotti,
+    quantitaProdotto,
     preparaRipetizione,
     impostaRigaAttiva,
     raggruppaRigheConferma,
@@ -159,6 +161,8 @@ let etichetteCategorie = Object.fromEntries(
 );
 const tabsCategorie = document.querySelector(".tab-container");
 let costoConsegna = 0;
+const chiaveIngredientiVisibili = "civico7-ordini-ingredienti-visibili";
+let ingredientiVisibili = leggiIngredientiVisibili();
 let statoMoltiplicatore = creaStatoMoltiplicatore();
 let trascinamentoProdotti = null;
 let ignoraClickDopoTrascinamento = false;
@@ -1068,31 +1072,112 @@ function renderNoteRiga(riga, supportaNote) {
 }
 function renderProdotti() {
     prodotti.innerHTML = "";
-    prodotti.scrollLeft = 0;
+    prodotti.scrollTop = 0;
     const disponibili = stato.menu
         .filter(prodotto => !isCoperto(prodotto) && prodotto.categoria === stato.categoria)
         .sort((a, b) => a.ordine - b.ordine || a.nome.localeCompare(b.nome, "it"));
-    for (let inizio = 0; inizio < disponibili.length; inizio += 9) {
-        const pagina = document.createElement("div");
-        pagina.className = "pagina-prodotti";
-        disponibili.slice(inizio, inizio + 9).forEach(prodotto => {
-            const bottone = document.createElement("button");
-            bottone.className = "prodotto-btn";
-            bottone.type = "button";
-            bottone.disabled = prodotto.disponibile === false;
-            bottone.classList.toggle("esaurito", prodotto.disponibile === false);
-            const descrizioneIngredienti = prodotto.ingredienti?.length ? prodotto.ingredienti.join(", ") : "";
-            const ingredienti = descrizioneIngredienti
-                ? `<span class="ingredienti-wrapper"><span class="ingredienti">${escapeHtml(descrizioneIngredienti)}</span></span>`
-                : "";
-            bottone.innerHTML = `<strong>${escapeHtml(prodotto.nome)}</strong><span class="prezzo-prodotto">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>${prodotto.disponibile === false ? '<span class="prodotto-esaurito">Esaurito</span>' : ""}${ingredienti}`;
-            if (descrizioneIngredienti) bottone.querySelector(".ingredienti").title = descrizioneIngredienti;
-            bottone.addEventListener("click", () => aggiungiProdotto(prodotto, "griglia"));
-            pagina.appendChild(bottone);
-        });
-        prodotti.appendChild(pagina);
+    const pagina = document.createElement("div");
+    pagina.className = "pagina-prodotti";
+    disponibili.forEach(prodotto => {
+        const bottone = document.createElement("button");
+        bottone.className = "prodotto-btn";
+        bottone.type = "button";
+        bottone.dataset.prodotto = prodotto.nome;
+        bottone.disabled = prodotto.disponibile === false;
+        bottone.classList.toggle("esaurito", prodotto.disponibile === false);
+
+        const intestazioneProdotto = document.createElement("span");
+        intestazioneProdotto.className = "prodotto-btn__meta";
+        const nome = document.createElement("strong");
+        nome.className = "prodotto-nome";
+        nome.textContent = prodotto.nome;
+        const prezzo = document.createElement("span");
+        prezzo.className = "prezzo-prodotto";
+        prezzo.textContent = euro.format(Number(prodotto.prezzo));
+        intestazioneProdotto.append(nome, prezzo);
+        bottone.append(intestazioneProdotto);
+
+        if (prodotto.disponibile === false) {
+            const esaurito = document.createElement("span");
+            esaurito.className = "prodotto-esaurito";
+            esaurito.textContent = "Esaurito";
+            bottone.append(esaurito);
+        }
+
+        const descrizioneIngredienti = Array.isArray(prodotto.ingredienti)
+            ? prodotto.ingredienti.join(", ")
+            : "";
+        if (descrizioneIngredienti) {
+            const wrapperIngredienti = document.createElement("span");
+            wrapperIngredienti.className = "ingredienti-wrapper";
+            const ingredienti = document.createElement("span");
+            ingredienti.className = "ingredienti";
+            ingredienti.textContent = descrizioneIngredienti;
+            ingredienti.title = descrizioneIngredienti;
+            wrapperIngredienti.append(ingredienti);
+            bottone.append(wrapperIngredienti);
+        }
+
+        aggiornaBadgeQuantitaProdotto(bottone);
+        bottone.addEventListener("click", () => aggiungiProdotto(prodotto, "griglia"));
+        pagina.appendChild(bottone);
+    });
+    prodotti.appendChild(pagina);
+    requestAnimationFrame(aggiornaRigheNomeCard);
+}
+function aggiornaBadgeQuantitaProdotto(bottone) {
+    const quantita = quantitaProdotto(stato.righe, bottone.dataset.prodotto);
+    let badge = bottone.querySelector(".prodotto-quantita");
+    bottone.classList.toggle("ha-quantita", quantita > 0);
+    if (quantita === 0) {
+        badge?.remove();
+        return;
+    }
+    if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "prodotto-quantita";
+        bottone.append(badge);
+    }
+    badge.textContent = String(quantita);
+    badge.setAttribute("aria-label", `${quantita} già nell'ordine`);
+}
+function aggiornaBadgeQuantitaProdotti() {
+    prodotti.querySelectorAll(".prodotto-btn").forEach(aggiornaBadgeQuantitaProdotto);
+}
+function aggiornaRigheNomeCard() {
+    prodotti.querySelectorAll(".prodotto-btn").forEach(bottone => {
+        const nome = bottone.querySelector(".prodotto-nome");
+        if (!nome) return;
+        const altezzaRiga = Number.parseFloat(getComputedStyle(nome).lineHeight);
+        bottone.classList.toggle(
+            "nome-su-due-righe",
+            Number.isFinite(altezzaRiga) && nome.getBoundingClientRect().height > altezzaRiga * 1.5
+        );
+    });
+}
+function leggiIngredientiVisibili() {
+    try {
+        return window.localStorage.getItem(chiaveIngredientiVisibili) !== "false";
+    } catch {
+        return true;
     }
 }
+function aggiornaToggleIngredienti(salva = true) {
+    document.documentElement.classList.toggle("ingredienti-nascosti", !ingredientiVisibili);
+    bottoneIngredienti.setAttribute("aria-pressed", String(ingredientiVisibili));
+    bottoneIngredienti.setAttribute(
+        "aria-label",
+        ingredientiVisibili ? "Nascondi ingredienti" : "Mostra ingredienti"
+    );
+    bottoneIngredienti.title = ingredientiVisibili ? "Ingredienti visibili" : "Ingredienti nascosti";
+    if (!salva) return;
+    try {
+        window.localStorage.setItem(chiaveIngredientiVisibili, String(ingredientiVisibili));
+    } catch {
+        return;
+    }
+}
+aggiornaToggleIngredienti(false);
 // Unico punto di aggiunta al conto: usato dalle tab delle categorie e dalla ricerca.
 function aggiungiProdotto(prodotto, origine = "ricerca") {
     if (prodotto.disponibile === false) return false;
@@ -1190,6 +1275,7 @@ function chiudiRicerca() {
 function renderRiepilogo() {
     renderRigheRiepilogo(riepilogo);
     renderRigheRiepilogo(riepilogoSheetLista);
+    aggiornaBadgeQuantitaProdotti();
     renderGrigliaExtra();
     const testoTotale = `Totale: ${euro.format(totaleOrdine())}`;
     document.getElementById("riepilogo-totale").textContent = testoTotale;
@@ -1682,6 +1768,11 @@ tabsCategorie.addEventListener("click", evento => {
         .forEach(elemento => elemento.classList.toggle("active", elemento === tab));
     renderProdotti();
 });
+bottoneIngredienti.addEventListener("click", () => {
+    ingredientiVisibili = !ingredientiVisibili;
+    aggiornaToggleIngredienti();
+});
+window.addEventListener("resize", () => requestAnimationFrame(aggiornaRigheNomeCard));
 prodotti.addEventListener("pointerdown", evento => {
     if (evento.pointerType !== "mouse" || evento.button !== 0) return;
     trascinamentoProdotti = {

@@ -17,6 +17,7 @@ const {
     creaPayloadComanda,
     puoSalvareModifica,
     aggiungiProdotti,
+    quantitaProdotto,
     preparaRipetizione,
     impostaRigaAttiva,
     raggruppaRigheConferma,
@@ -535,6 +536,19 @@ test("count label updates to plural after adding three products", () => {
     assert.equal(conteggio.textContent, "3 prodotti");
 });
 
+test("product-card quantity counts matching order rows and stays absent at zero", () => {
+    const righe = [
+        { prodotto: "Margherita" },
+        { prodotto: "Diavola" },
+        { prodotto: "Margherita" }
+    ];
+
+    assert.equal(quantitaProdotto(righe, "Margherita"), 2);
+    assert.equal(quantitaProdotto(righe, "Diavola"), 1);
+    assert.equal(quantitaProdotto(righe, "Capricciosa"), 0);
+    assert.equal(quantitaProdotto(null, "Margherita"), 0);
+});
+
 test("names starting with the query come first, then alphabetical order", () => {
     const prodotti = [
         { nome: "Carbonpizza", categoria: "pizze", prezzo: 8 },
@@ -793,4 +807,28 @@ test("new order page has the search button before Pizze and loads the search mod
     );
     assert.match(stile, /min-height:\s*56px/);
     assert.match(stile, /@media \(max-width: 700px\)[\s\S]*\.ricerca-tastierino\s*\{[\s\S]*order:\s*-1/);
+});
+
+test("product cards expose the ingredient toggle and quantity badge markup", () => {
+    const pagina = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.html"),
+        "utf8"
+    );
+    const script = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.js"),
+        "utf8"
+    );
+    const stile = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.css"),
+        "utf8"
+    );
+
+    assert.match(pagina, /id="btn-ingredienti"[\s\S]*aria-pressed="true"[\s\S]*<svg/);
+    assert.match(script, /className = "prodotto-btn__meta"/);
+    assert.match(script, /className = "prodotto-quantita"/);
+    assert.match(script, /badge\?\.remove\(\)/);
+    assert.match(stile, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(170px,\s*1fr\)\)/);
+    assert.match(stile, /\.prodotto-quantita\s*\{[^}]*position:\s*absolute;[^}]*background:\s*#1a5ea9;/);
+    assert.match(stile, /\.prodotto-btn\.ha-quantita \.prodotto-btn__meta\s*\{[^}]*padding-right:\s*30px;/);
+    assert.match(stile, /\.ingredienti-nascosti \.prodotto-btn\s*\{[^}]*min-height:\s*64px;/);
 });

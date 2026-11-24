@@ -23,7 +23,7 @@
         <link rel="stylesheet" href="/theme.css" />
         <link rel="stylesheet" href="/nav.css" />
     </head>
-    <body>
+    <body class="orders-composer-page">
         <main class="container">
             <header>
                 <h1>Nuova comanda</h1>
@@ -238,6 +238,19 @@
                         />
                     </svg>
                 </button>
+                <button
+                    id="btn-ingredienti"
+                    class="tab tab-ingredienti"
+                    type="button"
+                    aria-label="Nascondi ingredienti"
+                    aria-pressed="true"
+                    title="Ingredienti visibili"
+                >
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="1.8" />
+                        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                </button>
                 <button class="tab active" data-tab="pizze">Pizze</button>
                 <button class="tab" data-tab="ripieni">Ripieni</button>
                 <button class="tab" data-tab="panuozzi">Panuozzi</button>
@@ -282,12 +295,12 @@
                         <section class="riepilogo">
                             <h2>Riepilogo ordine</h2>
                             <div id="riepilogo-items"><p>Nessun prodotto selezionato</p></div>
-                                <div class="riepilogo-totale-riga">
-                                    <p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
-                                    <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
-                                </div>
                         </section>
-                        <button class="btn-annulla" id="btn-annulla" type="button">Annulla ordine</button>
+                        <div class="riepilogo-totale-riga">
+                            <p id="riepilogo-conteggio" class="riepilogo-conteggio" aria-live="polite">0 prodotti</p>
+                            <p id="riepilogo-totale" class="riepilogo-totale">Totale: 0,00 €</p>
+                        </div>
+                        <button class="btn-annulla" id="btn-annulla" type="button">Annulla</button>
                     </div>
                     <p id="messaggio" role="status"></p>
                     <button class="btn-riprova-modifica" id="riprova-modifica" type="button" hidden>Riprova</button>

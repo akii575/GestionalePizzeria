@@ -216,3 +216,11 @@ test("mobile app headers and offline banners respect the iOS safe area", () => {
     assert.match(navigationStyles, /\.civico7-network-banner\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;/);
     assert.match(navigationStyles, /\.civico7-network-banner\s*\{[^}]*padding-top:\s*calc\(10px \+ env\(safe-area-inset-top\)\);/);
 });
+
+test("compact tablet navigation keeps icon labels accessible through tooltips and aria labels", () => {
+    assert.match(navigation, /anchor\.title = link\.label;[\s\S]*anchor\.setAttribute\("aria-label", link\.label\)/);
+    assert.match(navigation, /button\.title = label;[\s\S]*button\.setAttribute\("aria-label", label\)/);
+    assert.match(navigation, /label\.append\(createIcon\("email"\), value\)/);
+    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\)[\s\S]*body\.app-shell \.app-sidebar\s*\{[^}]*width:\s*68px;/);
+    assert.match(navigationStyles, /\.app-sidebar-account-email > svg\s*\{[^}]*display:\s*block;/);
+});

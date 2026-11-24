@@ -114,7 +114,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     border-radius: var(--theme-radius);
     box-shadow: var(--theme-shadow);
 }
-.prodotto-btn { border-color: var(--theme-line); border-radius: var(--theme-radius); }
+.prodotto-btn { border-color: var(--theme-line); border-radius: 12px; }
 .tab.active, .btn-invia, .salva, #aggiungi { background: var(--theme-green); }
 .prezzo, .ordine-totale, .metriche strong { color: var(--theme-green-dark); }
 #messaggio, #stato { min-height: 28px; transition: opacity var(--theme-fast), transform var(--theme-fast); }

@@ -232,6 +232,8 @@
         const anchor = document.createElement("a");
         anchor.href = link.href;
         anchor.className = "app-nav-item";
+        anchor.title = link.label;
+        anchor.setAttribute("aria-label", link.label);
         anchor.append(createIcon(link.icon));
         const label = document.createElement("span");
         label.textContent = link.label;
@@ -247,6 +249,8 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "app-nav-item";
+        button.title = label;
+        button.setAttribute("aria-label", label);
         button.append(createIcon(iconName));
         const text = document.createElement("span");
         text.textContent = label;
@@ -259,8 +263,12 @@
         if (!email) return null;
         const label = document.createElement("span");
         label.className = className;
-        label.textContent = email;
         label.title = email;
+        label.setAttribute("aria-label", `Indirizzo email: ${email}`);
+        const value = document.createElement("span");
+        value.className = "app-sidebar-account-email-value";
+        value.textContent = email;
+        label.append(createIcon("email"), value);
         return label;
     }
 
@@ -277,6 +285,7 @@
             menu: ["M4 5h16v14H4z", "M8 9h8", "M8 13h8", "M8 17h5"],
             more: ["M5 12h.01", "M12 12h.01", "M19 12h.01"],
             logout: ["M10 5H5v14h5", "M14 8l4 4-4 4", "M8 12h10"],
+            email: ["M3 5h18v14H3z", "m3 6 9 7 9-7"],
             reset: ["M4 12a8 8 0 1 0 2.4-5.7", "M4 4v5h5"],
             search: ["M10.5 3a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15", "m16 16 5 5"]
         };
@@ -302,6 +311,8 @@
         button.type = "button";
         button.className = "auth-logout";
         button.textContent = "Esci";
+        button.title = "Esci";
+        button.setAttribute("aria-label", "Esci");
         button.addEventListener("click", async () => {
             button.disabled = true;
             try {
