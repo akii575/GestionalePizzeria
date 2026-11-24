@@ -29,6 +29,9 @@ test("menu editor page loads protected navigation, accessible editor and shared 
     assert.match(editor, /menu-variation-print/);
     assert.match(styles, /\.menu-delete-button \{(?=[^}]*color: #A32D2D)(?=[^}]*background: #FCEBEB)(?=[^}]*border-color: #F7C1C1)[^}]*\}/);
     assert.match(styles, /@media \(max-width: 359px\)[\s\S]*\.menu-new-label/);
+    assert.match(styles, /\.menu-tabs\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*gap:\s*0;/);
+    assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?\.menu-tabs\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*display:\s*grid;/);
+    assert.match(styles, /@media \(min-width: 700px\)[\s\S]*?\.menu-controls\s*\{[^}]*grid-template-columns:\s*auto minmax\(220px,\s*1fr\) auto;[\s\S]*?\.menu-tabs\s*\{[^}]*grid-column:\s*auto;[^}]*flex-wrap:\s*nowrap;/);
 });
 
 test("product row metadata omits the repeated category name", () => {

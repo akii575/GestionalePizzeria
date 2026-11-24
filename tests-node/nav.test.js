@@ -224,3 +224,40 @@ test("compact tablet navigation keeps icon labels accessible through tooltips an
     assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\)[\s\S]*body\.app-shell \.app-sidebar\s*\{[^}]*width:\s*68px;/);
     assert.match(navigationStyles, /\.app-sidebar-account-email > svg\s*\{[^}]*display:\s*block;/);
 });
+
+test("sidebar icons have bounded dimensions and desktop email remains readable", () => {
+    assert.match(navigation, /svg\.setAttribute\("width", "20"\);[\s\S]*svg\.setAttribute\("height", "20"\);/);
+    assert.match(navigationStyles, /\.app-sidebar svg\s*\{[^}]*width:\s*20px;[^}]*height:\s*20px;/);
+    assert.match(navigationStyles, /@media \(min-width: 1440px\)[\s\S]*?\.app-sidebar-account-email\s*\{[^}]*display:\s*flex;[^}]*font-size:\s*12px;/);
+    assert.match(navigationStyles, /@media \(min-width: 1440px\)[\s\S]*?\.app-sidebar-account-email > svg\s*\{[^}]*width:\s*16px;[^}]*height:\s*16px;/);
+    assert.match(navigationStyles, /@media \(min-width: 1440px\)[\s\S]*?\.app-sidebar-account-email-value\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
+    assert.match(navigation, /label\.setAttribute\("aria-label", `Indirizzo email: \$\{email\}`\)/);
+});
+
+test("short landscape tablet sidebars move overflow actions into an Altro popover", () => {
+    assert.match(navigation, /sidebarMoreButton = createButtonLink\("Altro", "more", \(\) => setMoreOpen\(true\)\)/);
+    assert.match(navigation, /sideNav\.scrollHeight > sideNav\.clientHeight/);
+    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?\.app-sidebar \.app-brand\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;/);
+    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?nav\.app-sidebar-links > \.app-nav-item\s*\{[^}]*min-height:\s*38px;[^}]*height:\s*38px;/);
+    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?nav\.app-sidebar-links::-webkit-scrollbar\s*\{[^}]*display:\s*none;/);
+    assert.match(navigationStyles, /has-overflow-menu \.app-sidebar-links > \.app-nav-item\[data-icon="printer"\]/);
+    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?\.app-more-sheet\s*\{[^}]*position:\s*absolute;[^}]*left:\s*76px;/);
+});
+
+test("compact list pages preserve accessible search labels and fit the first result row", () => {
+    for (const [file, label] of [
+        ["gestionale.html", "Cerca tavolo, cliente, recapito o prodotto"],
+        ["tavoli.html", "Cerca tavolo"],
+        ["consegne.html", "Cerca indirizzo o telefono"],
+        ["ritiri.html", "Cerca cliente"],
+        ["banco.html", "Cerca ordine"]
+    ]) {
+        const page = fs.readFileSync(path.join(staticDirectory, file), "utf8");
+        assert.match(page, new RegExp(`<span class="filtri__etichetta">${label}</span>`));
+        assert.match(page, new RegExp(`id="filtro" type="search" aria-label="${label}" placeholder=`));
+    }
+    assert.match(navigationStyles, /@media \(max-height: 560px\), \(max-width: 1023px\) and \(orientation: landscape\)[\s\S]*?\.app-header-actions button\s*\{[^}]*min-height:\s*40px;[^}]*height:\s*40px;/);
+    assert.match(navigationStyles, /@media \(max-height: 560px\), \(max-width: 1023px\) and \(orientation: landscape\)[\s\S]*?\.filtri__etichetta\s*\{[^}]*display:\s*none;/);
+    assert.match(navigationStyles, /@media \(max-height: 560px\), \(max-width: 1023px\) and \(orientation: landscape\)[\s\S]*?\.metriche\s*\{[^}]*flex-wrap:\s*nowrap;/);
+    assert.match(navigationStyles, /@media \(max-height: 560px\), \(max-width: 1023px\) and \(orientation: landscape\)[\s\S]*?\.lista-ordini,[\s\S]*?\.lista-consegne\s*\{[^}]*margin-top:\s*0;/);
+});

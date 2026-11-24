@@ -1087,7 +1087,22 @@ function renderProdotti() {
         pagina.appendChild(bottone);
     });
     prodotti.appendChild(pagina);
+    aggiornaRighePaginaProdotti(prodotti, pagina);
     aggiornaIndicatoreProdotti(prodotti, prodottiWrapper, prodottiIndicatore);
+}
+function aggiornaRighePaginaProdotti(griglia, pagina = griglia.querySelector(".pagina-prodotti")) {
+    if (!pagina) return;
+    if (!window.matchMedia("(min-width: 1440px)").matches) {
+        pagina.style.removeProperty("--prodotti-righe");
+        return;
+    }
+    const altezzaDisponibile = griglia.clientHeight;
+    if (altezzaDisponibile <= 0) return;
+    const spazioRighe = Number.parseFloat(window.getComputedStyle(pagina).rowGap) || 8;
+    const righe = Math.max(3, Math.floor(
+        (altezzaDisponibile + spazioRighe) / (118 + spazioRighe)
+    ));
+    pagina.style.setProperty("--prodotti-righe", String(righe));
 }
 function creaBottoneProdotto(prodotto) {
     const bottone = document.createElement("button");
@@ -1264,6 +1279,7 @@ function renderRisultatiRicerca() {
         pagina.appendChild(bottone);
     });
     ricercaRisultati.appendChild(pagina);
+    aggiornaRighePaginaProdotti(ricercaRisultati, pagina);
     aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
 }
 function gestisciTastoMoltiplicatore(evento) {
@@ -1844,9 +1860,19 @@ ricercaRisultati.addEventListener("scroll", () => {
     aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
 }, { passive: true });
 window.addEventListener("resize", () => {
+    aggiornaRighePaginaProdotti(prodotti);
+    aggiornaRighePaginaProdotti(ricercaRisultati);
     aggiornaIndicatoreProdotti(prodotti, prodottiWrapper, prodottiIndicatore);
     aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
 });
+if (window.ResizeObserver) {
+    const osservatoreRigheProdotti = new window.ResizeObserver(() => {
+        aggiornaRighePaginaProdotti(prodotti);
+        aggiornaRighePaginaProdotti(ricercaRisultati);
+    });
+    osservatoreRigheProdotti.observe(prodotti);
+    osservatoreRigheProdotti.observe(ricercaRisultati);
+}
 bottoneIngredienti.addEventListener("click", () => {
     ingredientiVisibili = !ingredientiVisibili;
     aggiornaToggleIngredienti();

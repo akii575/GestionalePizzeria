@@ -135,9 +135,9 @@ body.app-shell nav.app-bottom-nav {
     }
 
     .app-nav-item svg {
-        width: 24px;
-        height: 24px;
-        flex: 0 0 24px;
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
     }
 
     .app-nav-item.is-active {
@@ -1032,7 +1032,7 @@ body.has-civico7-network-banner .app-page-header {
     }
 
     body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa {
-        grid-template-rows: 40px 40px minmax(0, 1fr) auto;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
         gap: 6px;
     }
 
@@ -1336,7 +1336,7 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
     }
 
     body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa {
-        grid-template-rows: 40px 40px minmax(0, 1fr) auto;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
         gap: 6px;
     }
 }
@@ -1462,5 +1462,327 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
 
     .prodotto-btn.ha-quantita .ingredienti {
         padding-right: 20px;
+    }
+}
+
+.app-sidebar svg {
+    width: 20px;
+    height: 20px;
+}
+
+@media (min-width: 1440px) {
+    .app-sidebar-account-email {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px 0;
+        font-size: 12px;
+    }
+
+    .app-sidebar-account-email > svg {
+        display: block;
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+    }
+
+    .app-sidebar-account-email-value {
+        display: block;
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+        color: rgba(255, 255, 255, .72);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+@media (min-width: 800px) and (max-width: 1439px) and (orientation: landscape) and (max-height: 560px) {
+    body.app-shell .app-sidebar {
+        overflow: hidden;
+        padding-block: 4px;
+    }
+
+    .app-sidebar .app-brand {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        margin-bottom: 4px;
+    }
+
+    body.app-shell nav.app-sidebar-links {
+        gap: 2px;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        scrollbar-width: none;
+    }
+
+    body.app-shell nav.app-sidebar-links::-webkit-scrollbar {
+        display: none;
+    }
+
+    body.app-shell nav.app-sidebar-links > .app-nav-item {
+        min-height: 38px;
+        height: 38px;
+        justify-content: center;
+        padding: 4px;
+    }
+
+    .app-sidebar-actions {
+        gap: 2px;
+    }
+
+    .app-sidebar-actions .auth-logout,
+    .app-sidebar-actions .app-reset,
+    .app-sidebar-actions .app-sidebar-more,
+    .app-sidebar-account-email {
+        min-height: 38px;
+        height: 38px;
+    }
+
+    .app-sidebar-actions .app-reset,
+    .app-sidebar-actions .auth-logout,
+    .app-sidebar-actions .app-sidebar-more {
+        justify-content: center;
+        padding-inline: 4px;
+        font-size: 0;
+    }
+
+    .app-sidebar-actions .auth-logout::before,
+    .app-sidebar-actions .app-reset::before {
+        flex: 0 0 20px;
+        width: 20px;
+        height: 20px;
+        margin-right: 0;
+    }
+
+    .app-sidebar-actions .app-sidebar-more {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        color: #fff;
+    }
+
+    .app-sidebar-actions .app-sidebar-more[hidden] {
+        display: none;
+    }
+
+    body.app-shell .app-sidebar.has-overflow-menu .app-sidebar-links > .app-nav-item[data-icon="printer"],
+    body.app-shell .app-sidebar.has-overflow-menu .app-sidebar-links > .app-nav-item[data-icon="menu"],
+    body.app-shell .app-sidebar.has-overflow-menu .app-sidebar-links > .app-sidebar-divider,
+    body.app-shell .app-sidebar.has-overflow-menu .app-sidebar-actions > .app-reset {
+        display: none;
+    }
+
+    .app-more-backdrop:not([hidden]) {
+        position: fixed;
+        z-index: 1200;
+        inset: 0;
+        display: block;
+        background: transparent;
+    }
+
+    .app-more-sheet {
+        position: absolute;
+        left: 76px;
+        bottom: 8px;
+        width: min(240px, calc(100vw - 92px));
+        max-height: calc(100dvh - 16px);
+        overflow-y: auto;
+        padding: 10px;
+        border: 1px solid var(--theme-line);
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 8px 28px rgba(15, 63, 117, .2);
+    }
+
+    .app-sheet-handle {
+        display: none;
+    }
+
+    body.app-shell nav.app-more-links {
+        gap: 2px;
+    }
+
+    body.app-shell nav.app-more-links > .app-nav-item {
+        min-height: 38px;
+        padding: 6px 8px;
+        border-radius: 8px;
+    }
+
+    body.app-shell nav.app-more-links > .app-nav-item svg {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
+    }
+
+    body.app-shell nav.app-more-links > .app-nav-item[data-icon="home"],
+    body.app-shell nav.app-more-links > .app-nav-item[data-icon="tables"],
+    body.app-shell nav.app-more-links > .app-nav-item[data-icon="add"],
+    body.app-shell nav.app-more-links > .app-nav-item[data-icon="delivery"],
+    body.app-shell nav.app-more-links > .app-nav-item[data-icon="pickup"],
+    body.app-shell nav.app-more-links > .app-nav-item[data-icon="counter"],
+    body.app-shell nav.app-more-links > .app-nav-item[data-icon="orders"] {
+        display: none;
+    }
+}
+
+@media (max-height: 560px), (max-width: 1023px) and (orientation: landscape) {
+    html body.app-shell main.dashboard:not(.menu-dashboard) {
+        padding-top: 4px;
+        padding-bottom: 8px;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) > .app-page-header {
+        min-height: 40px;
+        height: 40px;
+        margin-bottom: 4px;
+        padding: 0;
+        gap: 8px;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) > .app-page-header h1 {
+        overflow: hidden;
+        font-size: 22px;
+        line-height: 1.15;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .app-header-actions {
+        gap: 4px;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .app-header-actions button {
+        min-width: 40px;
+        min-height: 40px;
+        height: 40px;
+        padding: 6px 8px;
+        border-radius: 10px;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .app-header-actions .app-search {
+        width: 40px;
+        padding: 8px;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .app-header-actions .app-search svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .filtri {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        margin: 0 0 2px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .filtri > label:first-child {
+        min-width: 0;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .filtri__etichetta {
+        display: none;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .filtri input[type="search"] {
+        height: 40px;
+        min-height: 40px;
+        margin-top: 0;
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .filtro-data__button {
+        min-height: 40px;
+        height: 40px;
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .metriche {
+        flex-wrap: nowrap;
+        gap: 8px;
+        min-height: 18px;
+        margin: 0 0 2px;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .metriche > span {
+        flex: 0 0 auto;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .consegne-riepilogo,
+    html body.app-shell main.dashboard:not(.menu-dashboard) .riepilogo-tavoli {
+        min-width: 0;
+        margin: 0 0 2px;
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .riepilogo-tavoli {
+        flex-wrap: nowrap;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .riepilogo-tavoli > strong,
+    html body.app-shell main.dashboard:not(.menu-dashboard) .riepilogo-tavoli span strong {
+        font-size: 12px;
+        line-height: 1.2;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) > #stato {
+        min-height: 0;
+        margin: 0;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) > #stato:empty {
+        display: none;
+    }
+
+    html body.app-shell main.dashboard:not(.menu-dashboard) .lista-ordini,
+    html body.app-shell main.dashboard:not(.menu-dashboard) .lista-consegne {
+        gap: 8px;
+        margin-top: 0;
+    }
+}
+
+@media (min-width: 1440px) {
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .intestazione-compatta {
+        position: static;
+        top: auto;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa > .tab-container {
+        position: static;
+        top: auto;
+        min-height: 40px;
+        height: 40px;
+        align-self: start;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti {
+        min-height: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti > .pagina-prodotti,
+    .ricerca-risultati .pagina-prodotti {
+        grid-template-rows: repeat(var(--prodotti-righe, 3), minmax(0, 1fr));
+    }
+
+    body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti > .pagina-prodotti > .prodotto-btn,
+    .ricerca-risultati .pagina-prodotti > .prodotto-btn {
+        max-height: 140px;
     }
 }

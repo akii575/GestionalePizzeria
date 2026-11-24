@@ -2625,6 +2625,7 @@ button {
 }
 
 .riepilogo-item__descrizione .seleziona-riga {
+    display: -webkit-box;
     max-width: 100%;
     overflow: hidden;
     margin: 0;
@@ -2632,8 +2633,11 @@ button {
     padding-block: 0;
     font-size: 14px;
     line-height: 1.2;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .riepilogo-item__descrizione small {
@@ -2876,19 +2880,17 @@ body {
     white-space: nowrap;
 }
 
-.prodotto-btn.ha-quantita .prodotto-btn__meta {
-    margin-top: 6px;
-}
-
 .prodotto-quantita {
     position: absolute;
     z-index: 1;
-    top: 6px;
-    left: 6px;
+    top: auto;
+    right: 4px;
+    bottom: 4px;
+    left: auto;
     display: grid;
-    width: 22px;
-    min-width: 22px;
-    height: 22px;
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
     place-items: center;
     padding: 0;
     border-radius: 999px;
@@ -2915,8 +2917,8 @@ body {
     -webkit-line-clamp: 2;
 }
 
-.prodotto-btn.ha-quantita .prodotto-nome {
-    padding-left: 28px;
+.prodotto-btn.ha-quantita .ingredienti {
+    padding-right: 20px;
 }
 
 @media (max-width: 1023px) {
