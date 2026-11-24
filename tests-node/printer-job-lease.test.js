@@ -483,9 +483,16 @@ test("order updates reject a secondary print job even when its lease expired", a
     assert.equal(database.documents("printerJobs").get("000000000007-01").status, "printing");
 });
 
-test("order updates keep queued main jobs as complete receipts", async () => {
+test("order updates preserve paid table state and keep queued main jobs as complete receipts", async () => {
+    const chiusoAlle = "2026-10-12T12:30:00.000Z";
     database = createDatabase({
-        orders: { "7": { numero: 7, dataOra: "2026-10-12T12:00:00.000Z" } },
+        orders: {
+            "7": {
+                ...storedOrder({ righe: [{ prodotto: "Margherita" }] }),
+                tavoloChiuso: true,
+                chiusoAlle
+            }
+        },
         printerJobs: {
             "000000000007": {
                 numero: 7,
@@ -503,6 +510,8 @@ test("order updates keep queued main jobs as complete receipts", async () => {
     });
 
     assert.equal(response.statusCode, 200);
+    assert.equal(response.body.tavoloChiuso, true);
+    assert.equal(response.body.chiusoAlle, chiusoAlle);
     assert.equal(database.documents("printerJobs").get("000000000007").tipoStampa, "completa");
     assert.equal(database.documents("printerJobs").get("000000000007").motivo, undefined);
     assert.deepEqual(database.documents("printerJobs").get("000000000007").printedPrinters, []);

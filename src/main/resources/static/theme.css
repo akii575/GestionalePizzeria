@@ -504,7 +504,7 @@ html body.app-shell main.dashboard .order-card__details {
 .order-card__products { margin: 0; padding: 0; list-style: none; }
 .order-card__products li { padding: 8px 0; }
 .order-card__products li:first-child { border-top: 1px solid #eef0f2; }
-.order-card__product-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 0; }
+.order-card__product-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 8px; }
 .order-card__product-quantity { justify-self: end; color: var(--theme-muted); font-size: 13px; font-weight: 700; text-align: right; }
 .order-card__product-name { display: grid; min-width: 0; gap: 2px; }
 .order-card__product-name strong { font-size: 14px; }
@@ -644,6 +644,68 @@ html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
 .order-card__actions button,
 .order-card__delivery-action {
     box-sizing: border-box;
+}
+
+html body.app-shell main.dashboard .order-card__actions button[data-tavolo-chiuso="true"] {
+    border-color: #1e7a4c;
+    background: #1e7a4c;
+    color: #fff;
+    font-weight: 700;
+}
+
+html body.app-shell main.dashboard .order-card__actions button[data-tavolo-chiuso="false"] {
+    border-color: var(--theme-line);
+    background: #fff;
+    color: var(--theme-green);
+}
+
+html body.app-shell main.dashboard .order-card__actions--table {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 56px;
+}
+
+html body.app-shell main.dashboard .order-card--closed {
+    border-color: #d7dad7;
+    background: #f0f1ef;
+    box-shadow: none;
+}
+
+html body.app-shell main.dashboard .order-card--closed .order-card__compact-total {
+    color: var(--theme-muted);
+    opacity: .72;
+    text-decoration: line-through;
+}
+
+html body.app-shell main.dashboard .order-card__compact-state--paid-table {
+    color: var(--theme-green);
+    font-weight: 700;
+}
+
+.toast-tavolo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: max-content;
+    max-width: min(420px, calc(100vw - 32px));
+    padding: 10px 12px 10px 16px;
+}
+
+.toast-tavolo button {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, .7);
+    border-radius: 9px;
+    background: transparent;
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+}
+
+@media (max-width: 767px) {
+    html body.app-shell main.dashboard .order-card__actions--table {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 767px) {

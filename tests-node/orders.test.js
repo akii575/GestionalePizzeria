@@ -488,6 +488,8 @@ test("supports table, counter, pickup and legacy dining-room orders", () => {
     assert.equal(pickup.telefonoRitiro, "+39 333 1234567");
     assert.equal(publicOrder({ ...pickup, numero: 3 }).telefonoRitiro, "+39 333 1234567");
     assert.equal(publicOrder({ ...legacy, numero: 2 }).tipo, "tavolo");
+    assert.equal(publicOrder({ numero: 5, tipo: "tavolo" }).tavoloChiuso, false);
+    assert.equal(publicOrder({ numero: 5, tipo: "tavolo" }).chiusoAlle, null);
     assert.deepEqual(filterOrdersByType([
         { tipo: "sala" },
         { tipo: "banco" },

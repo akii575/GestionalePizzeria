@@ -154,3 +154,49 @@ test("delivery status PATCH is role-scoped, versioned, and does not enqueue prin
     assert.equal(response.statusCode, 403);
     assert.equal(state.version(), 0);
 });
+
+test("table closure PATCH is staff-only, table-only, versioned and does not enqueue printing", async t => {
+    let state = createDatabase({
+        numero: 7,
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 3",
+        totale: 18
+    });
+    t.mock.method(auth, "requireStaffAccess", async req => {
+        if (["staff", "admin"].includes(req.headers["x-test-role"])) {
+            return { [req.headers["x-test-role"]]: true };
+        }
+        const error = new Error("Accesso negato.");
+        error.statusCode = 403;
+        throw error;
+    });
+    t.mock.method(firebaseAdmin, "getFirebaseServices", () => ({ db: state.database }));
+    const handler = apiRoute("ordini/7");
+
+    let response = await invoke(handler, "staff", { tavoloChiuso: true });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.tavoloChiuso, true);
+    assert.ok(Number.isFinite(Date.parse(response.body.chiusoAlle)));
+    assert.equal(state.version(), 1);
+    assert.ok(state.writes.every(write => write.collection !== "printerJobs"));
+
+    response = await invoke(handler, "admin", { tavoloChiuso: false });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.tavoloChiuso, false);
+    assert.equal(response.body.chiusoAlle, null);
+    assert.equal(state.version(), 2);
+
+    state = createDatabase({ numero: 7, tipo: "consegna" });
+    response = await invoke(handler, "staff", { tavoloChiuso: true });
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.errore, "Solo i tavoli si possono chiudere.");
+    assert.equal(state.version(), 0);
+
+    response = await invoke(handler, "rider", { tavoloChiuso: true });
+    assert.equal(response.statusCode, 403);
+    assert.equal(state.version(), 0);
+
+    response = await invoke(handler, "staff", { tavoloChiuso: true, statoConsegna: "consegnata" });
+    assert.equal(response.statusCode, 400);
+    assert.equal(state.version(), 0);
+});

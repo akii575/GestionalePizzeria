@@ -1,4 +1,12 @@
 const stato = { categoria: "pizze", menu: [], extra: [], righe: [], rigaAttiva: null };
+const statoTavoliOccupati = {
+    ordini: new Map(),
+    versione: null,
+    data: "",
+    caricato: false,
+    richiesta: 0,
+    timer: null
+};
 const parametriUrl = new URLSearchParams(window.location.search);
 const numeroModificaParametro = parametriUrl.get("modifica") || "";
 const numeroModifica = /^\d+$/.test(numeroModificaParametro)
@@ -67,6 +75,7 @@ const tavoliGriglia = document.getElementById("tavoli-griglia");
 const personeSelettore = document.getElementById("persone-selettore");
 const personePersonalizzate = document.getElementById("persone-personalizzate");
 const sezioneTavoli = document.getElementById("sezione-tavoli");
+const statoTavoliOccupatiElement = document.getElementById("stato-tavoli-occupati");
 const sezionePersone = document.getElementById("sezione-persone");
 const intestazione = document.querySelector(".composer-main > .tavolo-input");
 const intestazioneCompatta = document.getElementById("intestazione-compatta");
@@ -133,6 +142,7 @@ const {
     impostaValoreControllo,
     nomeTavoloDaNumero,
     numeroTavoloDaNome,
+    calcolaTavoliOccupati,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
     deveChiudereIntestazione,
@@ -597,8 +607,16 @@ function aggiornaSelettoreTavoli() {
     }
     tavoliGriglia.querySelectorAll("[data-tavolo]").forEach(bottone => {
         const selezionato = bottone.dataset.tavolo === tavolo.value;
+        const numeroTavolo = numeroTavoloDaNome(bottone.dataset.tavolo);
+        const occupazione = statoTavoliOccupati.ordini.get(numeroTavolo);
+        const occupato = Boolean(occupazione);
         bottone.classList.toggle("selezionato", selezionato);
+        bottone.classList.toggle("occupato", occupato);
         bottone.setAttribute("aria-pressed", String(selezionato));
+        bottone.setAttribute("aria-label", occupato
+            ? `${bottone.dataset.tavolo}, occupato`
+            : bottone.dataset.tavolo);
+        bottone.title = occupato ? `Occupato · ordine #${occupazione.ordine.numero}` : "";
     });
     const bottonePersonalizzato = tavoliGriglia.querySelector("[data-tavolo-personalizzato]");
     bottonePersonalizzato.textContent = selezione.numeroPersonalizzato || "+";
@@ -612,6 +630,106 @@ function aggiornaSelettoreTavoli() {
     } else if (messaggio.textContent === "Numero tavolo da 1 a 99" || messaggio.textContent === "Scegli il tavolo") {
         mostraMessaggio("", "");
     }
+}
+function dataOdiernaRoma() {
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Rome",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+}
+async function aggiornaTavoliOccupati() {
+    if (numeroModifica) return;
+    const data = dataOdiernaRoma();
+    const completa = !statoTavoliOccupati.caricato || statoTavoliOccupati.data !== data;
+    const richiesta = ++statoTavoliOccupati.richiesta;
+    const parametri = new URLSearchParams({ data, tipo: "tavolo" });
+    if (!completa && Number.isSafeInteger(statoTavoliOccupati.versione)) {
+        parametri.set("versione", String(statoTavoliOccupati.versione));
+    }
+    try {
+        const risposta = await fetch(`/api/ordini?${parametri}`, { cache: "no-store" });
+        if (richiesta !== statoTavoliOccupati.richiesta) return;
+        const risultato = await risposta.json();
+        if (!risposta.ok) throw new Error(risultato.errore || "Impossibile verificare i tavoli occupati.");
+        if (risultato.invariato) return;
+        if (!Array.isArray(risultato.ordini)) {
+            throw new Error("La risposta degli ordini dei tavoli non e' valida.");
+        }
+        statoTavoliOccupati.ordini = calcolaTavoliOccupati(risultato.ordini);
+        statoTavoliOccupati.versione = risultato.versione;
+        statoTavoliOccupati.data = data;
+        statoTavoliOccupati.caricato = true;
+        aggiornaSelettoreTavoli();
+        statoTavoliOccupatiElement.hidden = true;
+        statoTavoliOccupatiElement.classList.remove("errore");
+        statoTavoliOccupatiElement.textContent = "";
+    } catch (errore) {
+        if (richiesta !== statoTavoliOccupati.richiesta) return;
+        statoTavoliOccupatiElement.textContent = errore.message;
+        statoTavoliOccupatiElement.hidden = false;
+        statoTavoliOccupatiElement.classList.add("errore");
+    }
+}
+function configuraAggiornamentoTavoliOccupati() {
+    if (statoTavoliOccupati.timer) clearInterval(statoTavoliOccupati.timer);
+    statoTavoliOccupati.timer = null;
+    if (!numeroModifica && document.visibilityState === "visible") {
+        statoTavoliOccupati.timer = setInterval(() => void aggiornaTavoliOccupati(), 15000);
+    }
+}
+function chiudiDialogoTavoloOccupato(dialog) {
+    if (typeof dialog.close === "function") dialog.close();
+    else dialog.removeAttribute("open");
+}
+function mostraDialogoTavoloOccupato(numeroTavolo, occupazione) {
+    let dialog = document.getElementById("tavolo-occupato-dialog");
+    if (!dialog) {
+        dialog = document.createElement("dialog");
+        dialog.id = "tavolo-occupato-dialog";
+        dialog.className = "app-mappe-dialog tavolo-occupato-dialog";
+        dialog.setAttribute("aria-labelledby", "tavolo-occupato-titolo");
+        dialog.innerHTML = `
+            <h2 id="tavolo-occupato-titolo"></h2>
+            <p class="tavolo-occupato-dialog__multipli"></p>
+            <div class="tavolo-occupato-dialog__azioni">
+                <button type="button" data-azione-tavolo="modifica">Aggiungi all'ordine</button>
+                <button type="button" data-azione-tavolo="nuovo">Nuovo ordine sullo stesso tavolo</button>
+                <button type="button" data-azione-tavolo="annulla">Annulla</button>
+            </div>
+        `;
+        dialog.querySelector('[data-azione-tavolo="modifica"]').addEventListener("click", () => {
+            window.location.href = `/ordini.html?modifica=${encodeURIComponent(dialog.dataset.ordine)}&da=tavoli`;
+        });
+        dialog.querySelector('[data-azione-tavolo="nuovo"]').addEventListener("click", () => {
+            const numero = dialog.dataset.tavolo;
+            chiudiDialogoTavoloOccupato(dialog);
+            gestioneTavoli.scegli(numero);
+            aggiornaSelettoreTavoli();
+        });
+        dialog.querySelector('[data-azione-tavolo="annulla"]').addEventListener("click", () => {
+            chiudiDialogoTavoloOccupato(dialog);
+        });
+        document.body.append(dialog);
+    }
+    const ordine = occupazione.ordine;
+    const persone = Number(ordine.numeroPersone);
+    const labelPersone = Number.isInteger(persone) && persone > 0
+        ? `${persone} ${persone === 1 ? "persona" : "persone"}`
+        : "persone non indicate";
+    dialog.dataset.ordine = String(ordine.numero);
+    dialog.dataset.tavolo = String(numeroTavolo);
+    dialog.querySelector("#tavolo-occupato-titolo").textContent =
+        `Tavolo ${numeroTavolo} è occupato (ordine #${ordine.numero}, ${labelPersone})`;
+    dialog.querySelector(".tavolo-occupato-dialog__multipli").textContent =
+        occupazione.numeroOrdini > 1
+            ? `Ci sono ${occupazione.numeroOrdini} ordini aperti: viene proposto il più recente.`
+            : "";
+    dialog.querySelector('[data-azione-tavolo="modifica"]').textContent =
+        `Aggiungi all'ordine #${ordine.numero}`;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
 }
 function aggiornaSelettorePersone() {
     const valore = Number(numeroPersone.value);
@@ -644,6 +762,11 @@ function creaSelettoriOrdine() {
         bottone.setAttribute("aria-label", valore);
         bottone.setAttribute("aria-pressed", "false");
         bottone.addEventListener("click", () => {
+            const occupazione = statoTavoliOccupati.ordini.get(numeroTavoloDaNome(valore));
+            if (occupazione && !numeroModifica) {
+                mostraDialogoTavoloOccupato(numero, occupazione);
+                return;
+            }
             gestioneTavoli.scegli(numero);
             aggiornaSelettoreTavoli();
         });
@@ -2000,3 +2123,10 @@ async function inizializzaModifica() {
 }
 
 inizializzaModifica();
+void aggiornaTavoliOccupati();
+configuraAggiornamentoTavoliOccupati();
+document.addEventListener("civico7:online", () => void aggiornaTavoliOccupati());
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void aggiornaTavoliOccupati();
+    configuraAggiornamentoTavoliOccupati();
+});

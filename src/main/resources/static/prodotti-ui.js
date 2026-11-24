@@ -506,6 +506,32 @@ const prodottiUI = (() => {
         return corrispondenza ? normalizzaNumeroTavolo(corrispondenza[1]) : "";
     }
 
+    function calcolaTavoliOccupati(orders) {
+        const occupied = new Map();
+        for (const order of orders || []) {
+            const type = order?.tipo === "sala" ? "tavolo" : order?.tipo || "tavolo";
+            if (type !== "tavolo" || order?.tavoloChiuso === true) continue;
+            const table = numeroTavoloDaNome(order.tavoloOCliente);
+            if (!table) continue;
+            const previous = occupied.get(table);
+            const timestamp = Date.parse(order.dataOra);
+            const previousTimestamp = Date.parse(previous?.ordine.dataOra);
+            if (!previous) {
+                occupied.set(table, { ordine: order, numeroOrdini: 1 });
+                continue;
+            }
+            previous.numeroOrdini++;
+            const timestampValue = Number.isFinite(timestamp) ? timestamp : -Infinity;
+            const previousTimestampValue = Number.isFinite(previousTimestamp) ? previousTimestamp : -Infinity;
+            const stessoOrario = timestampValue === previousTimestampValue;
+            if (timestampValue > previousTimestampValue
+                    || (stessoOrario && Number(order.numero) > Number(previous.ordine.numero))) {
+                previous.ordine = order;
+            }
+        }
+        return occupied;
+    }
+
     function creaGestoreTavoli() {
         let tavolo = "";
         let numero = "";
@@ -685,6 +711,7 @@ const prodottiUI = (() => {
         normalizzaNumeroTavolo,
         nomeTavoloDaNumero,
         numeroTavoloDaNome,
+        calcolaTavoliOccupati,
         creaGestoreTavoli,
         datiObbligatoriMancanti,
         datiOrdineCompleti,

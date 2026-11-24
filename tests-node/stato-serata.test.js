@@ -192,6 +192,7 @@ test("evening status reports live printer lease, counts jobs and summarizes toda
             { numero: 1, dataOra: "2026-03-29T10:00:00.000Z", tipo: "tavolo", tavoloOCliente: "1", numeroPersone: 2, totale: 20, stampaCompletata: true },
             { numero: 2, dataOra: "2026-03-29T11:00:00.000Z", tipo: "sala", tavoloOCliente: "1", numeroPersone: 3, totale: 30, stampaCompletata: false },
             { numero: 3, dataOra: "2026-03-29T12:00:00.000Z", tipo: "tavolo", tavoloOCliente: "2", numeroPersone: 1, totale: 10, stampaCompletata: true },
+            { numero: 10, dataOra: "2026-03-29T12:30:00.000Z", tipo: "tavolo", tavoloOCliente: "3", numeroPersone: 4, totale: 40, tavoloChiuso: true, stampaCompletata: true },
             { numero: 4, dataOra: "2026-03-29T13:00:00.000Z", tipo: "consegna", statoConsegna: "da_consegnare", totale: 15 },
             { numero: 5, dataOra: "2026-03-29T14:00:00.000Z", tipo: "consegna", statoConsegna: "in_consegna", totale: 16 },
             { numero: 6, dataOra: "2026-03-29T15:00:00.000Z", tipo: "consegna", statoConsegna: "consegnata", totale: 17 },
@@ -214,9 +215,11 @@ test("evening status reports live printer lease, counts jobs and summarizes toda
         nonRiuscite: 1
     });
     assert.deepEqual(response.body.oggi, {
-        ordini: 8,
-        totale: 145,
+        ordini: 9,
+        totale: 185,
         tavoli: 2,
+        tavoliPagati: 1,
+        incassoTavoli: 40,
         coperti: 6,
         consegneDaFare: 1,
         consegneInCorso: 1,
