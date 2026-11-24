@@ -504,7 +504,7 @@ html body.app-shell main.dashboard .order-card__details {
 .order-card__products { margin: 0; padding: 0; list-style: none; }
 .order-card__products li { padding: 8px 0; }
 .order-card__products li:first-child { border-top: 1px solid #eef0f2; }
-.order-card__product-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 0; }
+.order-card__product-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 8px; }
 .order-card__product-quantity { justify-self: end; color: var(--theme-muted); font-size: 13px; font-weight: 700; text-align: right; }
 .order-card__product-name { display: grid; min-width: 0; gap: 2px; }
 .order-card__product-name strong { font-size: 14px; }
@@ -647,8 +647,8 @@ html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
 }
 
 html body.app-shell main.dashboard .order-card__actions button[data-tavolo-chiuso="true"] {
-    border-color: var(--theme-green);
-    background: var(--theme-green);
+    border-color: #1e7a4c;
+    background: #1e7a4c;
     color: #fff;
     font-weight: 700;
 }

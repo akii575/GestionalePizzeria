@@ -428,10 +428,10 @@ const orderCard = (() => {
             ? `<p class="order-card__note"><strong>Note ordine:</strong> ${escapeHtml(order.note)}</p>`
             : "";
         const deliveryFee = type === "consegna" && Number(order.costoConsegna) > 0
-            ? `<p class="order-card__delivery-fee">Costo consegna <span>${euro.format(Number(order.costoConsegna))}</span></p>`
+            ? `<p class="order-card__delivery-fee"><span>Costo consegna ${euro.format(Number(order.costoConsegna))}</span><strong>${euro.format(Number(order.costoConsegna))}</strong></p>`
             : "";
         const coverCharge = type === "tavolo" && Number(order.coperto?.totale) > 0
-            ? `<p class="order-card__cover-charge">Coperto <span>${Number(order.coperto.persone)} × ${euro.format(Number(order.coperto.prezzoUnitario))}</span></p>`
+            ? `<p class="order-card__cover-charge"><span>Coperto ${Number(order.coperto.persone)} × ${euro.format(Number(order.coperto.prezzoUnitario))}</span><strong>${euro.format(Number(order.coperto.totale))}</strong></p>`
             : "";
         const compactStatus = deliveryMode
             ? renderDeliveryCompactStatus(order)

@@ -22,6 +22,14 @@ function render(order, options = {}) {
     }
 }
 
+function relativeLuminance(hex) {
+    const channels = hex.match(/[0-9a-f]{2}/gi).map(channel => parseInt(channel, 16) / 255);
+    const linear = channels.map(channel => channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
 test("all order services use the same compact and expanded card structure", () => {
     const orders = [
         { tipo: "consegna", telefonoConsegna: "3331234567", indirizzoConsegna: "Via Roma 12" },
@@ -349,7 +357,7 @@ test("order detail shows the automatic cover charge for table service", () => {
         coperto: { persone: 4, prezzoUnitario: 2, totale: 8 }
     });
 
-    assert.match(table, /class="order-card__cover-charge">Coperto <span>4 × 2,00\s*€<\/span><\/p>/);
+    assert.match(table, /class="order-card__cover-charge"><span>Coperto 4 × 2,00\s*€<\/span><strong>8,00\s*€<\/strong><\/p>/);
     assert.doesNotMatch(table, /class="order-card__total">13,00/);
     assert.doesNotMatch(counter, /order-card__cover-charge/);
 });
@@ -464,8 +472,26 @@ test("expanded product rows have a single top separator and align quantity besid
     assert.ok(detailsStyles);
     assert.doesNotMatch(detailsStyles[0], /dashed/);
     assert.match(theme, /\.order-card__products li:first-child\s*\{\s*border-top:\s*1px solid #eef0f2;/);
-    assert.match(productRowStyles[0], /gap:\s*0;/);
+    assert.match(productRowStyles[0], /grid-template-columns:\s*32px minmax\(0,\s*1fr\) auto;/);
+    assert.match(productRowStyles[0], /gap:\s*8px;/);
     assert.match(quantityStyles[0], /justify-self:\s*end;/);
+});
+
+test("paid table action uses a high-contrast dark green while reopening stays secondary", () => {
+    const theme = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
+        "utf8"
+    );
+    const paidRule = theme.match(/order-card__actions button\[data-tavolo-chiuso="true"\]\s*\{([^}]+)\}/);
+    const reopenRule = theme.match(/order-card__actions button\[data-tavolo-chiuso="false"\]\s*\{([^}]+)\}/);
+
+    assert.ok(paidRule);
+    assert.match(paidRule[1], /background:\s*#1e7a4c;/);
+    assert.match(paidRule[1], /color:\s*#fff;/);
+    const contrast = 1.05 / (relativeLuminance("#1e7a4c") + 0.05);
+    assert.ok(contrast >= 4.5, `white on #1e7a4c has contrast ${contrast.toFixed(2)}:1`);
+    assert.ok(reopenRule);
+    assert.match(reopenRule[1], /background:\s*#fff;/);
 });
 
 test("delivery surcharge is included in order details only when present", () => {
@@ -480,7 +506,7 @@ test("delivery surcharge is included in order details only when present", () => 
         indirizzoConsegna: "Via Roma 12"
     });
 
-    assert.match(deliveryWithFee, /class="order-card__delivery-fee">Costo consegna <span>2,00\s*€<\/span><\/p>/);
+    assert.match(deliveryWithFee, /class="order-card__delivery-fee"><span>Costo consegna 2,00\s*€<\/span><strong>2,00\s*€<\/strong><\/p>/);
     assert.doesNotMatch(deliveryWithoutFee, /order-card__delivery-fee/);
 });
 
