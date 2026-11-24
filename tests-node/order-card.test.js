@@ -692,8 +692,10 @@ test("wide desktop layouts use the space beside the sidebar", () => {
             );
         }
     });
+    assert.match(navigation, /body\.orders-composer-page\.app-shell main\.container \.composer-main > \.prodotti-wrapper > #prodotti,\s*body\.orders-composer-page\.app-shell main\.container #ricerca-risultati\.griglia-prodotti\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*row;[^}]*flex-wrap:\s*nowrap;[^}]*overflow-x:\s*auto;[^}]*overflow-y:\s*hidden;[^}]*scroll-snap-type:\s*x mandatory;[^}]*gap:\s*0;/);
+    assert.match(navigation, /body\.orders-composer-page\.app-shell main\.container \.composer-main > \.prodotti-wrapper > #prodotti > \.pagina-prodotti,\s*body\.orders-composer-page\.app-shell main\.container #ricerca-risultati > \.pagina-prodotti\s*\{[^}]*flex:\s*0 0 100%;[^}]*scroll-snap-align:\s*start;/);
     assert.match(orderStyles, /\.griglia-prodotti\.is-dragging\s*\{[^}]*scroll-snap-type:\s*none;/);
-    assert.match(navigation, /\.prodotto-btn\s*\{[^}]*scroll-snap-align:\s*start;/);
+    assert.match(navigation, /#ricerca-risultati \.prodotto-btn\s*\{[^}]*scroll-snap-align:\s*none;/);
     assert.match(orderStyles, /\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*grid-row:\s*2;/);
     assert.match(navigation, /max-width: 767px[\s\S]*?\.prodotti-wrapper:not\(\.ricerca-risultati-wrapper\)\s*\{\s*height:\s*420px;/);
     const orderScript = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");

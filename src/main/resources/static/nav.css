@@ -1976,3 +1976,26 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
     align-content: start;
     align-items: stretch;
 }
+
+body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti,
+body.orders-composer-page.app-shell main.container #ricerca-risultati.griglia-prodotti {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    gap: 0;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti > .pagina-prodotti,
+body.orders-composer-page.app-shell main.container #ricerca-risultati > .pagina-prodotti {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+}
+
+body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti .prodotto-btn,
+body.orders-composer-page.app-shell main.container #ricerca-risultati .prodotto-btn {
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+}
