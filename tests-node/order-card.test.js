@@ -372,10 +372,17 @@ test("product details show removals, extras and notes without ingredients", () =
             note: ["Ben cotta"]
         }]
     });
+    const styles = fs.readFileSync(
+        path.join(__dirname, "../src/main/resources/static/theme.css"),
+        "utf8"
+    );
 
     assert.match(html, /class="order-card__without-ingredients">senza Basilico<\/small>/);
     assert.match(html, /class="order-card__extra">\+ Olive<\/small>/);
     assert.match(html, /class="order-card__product-note">Ben cotta<\/small>/);
+    assert.match(styles, /\.order-card__without-ingredients\s*\{[^}]*font-weight:\s*700;/);
+    assert.match(styles, /\.order-card__product-note\s*\{[^}]*font-weight:\s*700;/);
+    assert.match(styles, /\.order-card__extra\s*\{[^}]*font-weight:\s*400;/);
     assert.doesNotMatch(html, /Pomodoro|Basilico<\/small>[\s\S]*ingredienti/i);
 });
 

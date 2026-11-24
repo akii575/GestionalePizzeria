@@ -744,6 +744,7 @@ button {
     border-color: #B91C1C;
     background: #FEF2F2;
     color: #B91C1C;
+    font-weight: 700;
     text-decoration: line-through;
 }
 .senza-chip:focus:not(:focus-visible) {
@@ -813,6 +814,7 @@ button {
     margin-top: 3px;
     color: #991B1B;
     font-size: 12px;
+    font-weight: 700;
 }
 .riepilogo-note-riga,
 .conferma-riga .conferma-nota-riga {
@@ -820,7 +822,7 @@ button {
     margin-top: 3px;
     color: #6B4E00;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
 }
 .riepilogo-non-disponibile {
     display: block;
@@ -1590,6 +1592,7 @@ button {
     border-color: #E4B034;
     background: #FFF6DF;
     color: #6B4E00;
+    font-weight: 700;
 }
 
 .note-chip.selezionato::after {
@@ -2657,9 +2660,10 @@ button {
     overflow-wrap: anywhere;
 }
 
-.riepilogo-item__descrizione .riepilogo-senza { color: #b91c1c; }
-.riepilogo-item__descrizione .riepilogo-extra { color: #1a5ea9; }
+.riepilogo-item__descrizione .riepilogo-senza { color: #b91c1c; font-weight: 700; }
+.riepilogo-item__descrizione .riepilogo-extra { color: #1a5ea9; font-weight: 400; }
 .riepilogo-item__descrizione .riepilogo-note-riga { color: #8a5a00; }
+.conferma-riga .conferma-extra { font-weight: 400; }
 
 .riepilogo-prezzo {
     color: var(--theme-ink);
