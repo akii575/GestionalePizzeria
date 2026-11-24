@@ -39,6 +39,7 @@ const {
     creaGestoreTavoli,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
+    deveChiudereIntestazione,
     riepilogoIntestazione,
     anteprimaNota,
     aggiungiNotaRapida,
@@ -210,7 +211,7 @@ test("summary rows use the same fixed grid and touch-sized remove button", () =>
         path.join(__dirname, "../src/main/resources/static/ordini.js"),
         "utf8"
     );
-    const summaryGrid = /\.riepilogo-item\s*\{[^}]*grid-template-columns:\s*32px minmax\(0,\s*1fr\) auto 36px;[^}]*align-items:\s*start;[^}]*column-gap:\s*8px;/s;
+    const summaryGrid = /\.riepilogo-item\s*\{[^}]*grid-template-columns:\s*32px minmax\(0,\s*1fr\) auto 36px;[^}]*align-items:\s*baseline;[^}]*column-gap:\s*8px;/s;
     const removeButton = /\.riepilogo-item \.rimuovi\s*\{[^}]*width:\s*36px;[^}]*height:\s*36px;/s;
 
     assert.match(styles, summaryGrid);
@@ -272,6 +273,38 @@ test("table orders require both an explicit table and a valid people count", () 
         datiObbligatoriMancanti("ritiro", { nome: "Rossi", telefono: "123", telefonoValido: false }),
         "telefono"
     );
+});
+
+test("the order header stays open while a text input has focus", () => {
+    assert.equal(
+        deveChiudereIntestazione("banco", { cognome: "Rossi" }, {
+            inputAttivo: true,
+            motivo: "sfocatura"
+        }),
+        false
+    );
+    assert.equal(
+        deveChiudereIntestazione("consegna", {
+            indirizzo: "Via Roma 12",
+            telefono: "3331234567",
+            telefonoValido: true
+        }, { inputAttivo: true, motivo: "prodotto" }),
+        false
+    );
+});
+
+test("pickup and delivery headers close on blur only after required fields are complete", () => {
+    const ritiro = { nome: "Rossi", telefono: "3331234567", telefonoValido: true };
+    const consegna = {
+        indirizzo: "Via Roma 12",
+        telefono: "3331234567",
+        telefonoValido: true
+    };
+
+    assert.equal(deveChiudereIntestazione("ritiro", ritiro, { motivo: "cambio" }), false);
+    assert.equal(deveChiudereIntestazione("ritiro", ritiro, { motivo: "sfocatura" }), true);
+    assert.equal(deveChiudereIntestazione("consegna", consegna, { motivo: "sfocatura" }), true);
+    assert.equal(deveChiudereIntestazione("consegna", {}, { motivo: "prodotto" }), true);
 });
 
 test("order header summaries and note previews use the compact UI labels", () => {
@@ -396,7 +429,8 @@ test("order entry wires selector events, first-product collapse, reset and note 
     assert.match(script, /impostaValoreControllo\(tipoOrdine, bottone\.dataset\.tipoOrdine, "change"\)/);
     assert.match(script, /gestioneTavoli\.scegli\(numero\);\s*aggiornaSelettoreTavoli\(\)/);
     assert.match(script, /impostaValoreControllo\(numeroPersone, String\(persone\), "input"\)/);
-    assert.match(script, /primoProdotto && datiOrdineCompleti\(tipoOrdine\.value, datiIntestazioneCorrenti\(\)\)/);
+    assert.match(script, /intestazione\.addEventListener\("focusout",[\s\S]*?aggiornaStatoIntestazione\("sfocatura"\)/);
+    assert.match(script, /deveChiudereIntestazione\(tipoOrdine\.value, datiIntestazioneCorrenti\(\), \{ inputAttivo, motivo \}\)/);
     assert.match(script, /intestazioneCompatta\.addEventListener\("click", apriIntestazione\)/);
     assert.match(script, /noteToggle\.addEventListener\("click"/);
     assert.match(script, /note\.dispatchEvent\(new Event\("input", \{ bubbles: true \}\)\)/);

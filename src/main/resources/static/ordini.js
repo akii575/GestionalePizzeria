@@ -135,6 +135,7 @@ const {
     numeroTavoloDaNome,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
+    deveChiudereIntestazione,
     riepilogoIntestazione,
     anteprimaNota,
     aggiungiNotaRapida,
@@ -732,6 +733,15 @@ function chiudiIntestazione() {
     composerMain.classList.add("intestazione-chiusa");
     intestazioneCompatta.hidden = false;
 }
+function aggiornaStatoIntestazione(motivo = "cambio") {
+    const inputAttivo = document.activeElement?.matches("input, textarea, select") === true;
+    if (deveChiudereIntestazione(tipoOrdine.value, datiIntestazioneCorrenti(), { inputAttivo, motivo })) {
+        chiudiIntestazione();
+    }
+}
+intestazione.addEventListener("focusout", () => {
+    window.setTimeout(() => aggiornaStatoIntestazione("sfocatura"), 0);
+});
 function aggiornaPulsanteNote() {
     const anteprima = anteprimaNota(note.value);
     noteToggle.textContent = noteAperta ? "− Chiudi nota" : anteprima ? `Nota: ${anteprima}` : "+ Nota";
@@ -954,14 +964,14 @@ function renderProdotti() {
                 : "";
             bottone.innerHTML = `<strong>${escapeHtml(prodotto.nome)}</strong><span class="prezzo-prodotto">${escapeHtml(euro.format(Number(prodotto.prezzo)))}</span>${prodotto.disponibile === false ? '<span class="prodotto-esaurito">Esaurito</span>' : ""}${ingredienti}`;
             if (descrizioneIngredienti) bottone.querySelector(".ingredienti").title = descrizioneIngredienti;
-            bottone.addEventListener("click", () => aggiungiProdotto(prodotto));
+            bottone.addEventListener("click", () => aggiungiProdotto(prodotto, "griglia"));
             pagina.appendChild(bottone);
         });
         prodotti.appendChild(pagina);
     }
 }
 // Unico punto di aggiunta al conto: usato dalle tab delle categorie e dalla ricerca.
-function aggiungiProdotto(prodotto) {
+function aggiungiProdotto(prodotto, origine = "ricerca") {
     if (prodotto.disponibile === false) return false;
     const limite = controllaLimiteRighe(stato.righe.length, 1);
     if (!limite.consentito) {
@@ -974,9 +984,8 @@ function aggiungiProdotto(prodotto) {
     const risultato = aggiungiProdotti(stato.righe, stato.rigaAttiva, prodotto);
     stato.righe = risultato.righe;
     stato.rigaAttiva = risultato.rigaAttiva;
-    if (primoProdotto && datiOrdineCompleti(tipoOrdine.value, datiIntestazioneCorrenti())) {
-        chiudiIntestazione();
-    }
+    if (origine === "griglia") aggiornaStatoIntestazione("prodotto");
+    else if (primoProdotto) aggiornaStatoIntestazione("aggiunta");
     renderRiepilogo();
     return true;
 }
@@ -1671,6 +1680,7 @@ tipoOrdine.addEventListener("change", () => {
     tipoOrdineCorrente = tipoOrdine.value;
     if (tipoOrdine.value !== "consegna") costoConsegna = 0;
     aggiornaTipoOrdine();
+    aggiornaStatoIntestazione();
     aggiornaRicercaClienteAbituale();
     aggiornaRicercaClientiIndirizzo();
     renderRiepilogo();
@@ -1700,6 +1710,7 @@ intestazioneCompatta.addEventListener("click", apriIntestazione);
 tavolo.addEventListener("change", () => {
     sezioneTavoli.classList.remove("errore");
     aggiornaSelettoreTavoli();
+    aggiornaStatoIntestazione();
 });
 numeroTavoloPersonalizzato.addEventListener("input", () => {
     gestioneTavoli.impostaNumeroPersonalizzato(numeroTavoloPersonalizzato.value);
@@ -1730,6 +1741,7 @@ document.addEventListener("pointerdown", evento => {
 numeroPersone.addEventListener("input", () => {
     sezionePersone.classList.remove("errore");
     aggiornaSelettorePersone();
+    aggiornaStatoIntestazione();
     renderRiepilogo();
 });
 bottoneCostoConsegna.addEventListener("click", () => {

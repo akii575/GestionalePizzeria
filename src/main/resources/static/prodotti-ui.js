@@ -580,6 +580,18 @@ const prodottiUI = (() => {
         return datiObbligatoriMancanti(tipo, dati) === null;
     }
 
+    function deveChiudereIntestazione(tipo, dati, { inputAttivo = false, motivo = "cambio" } = {}) {
+        if (inputAttivo) return false;
+        if (tipo === "tavolo") return datiOrdineCompleti(tipo, dati);
+        if (tipo === "banco") {
+            return datiOrdineCompleti(tipo, dati) && ["sfocatura", "prodotto", "aggiunta"].includes(motivo);
+        }
+        if (tipo === "ritiro" || tipo === "consegna") {
+            return motivo === "prodotto" || (motivo === "sfocatura" && datiOrdineCompleti(tipo, dati));
+        }
+        return false;
+    }
+
     function riepilogoIntestazione(tipo, dati) {
         if (tipo === "tavolo") {
             const persone = Number(dati.numeroPersone);
@@ -676,6 +688,7 @@ const prodottiUI = (() => {
         creaGestoreTavoli,
         datiObbligatoriMancanti,
         datiOrdineCompleti,
+        deveChiudereIntestazione,
         riepilogoIntestazione,
         anteprimaNota,
         aggiungiNotaRapida,

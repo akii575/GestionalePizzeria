@@ -2515,9 +2515,11 @@ button {
 .riepilogo-item {
     display: grid;
     grid-template-columns: 32px minmax(0, 1fr) auto 36px;
-    align-items: start;
+    align-items: baseline;
     column-gap: 8px;
+    position: relative;
     min-width: 0;
+    min-height: 44px;
     padding: 8px;
     border: 0;
     border-radius: 10px;
@@ -2532,7 +2534,7 @@ button {
 
 .riepilogo-quantita {
     color: var(--theme-muted);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     white-space: nowrap;
 }
@@ -2546,7 +2548,11 @@ button {
 .riepilogo-item__descrizione .seleziona-riga {
     max-width: 100%;
     overflow: hidden;
+    margin: 0;
+    min-height: 0;
+    padding-block: 0;
     font-size: 14px;
+    line-height: 1.2;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -2573,6 +2579,9 @@ button {
 
 .riepilogo-item .rimuovi {
     display: grid;
+    position: absolute;
+    top: 0;
+    right: 8px;
     width: 36px;
     min-width: 36px;
     height: 36px;
