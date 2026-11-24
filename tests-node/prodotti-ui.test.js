@@ -903,7 +903,7 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(script, /className = "prodotto-quantita"/);
     assert.match(script, /badge\.textContent = String\(quantita\)/);
     assert.match(script, /badge\?\.remove\(\)/);
-    assert.match(stile, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(170px,\s*1fr\)\)/);
+    assert.match(stile, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
     assert.match(stile, /\.prodotto-quantita\s*\{[^}]*top:\s*auto;[^}]*right:\s*4px;[^}]*bottom:\s*4px;[^}]*left:\s*auto;[^}]*width:\s*18px;[^}]*height:\s*18px;[^}]*background:\s*#1a5ea9;/);
     assert.match(stile, /\.prodotto-btn strong\s*\{[^}]*max-height:\s*2\.3em;[^}]*grid-column:\s*1 \/ -1;[^}]*overflow-wrap:\s*normal;[^}]*text-overflow:\s*clip;[^}]*word-break:\s*normal;[^}]*hyphens:\s*none;/s);
     assert.match(stile, /\.prodotto-btn strong::before\s*\{[^}]*float:\s*right;[^}]*width:\s*56px;[^}]*height:\s*1\.15em;/s);

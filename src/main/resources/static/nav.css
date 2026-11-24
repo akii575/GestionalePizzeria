@@ -887,7 +887,10 @@ body.has-civico7-network-banner .app-page-header {
 
     body.app-shell main.container .composer-main:not(.intestazione-chiusa) .pagina-prodotti {
         height: 404px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-rows: repeat(3, 128px);
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
     }
 
     body.app-shell main.container .composer-main:not(.intestazione-chiusa) .prodotto-btn {
@@ -1104,9 +1107,10 @@ body.has-civico7-network-banner .app-page-header {
 
     body.orders-composer-page.app-shell main.container .composer-main.intestazione-chiusa .pagina-prodotti {
         height: 100%;
-        grid-template-rows: repeat(var(--prodotti-righe, 3), minmax(0, 1fr));
-        grid-auto-flow: column;
-        grid-auto-columns: calc((100% - 16px) / 3);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: repeat(3, minmax(0, var(--prodotti-altezza-riga, 132px)));
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
         grid-auto-rows: auto;
     }
 
@@ -1204,10 +1208,10 @@ body.orders-composer-page.app-shell main.container .composer-main.intestazione-c
     display: grid;
     width: 100%;
     height: 100%;
-    grid-template-columns: none;
-    grid-template-rows: repeat(var(--prodotti-righe), minmax(0, 1fr));
-    grid-auto-flow: column;
-    grid-auto-columns: calc((100% - 16px) / 3);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, var(--prodotti-altezza-riga, 132px)));
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
     grid-auto-rows: auto;
     align-content: stretch;
     align-items: stretch;
@@ -1218,10 +1222,10 @@ body.orders-composer-page.app-shell main.container .composer-main.intestazione-c
 body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti > .pagina-prodotti {
     width: 100%;
     height: 100%;
-    grid-template-columns: none;
-    grid-template-rows: repeat(var(--prodotti-righe), minmax(0, 1fr));
-    grid-auto-flow: column;
-    grid-auto-columns: calc((100% - 16px) / 3);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, var(--prodotti-altezza-riga, 132px)));
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
     grid-auto-rows: auto;
 }
 
@@ -1300,6 +1304,10 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
 
 .ricerca-risultati .pagina-prodotti {
     --prodotti-righe: 3;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, var(--prodotti-altezza-riga, 132px)));
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
 }
 
 .ricerca-risultati .ricerca-categoria {
@@ -1767,7 +1775,10 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
 
     body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti > .pagina-prodotti,
     .ricerca-risultati .pagina-prodotti {
-        grid-template-rows: repeat(var(--prodotti-righe, 3), minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: repeat(3, minmax(0, var(--prodotti-altezza-riga, 132px)));
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
     }
 
 }
@@ -1852,7 +1863,10 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
 
     body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) .pagina-prodotti {
         height: 100%;
-        grid-template-rows: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: repeat(3, minmax(0, var(--prodotti-altezza-riga, 132px)));
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
     }
 
     body.orders-composer-page.app-shell main.container .composer-main:not(.intestazione-chiusa) .prodotto-btn {

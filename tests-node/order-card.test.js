@@ -676,6 +676,22 @@ test("wide desktop layouts use the space beside the sidebar", () => {
     assert.match(navigation, /:root\s*\{\s*--prodotti-altezza-massima:\s*132px;/);
     assert.match(navigation, /@media \(min-width: 768px\) and \(max-width: 1023px\)\s*\{\s*:root\s*\{\s*--prodotti-altezza-massima:\s*150px;/);
     assert.match(navigation, /@media \(min-width: 1024px\)\s*\{\s*:root\s*\{\s*--prodotti-altezza-massima:\s*190px;/);
+    const productPageRules = [...`${orderStyles}\n${navigation}`.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter(([, selector]) => selector.includes(".pagina-prodotti"));
+    assert.ok(productPageRules.length > 0);
+    productPageRules.forEach(([, selector, declarations]) => {
+        assert.doesNotMatch(declarations, /grid-auto-flow\s*:\s*column/i, selector);
+        const flow = declarations.match(/grid-auto-flow\s*:\s*([^;]+)/i);
+        if (flow) assert.equal(flow[1].trim().toLowerCase(), "row", selector);
+        const columns = declarations.match(/grid-template-columns\s*:\s*([^;]+)/i);
+        if (columns) {
+            assert.equal(
+                columns[1].replace(/\s+/g, " ").trim().toLowerCase(),
+                "repeat(3, minmax(0, 1fr))",
+                selector
+            );
+        }
+    });
     assert.match(orderStyles, /\.griglia-prodotti\.is-dragging\s*\{[^}]*scroll-snap-type:\s*none;/);
     assert.match(navigation, /\.prodotto-btn\s*\{[^}]*scroll-snap-align:\s*start;/);
     assert.match(orderStyles, /\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*grid-row:\s*2;/);
