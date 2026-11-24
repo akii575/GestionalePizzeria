@@ -231,6 +231,34 @@ test("menu admin API validates names, prices, ingredients, categories and unique
     });
     assert.equal(invalidIngredients.statusCode, 400);
 
+    const invalidComposableFlag = await invoke("POST", {
+        token: "admin",
+        body: {
+            risorsa: "prodotti",
+            nome: "Panuozzo",
+            categoriaId: "pizze",
+            prezzo: 5,
+            ingredienti: [],
+            componibile: "si"
+        }
+    });
+    assert.equal(invalidComposableFlag.statusCode, 400);
+    assert.match(invalidComposableFlag.body.errore, /da comporre/);
+
+    const composableWithoutExtraCategory = await invoke("POST", {
+        token: "admin",
+        body: {
+            risorsa: "prodotti",
+            nome: "Panuozzo",
+            categoriaId: "dolci",
+            prezzo: 5,
+            ingredienti: [],
+            componibile: true
+        }
+    });
+    assert.equal(composableWithoutExtraCategory.statusCode, 400);
+    assert.match(composableWithoutExtraCategory.body.errore, /categoria che ammette extra/);
+
     const invalidKitchenFlag = await invoke("POST", {
         token: "admin",
         body: { risorsa: "categorie", nome: "Categoria nuova", ammetteExtra: false, stampaCucina: "no" }
@@ -312,6 +340,7 @@ test("menu admin API creates and updates records while incrementing the menu ver
     });
     assert.equal(createdProduct.body.versione, 6);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).disponibile, false);
+    assert.equal(db.get("menuProdotti", createdProduct.body.id).componibile, false);
 
     const updatedProduct = await invoke("PUT", {
         token: "admin",
@@ -327,6 +356,39 @@ test("menu admin API creates and updates records while incrementing the menu ver
     assert.equal(updatedProduct.body.versione, 7);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).prezzo, 1.5);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).disponibile, false);
+});
+
+test("menu admin API saves the composable product flag only for extra-enabled categories", async () => {
+    const db = useDatabase();
+    const created = await invoke("POST", {
+        token: "admin",
+        body: {
+            risorsa: "prodotti",
+            nome: "Panuozzo da comporre",
+            categoriaId: "pizze",
+            prezzo: 5,
+            ingredienti: [],
+            componibile: true
+        }
+    });
+
+    assert.equal(created.statusCode, 201);
+    assert.equal(db.get("menuProdotti", created.body.id).componibile, true);
+
+    const updated = await invoke("PUT", {
+        token: "admin",
+        body: {
+            risorsa: "prodotti",
+            id: created.body.id,
+            nome: "Panuozzo da comporre",
+            categoriaId: "pizze",
+            prezzo: 5.5,
+            ingredienti: [],
+            componibile: false
+        }
+    });
+    assert.equal(updated.statusCode, 200);
+    assert.equal(db.get("menuProdotti", created.body.id).componibile, false);
 });
 
 test("menu admin API toggles availability, archives and restores records", async () => {

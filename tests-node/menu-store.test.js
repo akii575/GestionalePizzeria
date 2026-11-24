@@ -84,6 +84,7 @@ function seed() {
                 categoriaId: "pizze",
                 prezzo: 5,
                 ingredienti: ["Pomodoro"],
+                componibile: true,
                 ordine: 0,
                 disponibile: true,
                 archiviato: false
@@ -133,7 +134,9 @@ test("menu store orders active categories and products and keeps unavailable ent
     assert.deepEqual(menu.categories.map(category => category.id), ["pizze", "dolci"]);
     assert.deepEqual(menu.menu.map(product => product.nome), ["Margherita", "Esaurita", "Dolce"]);
     assert.equal(menu.menu[0].ammetteExtra, true);
+    assert.equal(menu.menu[0].componibile, true);
     assert.equal(menu.menu[1].disponibile, false);
+    assert.equal(menu.menu[2].componibile, false);
     assert.equal(menu.categories[0].stampaCucina, true);
     assert.equal(menu.categories[1].stampaCucina, false);
     assert.equal(menu.extras.length, 2);

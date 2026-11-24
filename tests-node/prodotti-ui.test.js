@@ -6,6 +6,8 @@ const menu = require("../lib/menu.json");
 const {
     normalizza,
     filtraProdotti,
+    filtraExtra,
+    trovaComponibileSenzaIngredienti,
     NOTE_RIGA,
     applicaClienteIndirizzo,
     isCoperto,
@@ -37,6 +39,7 @@ const {
     creaGestoreTavoli,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
+    deveChiudereIntestazione,
     riepilogoIntestazione,
     anteprimaNota,
     aggiungiNotaRapida,
@@ -167,6 +170,57 @@ test("normalizes text ignoring case, accents and extra spaces", () => {
     assert.equal(normalizza(null), "");
 });
 
+test("extra search ignores accents and case", () => {
+    const extras = [
+        { nome: "Mozzarella di bufala" },
+        { nome: "Salsiccia" },
+        { nome: "Friarielli" }
+    ];
+
+    assert.deepEqual(filtraExtra(extras, "MOZZ"), [extras[0]]);
+    assert.deepEqual(filtraExtra(extras, "FRIARIELLI"), [extras[2]]);
+    assert.deepEqual(filtraExtra(extras, "salsìccia"), [extras[1]]);
+});
+
+test("composable rows require at least one selected ingredient", () => {
+    const { righe } = aggiungiProdotti([], null, {
+        nome: "Panuozzo da comporre",
+        prezzo: 5,
+        ammetteExtra: true,
+        componibile: true
+    });
+
+    assert.equal(righe[0].componibile, true);
+    assert.equal(trovaComponibileSenzaIngredienti(righe), 0);
+    const complete = toggleExtra(righe, 0, { id: "salsiccia", nome: "Salsiccia", prezzo: 1 });
+    assert.equal(trovaComponibileSenzaIngredienti(complete.righe), -1);
+    assert.equal(trovaComponibileSenzaIngredienti([
+        { componibile: false, extra: [] },
+        { componibile: true, extra: [{ nome: "Friarielli" }] }
+    ]), -1);
+});
+
+test("summary rows use the same fixed grid and touch-sized remove button", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const styles = fs.readFileSync(
+        path.join(__dirname, "../src/main/resources/static/ordini.css"),
+        "utf8"
+    );
+    const ordersPage = fs.readFileSync(
+        path.join(__dirname, "../src/main/resources/static/ordini.js"),
+        "utf8"
+    );
+    const summaryGrid = /\.riepilogo-item\s*\{[^}]*grid-template-columns:\s*32px minmax\(0,\s*1fr\) auto 36px;[^}]*align-items:\s*baseline;[^}]*column-gap:\s*8px;/s;
+    const removeButton = /\.riepilogo-item \.rimuovi\s*\{[^}]*width:\s*36px;[^}]*height:\s*36px;/s;
+
+    assert.match(styles, summaryGrid);
+    assert.match(styles, removeButton);
+    assert.match(styles, /\.riepilogo-prezzo\s*\{[^}]*font-variant-numeric:\s*tabular-nums;[^}]*text-align:\s*right;/s);
+    assert.match(ordersPage, /voce\.className = "riepilogo-item"/);
+    assert.match(ordersPage, /riepilogo-item__descrizione/);
+});
+
 test("selecting a delivery address fills customer fields and displays its profile", () => {
     const cliente = {
         telefono: "3331234567",
@@ -219,6 +273,38 @@ test("table orders require both an explicit table and a valid people count", () 
         datiObbligatoriMancanti("ritiro", { nome: "Rossi", telefono: "123", telefonoValido: false }),
         "telefono"
     );
+});
+
+test("the order header stays open while a text input has focus", () => {
+    assert.equal(
+        deveChiudereIntestazione("banco", { cognome: "Rossi" }, {
+            inputAttivo: true,
+            motivo: "sfocatura"
+        }),
+        false
+    );
+    assert.equal(
+        deveChiudereIntestazione("consegna", {
+            indirizzo: "Via Roma 12",
+            telefono: "3331234567",
+            telefonoValido: true
+        }, { inputAttivo: true, motivo: "prodotto" }),
+        false
+    );
+});
+
+test("pickup and delivery headers close on blur only after required fields are complete", () => {
+    const ritiro = { nome: "Rossi", telefono: "3331234567", telefonoValido: true };
+    const consegna = {
+        indirizzo: "Via Roma 12",
+        telefono: "3331234567",
+        telefonoValido: true
+    };
+
+    assert.equal(deveChiudereIntestazione("ritiro", ritiro, { motivo: "cambio" }), false);
+    assert.equal(deveChiudereIntestazione("ritiro", ritiro, { motivo: "sfocatura" }), true);
+    assert.equal(deveChiudereIntestazione("consegna", consegna, { motivo: "sfocatura" }), true);
+    assert.equal(deveChiudereIntestazione("consegna", {}, { motivo: "prodotto" }), true);
 });
 
 test("order header summaries and note previews use the compact UI labels", () => {
@@ -343,7 +429,8 @@ test("order entry wires selector events, first-product collapse, reset and note 
     assert.match(script, /impostaValoreControllo\(tipoOrdine, bottone\.dataset\.tipoOrdine, "change"\)/);
     assert.match(script, /gestioneTavoli\.scegli\(numero\);\s*aggiornaSelettoreTavoli\(\)/);
     assert.match(script, /impostaValoreControllo\(numeroPersone, String\(persone\), "input"\)/);
-    assert.match(script, /primoProdotto && datiOrdineCompleti\(tipoOrdine\.value, datiIntestazioneCorrenti\(\)\)/);
+    assert.match(script, /intestazione\.addEventListener\("focusout",[\s\S]*?aggiornaStatoIntestazione\("sfocatura"\)/);
+    assert.match(script, /deveChiudereIntestazione\(tipoOrdine\.value, datiIntestazioneCorrenti\(\), \{ inputAttivo, motivo \}\)/);
     assert.match(script, /intestazioneCompatta\.addEventListener\("click", apriIntestazione\)/);
     assert.match(script, /noteToggle\.addEventListener\("click"/);
     assert.match(script, /note\.dispatchEvent\(new Event\("input", \{ bubbles: true \}\)\)/);
@@ -467,6 +554,7 @@ test("new rows always start without extras", () => {
         categoria: "pizze",
         ingredienti: ["pomodoro"],
         ammetteExtra: true,
+        componibile: false,
         extra: [],
         senza: [],
         note: []

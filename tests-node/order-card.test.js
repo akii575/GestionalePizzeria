@@ -604,6 +604,19 @@ test("wide desktop layouts use the space beside the sidebar", () => {
     assert.match(navigation, /body\.app-shell main\.dashboard \.metriche > div:last-child\s*\{[^}]*grid-column: auto;/);
     assert.match(navigation, /body\.app-shell main\.container \.composer-layout\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) 380px;/);
     assert.match(navigation, /@media \(min-width: 1180px\) and \(max-width: 1279px\)[\s\S]*?body\.app-shell main\.container \.composer-layout\s*\{[^}]*gap:\s*20px;/);
+    assert.match(navigation, /@media \(min-width: 900px\)[\s\S]*?body\.app-shell main\.container \.composer-layout\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) 320px;/);
+    assert.match(navigation, /body\.app-shell main\.container \.composer-summary\s*\{[^}]*position:\s*sticky;[^}]*height:\s*calc\(100% - 12px\);[^}]*max-height:\s*calc\(100% - 12px\);/);
+    assert.match(navigation, /body\.app-shell main\.container \.composer-summary > \.riepilogo-card > \.riepilogo #riepilogo-items\s*\{[^}]*overflow-y:\s*auto;/);
+    assert.match(navigation, /@media \(orientation: landscape\) and \(max-height: 820px\)[\s\S]*?body\.app-shell main\.container > \.app-page-header h1\s*\{[^}]*font-size:\s*20px;/);
+    assert.match(navigation, /@media \(min-width: 900px\) and \(orientation: landscape\) and \(max-height: 820px\)[\s\S]*?height:\s*calc\(100dvh - 84px\);/);
+    assert.match(navigation, /\.composer-main\s*\{[^}]*grid-template-rows:\s*max-content max-content minmax\(0, 1fr\) max-content;/);
+    assert.match(navigation, /\.composer-main > \.intestazione-compatta\s*\{[^}]*flex-shrink:\s*0;[^}]*min-height:\s*48px;/);
+    assert.match(navigation, /\.composer-main > \.tab-container\s*\{[^}]*flex-shrink:\s*0;[^}]*min-height:\s*max-content;/);
+    assert.match(navigation, /\.composer-main > \.extra-section > \.extra-intestazione\s*\{[^}]*flex-shrink:\s*0;[^}]*min-height:\s*40px;/);
+    assert.match(navigation, /\.composer-main > \.prodotti-wrapper > #prodotti\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
+    assert.match(navigation, /\.composer-main:not\(\.intestazione-chiusa\)\s*\{[^}]*overflow-y:\s*auto;[^}]*grid-template-rows:\s*max-content max-content minmax\(268px, 1fr\) max-content;/);
+    assert.match(navigation, /\.composer-main:not\(\.intestazione-chiusa\) #prodotti\s*\{[^}]*height:\s*268px;[^}]*overflow-y:\s*auto;/);
+    assert.match(navigation, /\.composer-main:not\(\.intestazione-chiusa\) \.pagina-prodotti\s*\{[^}]*height:\s*404px;[^}]*grid-template-rows:\s*repeat\(3, 128px\);/);
     assert.match(orderStyles, /grid-template-columns: repeat\(auto-fill, minmax\(150px, 1fr\)\);/);
     assert.match(orderStyles, /@media \(min-width: 768px\) and \(max-width: 1279px\)[\s\S]*?\.pagina-prodotti\s*\{\s*grid-template-columns:\s*repeat\(auto-fill, minmax\(145px, 1fr\)\);/);
     assert.match(orderStyles, /@media \(min-width: 1280px\)[\s\S]*?\.pagina-prodotti\s*\{\s*grid-template-columns:\s*repeat\(auto-fill, minmax\(130px, 1fr\)\);/);
@@ -671,18 +684,21 @@ test("order summary rows are grouped with a compact one-item remove action", () 
 
     assert.match(page, /id="extra-intestazione" class="extra-intestazione" type="button" aria-expanded="false" aria-controls="extra-dettagli"/);
     assert.match(page, /id="extra-dettagli" class="extra-dettagli" hidden/);
-    assert.match(styles, /\.riepilogo-item\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*30px minmax\(0,\s*1fr\) auto 32px;/);
-    assert.match(styles, /\.riepilogo-item \.rimuovi\s*\{[^}]*width:\s*32px;[^}]*min-height:\s*32px;[^}]*background:\s*transparent;[^}]*font-size:\s*22px;/);
+    assert.match(styles, /\.riepilogo-item\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*32px minmax\(0,\s*1fr\) auto 36px;[^}]*align-items:\s*baseline;[^}]*column-gap:\s*8px;[^}]*min-height:\s*44px;[^}]*padding:\s*8px;/);
+    assert.match(styles, /\.riepilogo-quantita\s*\{[^}]*font-size:\s*14px;/);
+    assert.match(styles, /\.riepilogo-item \.rimuovi\s*\{[^}]*position:\s*absolute;[^}]*top:\s*0;[^}]*right:\s*8px;[^}]*width:\s*36px;[^}]*min-height:\s*36px;[^}]*background:\s*transparent;[^}]*font-size:\s*22px;/);
     assert.doesNotMatch(styles, /#riepilogo-items \.riepilogo-item\s*\{|#riepilogo-items \.rimuovi\s*\{/);
     assert.match(script, /const extra = nomiExtra\(riga\.extra\)\.join\(", "\);/);
     assert.match(script, /return `<div class="conferma-riga"><strong>\$\{quantitaTesto\}/);
     assert.match(styles, /\.conferma-righe\s*\{[^}]*overflow-y:\s*auto;/);
     assert.match(styles, /\.conferma-azioni\s*\{[^}]*flex:\s*0 0 auto;/);
-    const aggiunta = script.match(/function aggiungiProdotto\(prodotto\) \{([\s\S]*?)\n\}/);
+    const aggiunta = script.match(/function aggiungiProdotto\(prodotto, origine = "ricerca"\) \{([\s\S]*?)\n\}/);
     assert.ok(aggiunta);
     assert.doesNotMatch(aggiunta[1], /scrollIntoView|\.focus\(/);
+    assert.match(aggiunta[1], /origine === "griglia"\) aggiornaStatoIntestazione\("prodotto"\)/);
     assert.match(script, /if \(evento\.currentTarget === riepilogoSheetLista && riepilogoSheetAperto\)[\s\S]*?chiudiRiepilogoSheet\(false\)[\s\S]*?sezioneExtra\.scrollIntoView/);
-    assert.doesNotMatch(script, /Nessun extra/);
+    assert.match(page, /id="extra-ricerca" class="extra-ricerca" type="search" placeholder="Cerca extra/);
+    assert.match(page, /id="extra-ricerca-vuota" class="extra-ricerca-vuota" role="status" hidden>Nessun extra trovato/);
 });
 
 test("portrait order summary sheet opens accessibly and removes rows through shared rendering", () => {

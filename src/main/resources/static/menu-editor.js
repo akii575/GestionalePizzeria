@@ -232,6 +232,7 @@
         document.getElementById("menu-category-field").hidden = resource !== "prodotti";
         document.getElementById("menu-price-field").hidden = resource === "categorie";
         document.getElementById("menu-ingredients-field").hidden = resource !== "prodotti";
+        document.getElementById("menu-composable-field").hidden = resource !== "prodotti";
         document.getElementById("menu-extra-allowed-field").hidden = resource !== "categorie";
         document.getElementById("menu-kitchen-print-field").hidden = resource !== "categorie";
         document.getElementById("menu-available-field").hidden = resource === "categorie";
@@ -254,6 +255,7 @@
         document.getElementById("menu-name").value = item?.nome || "";
         document.getElementById("menu-price").value = item?.prezzo ?? "";
         document.getElementById("menu-ingredients").value = item?.ingredienti?.join(", ") || "";
+        document.getElementById("menu-composable").checked = item?.componibile === true;
         document.getElementById("menu-extra-allowed").checked = item?.ammetteExtra === true;
         document.getElementById("menu-kitchen-print").checked = item?.stampaCucina !== false;
         document.getElementById("menu-available").checked = item?.disponibile !== false;
@@ -283,6 +285,7 @@
             payload.prezzo = Number(document.getElementById("menu-price").value);
             payload.ingredienti = document.getElementById("menu-ingredients").value
                 .split(",").map(value => value.trim()).filter(Boolean);
+            payload.componibile = document.getElementById("menu-composable").checked;
             payload.disponibile = document.getElementById("menu-available").checked;
         } else if (state.resource === "extra") {
             payload.prezzo = Number(document.getElementById("menu-price").value);

@@ -703,6 +703,199 @@ body.has-civico7-network-banner .app-page-header {
     top: var(--civico7-banner-height, 44px);
 }
 
+@media (min-width: 900px) {
+    body.app-shell main.container .composer-layout {
+        height: calc(100dvh - 140px);
+        min-height: 0;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    body.app-shell main.container .composer-main {
+        min-height: 0;
+        grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+    }
+
+    body.app-shell main.container .composer-summary {
+        position: sticky;
+        top: 12px;
+        display: flex;
+        height: calc(100% - 12px);
+        min-height: 0;
+        max-height: calc(100% - 12px);
+        align-self: start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    body.app-shell main.container .composer-summary > .riepilogo-card {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    body.app-shell main.container .composer-summary > .riepilogo-card > .riepilogo {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    body.app-shell main.container .composer-summary > .riepilogo-card > .riepilogo #riepilogo-items {
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    body.app-shell main.container .composer-summary .riepilogo-totale-riga {
+        flex: 0 0 auto;
+        margin: 8px 0 0;
+    }
+
+    body.app-shell main.container .composer-summary > .riepilogo-card > .btn-annulla {
+        min-height: 48px;
+        flex: 0 0 auto;
+        margin: 8px 0 0;
+    }
+
+    body.app-shell main.container .composer-summary > #messaggio {
+        min-height: 0;
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    body.app-shell main.container .composer-summary > .btn-riprova-modifica {
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    body.app-shell main.container .composer-summary > .barra-conto {
+        display: flex;
+        flex: 0 0 auto;
+        order: 4;
+        margin: 0;
+    }
+
+    body.app-shell main.container .composer-summary > .barra-conto > .btn-invia {
+        width: 100%;
+        min-height: 48px;
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    body.app-shell main.container .composer-summary > .barra-conto > .barra-conto-dettagli {
+        display: none;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 820px) {
+    body.app-shell main.container > .app-page-header {
+        min-height: 44px;
+        margin-bottom: 8px;
+        padding-block: 0;
+    }
+
+    body.app-shell main.container > .app-page-header h1 {
+        font-size: 20px;
+        line-height: 1.1;
+    }
+}
+
+@media (min-width: 900px) and (orientation: landscape) and (max-height: 820px) {
+    body.app-shell main.container .composer-layout {
+        height: calc(100dvh - 84px);
+    }
+
+    body.app-shell main.container .composer-main {
+        grid-template-rows: max-content max-content minmax(0, 1fr) max-content;
+    }
+
+    body.app-shell main.container .composer-main > .intestazione-compatta {
+        flex-shrink: 0;
+        min-height: 48px;
+    }
+
+    body.app-shell main.container .composer-main > .tab-container {
+        flex-shrink: 0;
+        min-height: max-content;
+    }
+
+    body.app-shell main.container .composer-main > .extra-section > .extra-intestazione {
+        flex-shrink: 0;
+        min-height: 40px;
+    }
+
+    body.app-shell main.container .composer-main > .prodotti-wrapper {
+        display: flex;
+        min-height: 0;
+        margin-bottom: 0;
+    }
+
+    body.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti {
+        height: 100%;
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+
+    body.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti::-webkit-scrollbar {
+        display: block;
+        width: 6px;
+        height: 0;
+    }
+
+    body.app-shell main.container .composer-main > .prodotti-wrapper > #prodotti::-webkit-scrollbar:horizontal {
+        display: none;
+    }
+
+    body.app-shell main.container .composer-main:not(.intestazione-chiusa) {
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+        grid-template-rows: max-content max-content minmax(268px, 1fr) max-content;
+    }
+
+    body.app-shell main.container .composer-main:not(.intestazione-chiusa) .prodotti-wrapper {
+        display: flex;
+        min-height: 268px;
+        margin-bottom: 0;
+    }
+
+    body.app-shell main.container .composer-main:not(.intestazione-chiusa) #prodotti {
+        height: 268px;
+        min-height: 268px;
+        flex: 0 0 268px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+
+    body.app-shell main.container .composer-main:not(.intestazione-chiusa) #prodotti::-webkit-scrollbar {
+        display: block;
+        width: 6px;
+        height: 0;
+    }
+
+    body.app-shell main.container .composer-main:not(.intestazione-chiusa) #prodotti::-webkit-scrollbar:horizontal {
+        display: none;
+    }
+
+    body.app-shell main.container .composer-main:not(.intestazione-chiusa) .pagina-prodotti {
+        height: 404px;
+        grid-template-rows: repeat(3, 128px);
+    }
+
+    body.app-shell main.container .composer-main:not(.intestazione-chiusa) .prodotto-btn {
+        height: 128px;
+        min-height: 128px;
+        max-height: 128px;
+    }
+}
+
 @media (max-width: 767px) {
     .civico7-network-banner {
         padding-top: calc(10px + env(safe-area-inset-top));

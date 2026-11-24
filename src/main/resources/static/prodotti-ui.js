@@ -118,6 +118,22 @@ const prodottiUI = (() => {
             .map(voce => voce.prodotto);
     }
 
+    function filtraExtra(extra, testo) {
+        const query = normalizza(testo);
+        if (!query) return extra || [];
+        const parole = query.split(" ");
+        return (extra || []).filter(elemento => {
+            const nome = normalizza(elemento?.nome);
+            return parole.every(parola => nome.includes(parola));
+        });
+    }
+
+    function trovaComponibileSenzaIngredienti(righe) {
+        return (righe || []).findIndex(riga => (
+            riga?.componibile === true && (!Array.isArray(riga.extra) || riga.extra.length === 0)
+        ));
+    }
+
     function ammetteExtra(prodotto) {
         return prodotto?.ammetteExtra === true;
     }
@@ -152,6 +168,7 @@ const prodottiUI = (() => {
             categoria: prodotto.categoria,
             ingredienti: prodotto.ingredienti || [],
             ammetteExtra: conExtra,
+            componibile: prodotto.componibile === true,
             extra: [],
             senza: [],
             note: []
@@ -183,6 +200,7 @@ const prodottiUI = (() => {
                     categoria: prodotto?.categoria || riga.categoria || "",
                     ingredienti,
                     ammetteExtra: prodotto?.ammetteExtra === true,
+                    componibile: prodotto?.componibile === true,
                     extra,
                     senza: normalizzaSenzaIngredienti(riga.senza, ingredienti),
                     note: normalizzaNoteRiga(riga.note),
@@ -562,6 +580,18 @@ const prodottiUI = (() => {
         return datiObbligatoriMancanti(tipo, dati) === null;
     }
 
+    function deveChiudereIntestazione(tipo, dati, { inputAttivo = false, motivo = "cambio" } = {}) {
+        if (inputAttivo) return false;
+        if (tipo === "tavolo") return datiOrdineCompleti(tipo, dati);
+        if (tipo === "banco") {
+            return datiOrdineCompleti(tipo, dati) && ["sfocatura", "prodotto", "aggiunta"].includes(motivo);
+        }
+        if (tipo === "ritiro" || tipo === "consegna") {
+            return motivo === "prodotto" || (motivo === "sfocatura" && datiOrdineCompleti(tipo, dati));
+        }
+        return false;
+    }
+
     function riepilogoIntestazione(tipo, dati) {
         if (tipo === "tavolo") {
             const persone = Number(dati.numeroPersone);
@@ -625,6 +655,8 @@ const prodottiUI = (() => {
         applicaClienteIndirizzo,
         normalizza,
         filtraProdotti,
+        filtraExtra,
+        trovaComponibileSenzaIngredienti,
         ammetteExtra,
         isCoperto,
         calcolaCoperto,
@@ -656,6 +688,7 @@ const prodottiUI = (() => {
         creaGestoreTavoli,
         datiObbligatoriMancanti,
         datiOrdineCompleti,
+        deveChiudereIntestazione,
         riepilogoIntestazione,
         anteprimaNota,
         aggiungiNotaRapida,
