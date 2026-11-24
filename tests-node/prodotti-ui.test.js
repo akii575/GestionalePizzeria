@@ -844,10 +844,14 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(stile, /\.composer-summary\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*3fr\) minmax\(0,\s*7fr\);[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\) minmax\(18px,\s*auto\) 20px 36px;/s);
     assert.match(stile, /\.riepilogo-item__descrizione \.seleziona-riga\s*\{[^}]*display:\s*-webkit-box;[^}]*white-space:\s*normal;[^}]*-webkit-line-clamp:\s*2;/s);
     assert.match(stile, /\.ingredienti-nascosti \.prodotto-btn\s*\{[^}]*min-height:\s*64px;/);
-    assert.match(script, /function aggiornaRighePaginaProdotti\([\s\S]*?Math\.max\(3,[\s\S]*?\(altezzaDisponibile \+ spazioRighe\) \/ \(118 \+ spazioRighe\)/);
-    assert.match(script, /function aggiornaRigheIngredienti\([\s\S]*?bottone\.clientHeight[\s\S]*?stileBottone\.paddingTop[\s\S]*?stileBottone\.paddingBottom[\s\S]*?intestazione\.offsetHeight[\s\S]*?stileWrapper\.marginTop[\s\S]*?Math\.min\(4,[\s\S]*?Math\.floor\(Math\.max\(0, altezzaDisponibile\) \/ altezzaRiga\)/);
+    assert.match(script, /function aggiornaRighePaginaProdotti\([\s\S]*?matchMedia\("\(min-width: 600px\)"\)[\s\S]*?aggiornaRigheIngredienti\(pagina\)/);
+    assert.match(script, /function aggiornaRigheIngredienti\([\s\S]*?bottone\.clientHeight[\s\S]*?stileBottone\.paddingTop[\s\S]*?stileBottone\.paddingBottom[\s\S]*?intestazione\.offsetHeight[\s\S]*?stileWrapper\.marginTop[\s\S]*?Math\.min\(5,[\s\S]*?Math\.floor\(Math\.max\(0, altezzaDisponibile\) \/ altezzaRiga\)/);
+    assert.match(script, /function aggiornaIndicatoreProdotti\([\s\S]*?Math\.ceil\(griglia\.querySelectorAll\("\.prodotto-btn"\)\.length \/ 9\)/);
     assert.match(navigationStyle, /@media \(min-width: 1024px\)[\s\S]*?\.prodotto-btn \.prodotto-nome\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1;/);
-    assert.match(navigationStyle, /@media \(min-width: 1440px\)[\s\S]*?\.prodotto-btn \.ingredienti-wrapper\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin-top:\s*4px;[^}]*\}[\s\S]*?\.prodotto-btn \.ingredienti\s*\{[^}]*max-height:\s*var\(--ingredienti-altezza, 4\.8em\);[^}]*margin:\s*0;[^}]*line-height:\s*1\.2;[^}]*-webkit-line-clamp:\s*var\(--ingredienti-righe, 4\);/);
+    assert.match(navigationStyle, /@media \(min-width: 600px\)[\s\S]*?\.prodotto-btn\s*\{[^}]*padding:\s*clamp\(8px,\s*4cqi,\s*16px\);[\s\S]*?\.prodotto-btn strong\s*\{[^}]*font-size:\s*clamp\(15px,\s*7cqi,\s*22px\);[\s\S]*?\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*font-size:\s*clamp\(14px,\s*6cqi,\s*20px\);/);
+    assert.match(navigationStyle, /@media \(min-width: 600px\)[\s\S]*?\.prodotto-btn \.ingredienti-wrapper\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin-top:\s*4px;[^}]*\}[\s\S]*?\.prodotto-btn \.ingredienti\s*\{[^}]*max-height:\s*var\(--ingredienti-altezza,\s*6\.75em\);[^}]*margin:\s*0;[^}]*font-size:\s*clamp\(12px,\s*5cqi,\s*16px\);[^}]*line-height:\s*1\.35;[^}]*-webkit-line-clamp:\s*var\(--ingredienti-righe,\s*5\);/);
+    assert.match(navigationStyle, /\.prodotto-btn strong\s*\{[^}]*overflow-wrap:\s*normal;[^}]*word-break:\s*normal;[^}]*hyphens:\s*none;/);
+    assert.doesNotMatch(navigationStyle, /max-height:\s*140px/);
     assert.doesNotMatch(stile, /\.prodotto-btn \.ingredienti-wrapper\s*\{[^}]*overflow:\s*hidden;/);
     assert.match(pagina, /class="extra-dettagli__toolbar"[\s\S]*id="extra-dettagli-prodotto"[\s\S]*id="extra-ricerca"[\s\S]*id="extra-fatto"[^>]*>Fatto<\/button>/);
     assert.match(script, /function aggiornaPosizionePannelloExtra\(\)[\s\S]*?mediaPannelloExtra\.matches \? composerMain : sezioneExtra/);
@@ -863,7 +867,6 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(navigationStyle, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 820px\)[\s\S]*?composer-main\.intestazione-chiusa\s*\{[^}]*grid-template-rows:\s*auto auto minmax\(0, 1fr\) auto;/);
     assert.match(stile, /@media \(min-width: 800px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?\.intestazione-compatta\s*\{[^}]*top:\s*0;[^}]*min-height:\s*40px;[^}]*height:\s*40px;/);
     assert.match(navigationStyle, /@media \(min-width: 1440px\)[\s\S]*?composer-main\.intestazione-chiusa > \.tab-container\s*\{[^}]*position:\s*static;[^}]*top:\s*auto;/);
-    assert.match(navigationStyle, /@media \(min-width: 1440px\)[\s\S]*?\.pagina-prodotti > \.prodotto-btn\s*\{[^}]*max-height:\s*140px;/);
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-quantita\s*\{[^}]*top:\s*auto;[^}]*right:\s*4px;[^}]*bottom:\s*4px;[^}]*left:\s*auto;[^}]*width:\s*18px;[^}]*min-width:\s*18px;[^}]*height:\s*18px;/);
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn\s*\{[^}]*padding:\s*8px 6px;/);
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.prodotto-nome\s*\{[^}]*font-size:\s*13px;[^}]*font-weight:\s*600;[^}]*line-height:\s*1\.2;[^}]*letter-spacing:\s*-0\.2px;[^}]*text-overflow:\s*ellipsis;[^}]*overflow-wrap:\s*normal;[^}]*word-break:\s*normal;[^}]*-webkit-line-clamp:\s*2;/);

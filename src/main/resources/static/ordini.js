@@ -1117,7 +1117,7 @@ function renderProdotti() {
 }
 function aggiornaRighePaginaProdotti(griglia, pagina = griglia.querySelector(".pagina-prodotti")) {
     if (!pagina) return;
-    if (!window.matchMedia("(min-width: 1440px)").matches) {
+    if (!window.matchMedia("(min-width: 600px)").matches) {
         pagina.style.removeProperty("--prodotti-righe");
         pagina.querySelectorAll(".ingredienti-wrapper").forEach(wrapper => {
             wrapper.hidden = false;
@@ -1126,13 +1126,6 @@ function aggiornaRighePaginaProdotti(griglia, pagina = griglia.querySelector(".p
         });
         return;
     }
-    const altezzaDisponibile = griglia.clientHeight;
-    if (altezzaDisponibile <= 0) return;
-    const spazioRighe = Number.parseFloat(window.getComputedStyle(pagina).rowGap) || 8;
-    const righe = Math.max(3, Math.floor(
-        (altezzaDisponibile + spazioRighe) / (118 + spazioRighe)
-    ));
-    pagina.style.setProperty("--prodotti-righe", String(righe));
     aggiornaRigheIngredienti(pagina);
 }
 function aggiornaRigheIngredienti(pagina) {
@@ -1156,7 +1149,7 @@ function aggiornaRigheIngredienti(pagina) {
             - (esaurito?.offsetHeight || 0)
             - (Number.parseFloat(stileEsaurito?.marginTop) || 0)
             - (Number.parseFloat(stileWrapper.marginTop) || 0);
-        const righe = Math.max(0, Math.min(4, Math.floor(Math.max(0, altezzaDisponibile) / altezzaRiga)));
+        const righe = Math.max(0, Math.min(5, Math.floor(Math.max(0, altezzaDisponibile) / altezzaRiga)));
         wrapper.hidden = righe === 0;
         wrapper.style.setProperty("--ingredienti-righe", String(righe));
         wrapper.style.setProperty("--ingredienti-altezza", `${righe * altezzaRiga}px`);
@@ -1207,18 +1200,18 @@ function creaBottoneProdotto(prodotto) {
 }
 function aggiornaIndicatoreProdotti(griglia, wrapper, indicatore) {
     const larghezza = griglia.clientWidth;
-    const scorrimentoMassimo = griglia.scrollWidth - larghezza;
-    const ciSonoAltriProdotti = larghezza > 0 && scorrimentoMassimo > 2;
+    const numeroPagine = Math.ceil(griglia.querySelectorAll(".prodotto-btn").length / 9);
+    const ciSonoAltriProdotti = larghezza > 0 && numeroPagine > 1;
     wrapper.classList.toggle("ha-altri-prodotti", ciSonoAltriProdotti);
     indicatore.hidden = !ciSonoAltriProdotti;
     if (!ciSonoAltriProdotti) return;
 
-    const pagine = Math.ceil(griglia.scrollWidth / larghezza);
-    const posizione = scorrimentoMassimo > 0
-        ? Math.round((griglia.scrollLeft / scorrimentoMassimo) * (pagine - 1))
-        : 0;
-    indicatore.textContent = `${posizione + 1}/${pagine}`;
-    indicatore.setAttribute("aria-label", `Pagina ${posizione + 1} di ${pagine}`);
+    const posizione = Math.min(
+        numeroPagine - 1,
+        Math.max(0, Math.round(griglia.scrollLeft / larghezza))
+    );
+    indicatore.textContent = `${posizione + 1}/${numeroPagine}`;
+    indicatore.setAttribute("aria-label", `Pagina ${posizione + 1} di ${numeroPagine}`);
 }
 function aggiornaBadgeQuantitaProdotto(bottone) {
     const quantita = quantitaProdotto(stato.righe, bottone.dataset.prodotto);
