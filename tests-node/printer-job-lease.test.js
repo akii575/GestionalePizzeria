@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { isValidPrinterSelection, jobId } = require("../lib/printer-jobs");
 const { apiRoute } = require("./api-router-helper");
+const { productConvention } = require("../lib/menu-store");
 const menu = require("../lib/menu.json");
 const extras = require("../lib/extras.json");
 const extraCategories = new Set(["pizze", "fritti", "panuozzi", "ripieni", "secondi", "pizze fritte"]);
@@ -47,7 +48,7 @@ require.cache[menuStorePath] = {
     id: menuStorePath,
     filename: menuStorePath,
     loaded: true,
-    exports: { getMenuData: async () => catalogForApi }
+    exports: { getMenuData: async () => catalogForApi, productConvention }
 };
 
 const { prepareOrder: validateOrder } = require("../lib/orders");

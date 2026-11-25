@@ -238,6 +238,7 @@
         document.getElementById("menu-price-field").hidden = resource === "categorie";
         document.getElementById("menu-ingredients-field").hidden = resource !== "prodotti";
         document.getElementById("menu-composable-field").hidden = resource !== "prodotti";
+        document.getElementById("menu-convention-field").hidden = resource !== "prodotti";
         document.getElementById("menu-extra-allowed-field").hidden = resource !== "categorie";
         document.getElementById("menu-oven-count-field").hidden = resource !== "categorie";
         document.getElementById("menu-kitchen-print-field").hidden = resource !== "categorie";
@@ -264,6 +265,7 @@
         document.getElementById("menu-price").value = item?.prezzo ?? "";
         document.getElementById("menu-ingredients").value = item?.ingredienti?.join(", ") || "";
         document.getElementById("menu-composable").checked = item?.componibile === true;
+        document.getElementById("menu-convention").value = item ? item.convenzione || "" : "auto";
         document.getElementById("menu-extra-allowed").checked = item?.ammetteExtra === true;
         document.getElementById("menu-oven-count").checked = state.contaFornoSegueExtra
             ? item?.ammetteExtra === true
@@ -300,6 +302,8 @@
                 .split(",").map(value => value.trim()).filter(Boolean);
             payload.componibile = document.getElementById("menu-composable").checked;
             payload.disponibile = document.getElementById("menu-available").checked;
+            const convention = document.getElementById("menu-convention").value;
+            if (convention !== "auto") payload.convenzione = convention;
         } else if (state.resource === "extra") {
             payload.prezzo = Number(document.getElementById("menu-price").value);
             payload.disponibile = document.getElementById("menu-available").checked;

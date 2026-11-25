@@ -152,6 +152,51 @@ test("editing an order preserves its rows, extras, exclusions, and one-row-per-p
     });
 });
 
+test("editing serializes row and order discounts without trusting computed amounts", () => {
+    const rows = preparaRigheModifica([{
+        prodotto: "Margherita",
+        prezzoBase: 5,
+        totaleLordo: 5,
+        totale: 4,
+        sconto: {
+            tipo: "importo",
+            valore: 1,
+            motivo: "Promozione",
+            importo: 1
+        },
+        extra: [],
+        senza: [],
+        note: []
+    }], [{
+        nome: "Margherita",
+        categoria: "pizze",
+        prezzo: 5,
+        ingredienti: [],
+        ammetteExtra: true
+    }], []);
+    const payload = creaPayloadComanda({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        numeroPersone: 1,
+        note: "",
+        sconto: { tipo: "percentuale", valore: 10, motivo: "Cliente abituale", importo: 0.4 },
+        convenzione: null
+    }, rows);
+
+    assert.deepEqual(payload.righe[0].sconto, {
+        tipo: "importo",
+        valore: 1,
+        motivo: "Promozione"
+    });
+    assert.deepEqual(payload.sconto, {
+        tipo: "percentuale",
+        valore: 10,
+        motivo: "Cliente abituale"
+    });
+    assert.equal(Object.hasOwn(payload.righe[0], "totale"), false);
+    assert.equal(Object.hasOwn(payload, "totale"), false);
+});
+
 test("editing preserves an unavailable product so the waiter can remove it", () => {
     const rows = preparaRigheModifica([
         {

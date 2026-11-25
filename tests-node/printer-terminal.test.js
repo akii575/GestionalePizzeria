@@ -195,6 +195,46 @@ test("sala prints cover before the unchanged order total, while cucina and addit
     assert.match(aggiunta, /NUOVO TOTALE\s+EUR 13,00/);
 });
 
+test("sala prints row and order discounts plus convention, while cucina omits discount data", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const discounted = {
+        numero: 43,
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{
+            prodotto: "Margherita",
+            prezzoBase: 5,
+            totaleLordo: 5,
+            totale: 4,
+            sconto: { tipo: "omaggio", motivo: "Promozione", importo: 1 }
+        }],
+        sconto: { tipo: "percentuale", motivo: "Cliente abituale", importo: 0.4 },
+        totale: 3.6
+    };
+    const sala = formatReceipt(discounted);
+    const lines = sala.split(/\r?\n/);
+    const itemDiscount = lines.findIndex(line => line.includes("OMAGGIO PROMOZIONE"));
+    const orderDiscount = lines.findIndex(line => line.includes("SCONTO CLIENTE ABITUALE"));
+    const total = lines.findIndex(line => line.startsWith("TOTALE"));
+
+    assert.ok(itemDiscount >= 0);
+    assert.ok(orderDiscount > itemDiscount);
+    assert.ok(total > orderDiscount);
+    assert.match(sala, /OMAGGIO PROMOZIONE\s+-1,00/);
+    assert.match(sala, /SCONTO CLIENTE ABITUALE\s+-0,40/);
+    assert.match(lines[total], /EUR 3,60/);
+
+    const convention = formatReceipt({
+        ...discounted,
+        sconto: undefined,
+        convenzione: { tipo: "menu", menu: 2, importo: 1.5 },
+        totale: 3.5
+    });
+    assert.match(convention, /CONVENZIONE UNIV\. 2 MENU\s+6 EURO\s+-1,50/);
+    const cucina = formatReceipt(discounted, 80, { profile: "cucina" });
+    assert.doesNotMatch(cucina, /SCONTO|OMAGGIO|CONVENZIONE|EUR/);
+});
+
 test("receipt number is first and requested time is the final large line", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const lines = formatReceipt({

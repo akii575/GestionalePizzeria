@@ -36,6 +36,9 @@ let tipoOrdineOriginale = null;
 let numeroPersoneOriginale = null;
 let copertoOrdine = null;
 let pagamentoModifica = "";
+let scontoOrdine = null;
+let convenzioneOrdine = null;
+let obiettivoSconto = null;
 const prodotti = document.getElementById("prodotti");
 const riepilogo = document.getElementById("riepilogo-items");
 const riepilogoConteggio = document.getElementById("riepilogo-conteggio");
@@ -128,6 +131,16 @@ const annullaModificaModale = document.getElementById("annulla-modifica-modale")
 const confermaIntestazione = document.getElementById("conferma-intestazione");
 const confermaRighe = document.getElementById("conferma-righe");
 const confermaTotale = document.getElementById("conferma-totale");
+const confermaSconti = document.getElementById("conferma-sconti");
+const scontoModale = document.getElementById("sconto-modale");
+const scontoForm = document.getElementById("sconto-form");
+const scontoTitolo = document.getElementById("sconto-titolo");
+const scontoTipo = document.getElementById("sconto-tipo");
+const scontoValore = document.getElementById("sconto-valore");
+const scontoValoreField = document.getElementById("sconto-valore-field");
+const scontoMotivo = document.getElementById("sconto-motivo");
+const scontoErrore = document.getElementById("sconto-errore");
+const scontoRimuovi = document.getElementById("sconto-rimuovi");
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const bottoneRicerca = document.getElementById("btn-ricerca");
 const bottoneIngredienti = document.getElementById("btn-ingredienti");
@@ -142,6 +155,7 @@ const ricercaMessaggio = document.getElementById("ricerca-messaggio");
 const paginaPrincipale = document.querySelector("main");
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const { escapeHtml } = window.htmlUtils;
+const orderDiscountRules = window.orderDiscounts;
 const {
     NOTE_RIGA,
     filtraProdotti,
@@ -1059,10 +1073,198 @@ function prezzoRiga(riga) {
         )
     );
 }
+function anteprimaTotaliOrdine() {
+    let righeLordoCentesimi = 0;
+    let scontiRigaCentesimi = 0;
+    const menuItems = stato.righe.map(riga => {
+        const lordoCentesimi = orderDiscountRules.toCents(prezzoRiga(riga));
+        const scontoCentesimi = orderDiscountRules.rowDiscountCents(riga.sconto, lordoCentesimi);
+        righeLordoCentesimi += lordoCentesimi;
+        scontiRigaCentesimi += scontoCentesimi;
+        const prodotto = stato.menu.find(item => item.nome === riga.prodotto);
+        return {
+            tipo: prodotto?.convenzione || "",
+            prezzoCentesimi: lordoCentesimi,
+            scontata: Boolean(riga.sconto)
+        };
+    });
+    const copertoCentesimi = orderDiscountRules.toCents(copertoCorrente()?.totale || 0);
+    const consegnaCentesimi = orderDiscountRules.toCents(costoConsegna);
+    const imponibileCentesimi = righeLordoCentesimi - scontiRigaCentesimi + copertoCentesimi;
+    let scontoTotaleCentesimi = 0;
+    let convenzioneCentesimi = 0;
+    let menuConvenzione = { menu: 0, importo: 0 };
+    if (scontoOrdine) {
+        scontoTotaleCentesimi = scontoOrdine.tipo === "percentuale"
+            ? orderDiscountRules.percentageDiscountCents(imponibileCentesimi, scontoOrdine.valore)
+            : orderDiscountRules.toCents(scontoOrdine.valore);
+    } else if (convenzioneOrdine?.tipo === "percentuale") {
+        convenzioneCentesimi = orderDiscountRules.percentageDiscountCents(
+            imponibileCentesimi,
+            orderDiscountRules.CONVENZIONE_PERCENTUALE
+        );
+    } else if (convenzioneOrdine?.tipo === "menu") {
+        menuConvenzione = orderDiscountRules.calculateMenuConvention(menuItems);
+        convenzioneCentesimi = menuConvenzione.importo;
+    }
+    return {
+        righeLordoCentesimi,
+        scontiRigaCentesimi,
+        copertoCentesimi,
+        consegnaCentesimi,
+        imponibileCentesimi,
+        scontoTotaleCentesimi,
+        convenzioneCentesimi,
+        menuConvenzione,
+        totaleLordoCentesimi: righeLordoCentesimi + copertoCentesimi + consegnaCentesimi,
+        totaleCentesimi: Math.max(
+            0,
+            imponibileCentesimi - scontoTotaleCentesimi - convenzioneCentesimi + consegnaCentesimi
+        )
+    };
+}
 function totaleOrdine() {
-    return stato.righe.reduce((totale, riga) => totale + prezzoRiga(riga), 0)
-        + costoConsegna
-        + (copertoCorrente()?.totale || 0);
+    return anteprimaTotaliOrdine().totaleCentesimi / 100;
+}
+function rigaRiepilogoFinanziario(label, cents, { negativo = false, motivo = "" } = {}) {
+    const description = motivo
+        ? `${label} · ${escapeHtml(motivo)}`
+        : label;
+    return `<div class="riepilogo-finanziario__riga"><span>${description}</span><strong>${negativo ? "−" : ""}${euro.format(Math.abs(cents) / 100)}</strong></div>`;
+}
+function markupRiepilogoFinanziario(preview, controlli = false) {
+    const conventionType = convenzioneOrdine?.tipo || "";
+    const availableMenus = preview.menuConvenzione.menu;
+    const menuDescription = availableMenus
+        ? `${availableMenus} ${availableMenus === 1 ? "menu" : "menu"} · risparmio ${euro.format(preview.menuConvenzione.importo / 100)}`
+        : "Per il menu convenzione servono una pizza e una bibita idonee.";
+    const controls = controlli
+        ? `<div class="riepilogo-sconti-controlli">
+                <button class="sconto-ordine-apri${scontoOrdine ? " is-active" : ""}" type="button" data-sconto-ordine>${scontoOrdine ? "Modifica sconto sul totale" : "Sconto sul totale"}</button>
+                <div class="convenzione-scelte" role="group" aria-label="Convenzione universitaria">
+                    <button class="convenzione-scelta${conventionType === "percentuale" ? " is-active" : ""}" type="button" data-convenzione="percentuale" aria-pressed="${conventionType === "percentuale"}">10% sul totale</button>
+                    <button class="convenzione-scelta${conventionType === "menu" ? " is-active" : ""}" type="button" data-convenzione="menu" aria-pressed="${conventionType === "menu"}">Menu 6 €</button>
+                </div>
+                <p class="convenzione-anteprima">${escapeHtml(menuDescription)}</p>
+            </div>`
+        : "";
+    const rows = [
+        rigaRiepilogoFinanziario("Subtotale prodotti", preview.righeLordoCentesimi),
+        ...(preview.scontiRigaCentesimi ? [
+            rigaRiepilogoFinanziario("Sconti righe", preview.scontiRigaCentesimi, { negativo: true })
+        ] : []),
+        ...(preview.copertoCentesimi ? [
+            rigaRiepilogoFinanziario("Coperto", preview.copertoCentesimi)
+        ] : []),
+        ...(scontoOrdine ? [
+            rigaRiepilogoFinanziario("Sconto sul totale", preview.scontoTotaleCentesimi, {
+                negativo: true,
+                motivo: scontoOrdine.motivo
+            })
+        ] : []),
+        ...(convenzioneOrdine ? [
+            rigaRiepilogoFinanziario(
+                convenzioneOrdine.tipo === "menu"
+                    ? `Convenzione · ${preview.menuConvenzione.menu} menu`
+                    : "Convenzione universitaria · 10%",
+                preview.convenzioneCentesimi,
+                { negativo: true }
+            )
+        ] : []),
+        ...(preview.consegnaCentesimi ? [
+            rigaRiepilogoFinanziario("Costo consegna", preview.consegnaCentesimi)
+        ] : []),
+        rigaRiepilogoFinanziario("Totale netto", preview.totaleCentesimi)
+    ].join("");
+    return `${controls}<div class="riepilogo-finanziario">${rows}</div>`;
+}
+function scontoCorrentePerObiettivo() {
+    if (!obiettivoSconto) return null;
+    return obiettivoSconto.scope === "riga"
+        ? stato.righe[obiettivoSconto.indice]?.sconto || null
+        : scontoOrdine;
+}
+function aggiornaCampoValoreSconto() {
+    const omaggio = obiettivoSconto?.scope === "riga" && scontoTipo.value === "omaggio";
+    scontoValoreField.hidden = omaggio;
+    scontoValore.required = !omaggio;
+    scontoValore.disabled = omaggio;
+}
+function apriEditorSconto(scope, indice = null) {
+    if (scope === "riga" && (!Number.isInteger(indice) || !stato.righe[indice])) return;
+    obiettivoSconto = { scope, indice };
+    const existing = scontoCorrentePerObiettivo();
+    scontoTitolo.textContent = scope === "riga" ? "Sconto/omaggio sulla riga" : "Sconto sul totale";
+    scontoTipo.innerHTML = scope === "riga"
+        ? '<option value="percentuale">Percentuale</option><option value="importo">Importo</option><option value="omaggio">Omaggio</option>'
+        : '<option value="percentuale">Percentuale</option><option value="importo">Importo</option>';
+    scontoTipo.value = existing?.tipo || (scope === "riga" ? "percentuale" : "percentuale");
+    scontoValore.value = existing?.tipo === "omaggio" ? "" : existing?.valore ?? "";
+    scontoMotivo.value = existing?.motivo || "";
+    scontoErrore.textContent = "";
+    scontoRimuovi.hidden = !existing;
+    aggiornaCampoValoreSconto();
+    scontoModale.hidden = false;
+    document.body.classList.add("modale-aperta");
+    scontoTipo.focus({ preventScroll: true });
+}
+function chiudiEditorSconto() {
+    scontoModale.hidden = true;
+    document.body.classList.remove("modale-aperta");
+    obiettivoSconto = null;
+}
+function salvaScontoEditor(evento) {
+    evento.preventDefault();
+    if (!obiettivoSconto) return;
+    const motivo = scontoMotivo.value.trim();
+    if (motivo.length < 2 || motivo.length > 80) {
+        scontoErrore.textContent = "Il motivo deve contenere da 2 a 80 caratteri.";
+        return;
+    }
+    const tipo = scontoTipo.value;
+    let valore = 100;
+    if (tipo !== "omaggio") {
+        valore = Number(scontoValore.value);
+        if (!Number.isFinite(valore) || valore <= 0
+                || (tipo === "percentuale" && valore > 100)) {
+            scontoErrore.textContent = tipo === "percentuale"
+                ? "Inserisci una percentuale tra 1 e 100."
+                : "Inserisci un importo positivo.";
+            return;
+        }
+    }
+    if (obiettivoSconto.scope === "riga") {
+        const row = stato.righe[obiettivoSconto.indice];
+        const grossCents = orderDiscountRules.toCents(prezzoRiga(row));
+        if (tipo === "importo" && orderDiscountRules.toCents(valore) > grossCents) {
+            scontoErrore.textContent = "Lo sconto non può superare il totale della riga.";
+            return;
+        }
+        row.sconto = { tipo, valore, motivo };
+    } else {
+        const baseCents = anteprimaTotaliOrdine().imponibileCentesimi;
+        const discountCents = tipo === "percentuale"
+            ? orderDiscountRules.percentageDiscountCents(baseCents, valore)
+            : orderDiscountRules.toCents(valore);
+        if (discountCents <= 0 || discountCents > baseCents) {
+            scontoErrore.textContent = "Lo sconto non può superare il totale scontabile.";
+            return;
+        }
+        scontoOrdine = { tipo, valore, motivo };
+        convenzioneOrdine = null;
+    }
+    chiudiEditorSconto();
+    renderRiepilogo();
+}
+function rimuoviScontoEditor() {
+    if (obiettivoSconto?.scope === "riga") {
+        const row = stato.righe[obiettivoSconto.indice];
+        if (row) delete row.sconto;
+    } else {
+        scontoOrdine = null;
+    }
+    chiudiEditorSconto();
+    renderRiepilogo();
 }
 function copertoCorrente() {
     const persone = Number(numeroPersone.value);
@@ -1606,8 +1808,21 @@ function renderRigheRiepilogo(contenitore) {
             ? '<small class="riepilogo-non-disponibile">Non più disponibile</small>'
             : "";
         const nomeRiga = `<button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(indiceUltimaRiga)}">${escapeHtml(riga.prodotto)}</button>`;
-        const totaleGruppo = euro.format(prezzoRiga(riga) * quantita);
-        voce.innerHTML = `<span class="riepilogo-quantita">${quantita}×</span><div class="riepilogo-item__descrizione">${nomeRiga}${nonDisponibile}${senza}${extra}${noteRiga}</div><strong class="riepilogo-prezzo">${totaleGruppo}</strong><button class="rimuovi" type="button" data-indice="${escapeHtml(indiceUltimaRiga)}" aria-label="Togli uno">−</button>`;
+        const lordoCentesimi = orderDiscountRules.toCents(prezzoRiga(riga)) * quantita;
+        const scontoCentesimi = orderDiscountRules.rowDiscountCents(
+            riga.sconto,
+            orderDiscountRules.toCents(prezzoRiga(riga))
+        ) * quantita;
+        const nettoCentesimi = Math.max(0, lordoCentesimi - scontoCentesimi);
+        const dettaglioSconto = riga.sconto
+            ? `<small class="riepilogo-sconto-dettaglio">${riga.sconto.tipo === "omaggio" ? "OMAGGIO" : "SCONTO"} ${escapeHtml(riga.sconto.motivo)} · −${euro.format(scontoCentesimi / 100)}</small>`
+            : "";
+        const prezzoGruppo = scontoCentesimi
+            ? `<del>${euro.format(lordoCentesimi / 100)}</del><strong>${euro.format(nettoCentesimi / 100)}</strong>`
+            : `<strong>${euro.format(lordoCentesimi / 100)}</strong>`;
+        const testoSconto = riga.sconto ? "Modifica sconto" : "Sconto/omaggio";
+        const azioneSconto = `<button class="riepilogo-sconto-apri" type="button" data-sconto-riga="${escapeHtml(indiceUltimaRiga)}">${testoSconto}</button>`;
+        voce.innerHTML = `<span class="riepilogo-quantita">${quantita}×</span><div class="riepilogo-item__descrizione">${nomeRiga}${nonDisponibile}${senza}${extra}${noteRiga}${dettaglioSconto}${azioneSconto}</div><span class="riepilogo-prezzo">${prezzoGruppo}</span><button class="rimuovi" type="button" data-indice="${escapeHtml(indiceUltimaRiga)}" aria-label="Togli uno">−</button>`;
         contenitore.appendChild(voce);
     });
     if (!stato.righe.length) contenitore.innerHTML = "<p>Nessun prodotto selezionato</p>";
@@ -1618,8 +1833,45 @@ function renderRigheRiepilogo(contenitore) {
         voceCoperto.textContent = testoCoperto(coperto);
         contenitore.appendChild(voceCoperto);
     }
+    const riepilogoSconti = document.createElement("section");
+    riepilogoSconti.className = "riepilogo-sconti";
+    riepilogoSconti.innerHTML = markupRiepilogoFinanziario(anteprimaTotaliOrdine(), true);
+    contenitore.appendChild(riepilogoSconti);
 }
 function rimuoviRigaRiepilogo(evento) {
+    const pulsanteScontoRiga = evento.target.closest("[data-sconto-riga]");
+    if (pulsanteScontoRiga && evento.currentTarget.contains(pulsanteScontoRiga)) {
+        evento.preventDefault();
+        evento.stopPropagation();
+        apriEditorSconto("riga", Number(pulsanteScontoRiga.dataset.scontoRiga));
+        return;
+    }
+    const pulsanteScontoTotale = evento.target.closest("[data-sconto-ordine]");
+    if (pulsanteScontoTotale && evento.currentTarget.contains(pulsanteScontoTotale)) {
+        evento.preventDefault();
+        evento.stopPropagation();
+        apriEditorSconto("ordine");
+        return;
+    }
+    const pulsanteConvenzione = evento.target.closest("[data-convenzione]");
+    if (pulsanteConvenzione && evento.currentTarget.contains(pulsanteConvenzione)) {
+        evento.preventDefault();
+        evento.stopPropagation();
+        const tipo = pulsanteConvenzione.dataset.convenzione;
+        if (convenzioneOrdine?.tipo === tipo) {
+            convenzioneOrdine = null;
+        } else {
+            const preview = anteprimaTotaliOrdine();
+            if (tipo === "menu" && !preview.menuConvenzione.menu) {
+                mostraMessaggio("Per il menu convenzione servono una pizza e una bibita idonee.", "errore");
+                return;
+            }
+            scontoOrdine = null;
+            convenzioneOrdine = { tipo };
+        }
+        renderRiepilogo();
+        return;
+    }
     const pulsante = evento.target.closest(".rimuovi");
     if (pulsante && evento.currentTarget.contains(pulsante)) {
         const risultato = rimuoviProdotto(stato.righe, stato.rigaAttiva, Number(pulsante.dataset.indice));
@@ -1892,19 +2144,9 @@ function apriConferma() {
         tipoOrdine.value === "tavolo"
             ? ""
             : `<div class="conferma-consegna"><span>Orario richiesto: ${escapeHtml(orario.value)}</span>${ritiro ? `<span>Pagamento: ${escapeHtml(pagamentoRitiro.selectedOptions[0].textContent)}</span>` : consegna ? `<span>Pagamento: ${escapeHtml(pagamentoConsegna.selectedOptions[0].textContent)}</span>` : ""}</div>`;
-    const dettaglioCostoConsegna =
-        consegna && costoConsegna
-            ? `<div class="conferma-consegna"><span>Costo consegna</span><strong>${escapeHtml(euro.format(costoConsegna))}</strong></div>`
-            : "";
-    const coperto = copertoCorrente();
-    const dettaglioCoperto = coperto
-        ? `<div class="conferma-coperto">${escapeHtml(testoCoperto(coperto))}</div>`
-        : "";
     confermaIntestazione.innerHTML =
         dettagliServizio +
-        dettaglioOrario +
-        dettaglioCostoConsegna +
-        dettaglioCoperto;
+        dettaglioOrario;
     confermaRighe.innerHTML = raggruppaRigheConferma(stato.righe)
         .map(({ riga, quantita }) => {
             const extra = nomiExtra(riga.extra).join(", ");
@@ -1915,9 +2157,22 @@ function apriConferma() {
                 .map(valore => `<small class="conferma-nota-riga">• ${escapeHtml(valore)}</small>`)
                 .join("");
             const quantitaTesto = quantita > 1 ? `${quantita}× ` : "";
-            return `<div class="conferma-riga"><strong>${quantitaTesto}${escapeHtml(riga.prodotto)} — ${escapeHtml(euro.format(prezzoRiga(riga) * quantita))}</strong>${extra ? `<small class="conferma-extra">+ ${escapeHtml(extra)}</small>` : ""}${senza}${note}</div>`;
+            const lordoCentesimi = orderDiscountRules.toCents(prezzoRiga(riga)) * quantita;
+            const scontoCentesimi = orderDiscountRules.rowDiscountCents(
+                riga.sconto,
+                orderDiscountRules.toCents(prezzoRiga(riga))
+            ) * quantita;
+            const nettoCentesimi = Math.max(0, lordoCentesimi - scontoCentesimi);
+            const prezzo = scontoCentesimi
+                ? `<del>${euro.format(lordoCentesimi / 100)}</del> · ${euro.format(nettoCentesimi / 100)}`
+                : euro.format(lordoCentesimi / 100);
+            const discount = riga.sconto
+                ? `<small class="conferma-sconto-riga">${riga.sconto.tipo === "omaggio" ? "OMAGGIO" : "SCONTO"} ${escapeHtml(riga.sconto.motivo)} · −${escapeHtml(euro.format(scontoCentesimi / 100))}</small>`
+                : "";
+            return `<div class="conferma-riga"><strong>${quantitaTesto}${escapeHtml(riga.prodotto)} — ${prezzo}</strong>${extra ? `<small class="conferma-extra">+ ${escapeHtml(extra)}</small>` : ""}${senza}${note}${discount}</div>`;
         })
         .join("");
+    confermaSconti.innerHTML = markupRiepilogoFinanziario(anteprimaTotaliOrdine());
     confermaTotale.textContent = `Totale: ${euro.format(totaleOrdine())}`;
     document.getElementById("conferma-invio").textContent = numeroModifica
         ? "Salva modifiche"
@@ -1950,7 +2205,9 @@ function creaPayloadCorrente() {
         telefonoConsegna: inputTelefonoConsegna.value,
         costoConsegna,
         telefonoRitiro: document.getElementById("telefono-ritiro").value,
-        note: note.value
+        note: note.value,
+        sconto: scontoOrdine,
+        convenzione: convenzioneOrdine
     }, stato.righe);
 }
 async function inviaOrdine() {
@@ -2005,6 +2262,8 @@ async function inviaOrdine() {
         );
         stato.righe = [];
         stato.rigaAttiva = null;
+        scontoOrdine = null;
+        convenzioneOrdine = null;
         stato.chiaveInvio = nuovaChiaveInvio();
         costoConsegna = 0;
         aggiornaBottoneCostoConsegna();
@@ -2345,6 +2604,8 @@ document.getElementById("btn-annulla").addEventListener("click", () => {
     }
     stato.righe = [];
     stato.rigaAttiva = null;
+    scontoOrdine = null;
+    convenzioneOrdine = null;
     stato.chiaveInvio = nuovaChiaveInvio();
     chiudiRisultatiClientiIndirizzo();
     clientiAbituali.reset();
@@ -2361,6 +2622,13 @@ document.getElementById("annulla-modifica-continua").addEventListener("click", (
 document.getElementById("annulla-modifica-esci").addEventListener("click", () => {
     window.location.replace(paginaRitornoModifica);
 });
+scontoForm.addEventListener("submit", salvaScontoEditor);
+scontoTipo.addEventListener("change", aggiornaCampoValoreSconto);
+scontoRimuovi.addEventListener("click", rimuoviScontoEditor);
+document.getElementById("sconto-annulla").addEventListener("click", chiudiEditorSconto);
+scontoModale.addEventListener("click", evento => {
+    if (evento.target === scontoModale) chiudiEditorSconto();
+});
 annullaModificaModale.addEventListener("click", evento => {
     if (evento.target === annullaModificaModale) {
         annullaModificaModale.hidden = true;
@@ -2370,6 +2638,11 @@ annullaModificaModale.addEventListener("click", evento => {
 document.addEventListener("keydown", evento => {
     intrappolaFocusNelRiepilogoSheet(evento);
     if (evento.key !== "Escape") return;
+    if (!scontoModale.hidden) {
+        chiudiEditorSconto();
+        evento.preventDefault();
+        return;
+    }
     if (!clientiIndirizzoRisultati.hidden) {
         chiudiRisultatiClientiIndirizzo();
         evento.preventDefault();
@@ -2512,6 +2785,16 @@ async function inizializzaModifica() {
         pagamentoConsegna.value = ordine.statoPagamento || "";
         pagamentoModifica = ordine.statoPagamento || "";
         costoConsegna = Number(ordine.costoConsegna) === 2 ? 2 : 0;
+        scontoOrdine = ordine.sconto
+            ? {
+                tipo: ordine.sconto.tipo,
+                valore: ordine.sconto.valore,
+                motivo: ordine.sconto.motivo
+            }
+            : null;
+        convenzioneOrdine = ordine.convenzione
+            ? { tipo: ordine.convenzione.tipo }
+            : null;
         tipoOrdineCorrente = tipo;
         aggiornaTipoOrdine();
         aggiornaPulsanteNote();

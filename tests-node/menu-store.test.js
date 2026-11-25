@@ -208,6 +208,51 @@ test("menu store sorts names naturally in Italian, breaks equivalent-name ties b
     ]);
 });
 
+test("menu store defaults convention eligibility by exact case-insensitive product name", async () => {
+    const data = seed();
+    data.menuCategorie = {
+        food: { nome: "Menu", ordine: 0, ammetteExtra: true }
+    };
+    const names = [
+        "Margherita",
+        "Napoletana",
+        "Margherita Provola e Pepe",
+        "Coca Cola 33cl",
+        "Fanta 33cl",
+        "Acqua 0,5L",
+        "Margherita fritta",
+        "Birra",
+        "Altro senza eleggibilita'"
+    ];
+    data.menuProdotti = Object.fromEntries(names.map((nome, index) => [
+        `product-${index}`,
+        {
+            nome: index === 0 ? nome.toLocaleUpperCase("it-IT") : nome,
+            categoriaId: "food",
+            prezzo: 1,
+            ingredienti: [],
+            disponibile: true
+        }
+    ]));
+    data.menuProdotti["product-8"].convenzione = "pizza";
+    data.menuProdotti["product-7"].convenzione = "";
+
+    const menu = await createMenuStore(createDatabase(data)).getMenuData();
+    const values = Object.fromEntries(menu.allProducts.map(product => [product.id, product.convenzione]));
+
+    assert.deepEqual(values, {
+        "product-0": "pizza",
+        "product-1": "pizza",
+        "product-2": "pizza",
+        "product-3": "bibita",
+        "product-4": "bibita",
+        "product-5": "bibita",
+        "product-6": "",
+        "product-7": "",
+        "product-8": "pizza"
+    });
+});
+
 test("menu store checks versions at most every 30 seconds and reloads collections only on change", async () => {
     const db = createDatabase(seed());
     let now = 100;

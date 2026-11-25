@@ -34,7 +34,7 @@
 .storico-date-range input { min-height: 44px; padding: 7px 10px; }
 .storico-status { min-height: 0; margin: 0; color: var(--theme-red); }
 .storico-status:empty { display: none; }
-.storico-metriche { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.storico-metriche { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .storico-metrica {
     display: grid;
     min-width: 0;

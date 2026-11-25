@@ -26,6 +26,10 @@ test("menu editor page loads protected navigation, accessible editor and shared 
     assert.match(page, /id="menu-undo-toast"/);
     assert.match(page, /id="menu-variation-print" name="stampaVariazioni" type="checkbox"/);
     assert.match(page, /id="menu-oven-count" name="contaForno" type="checkbox"/);
+    assert.match(page, /id="menu-convention" name="convenzione"/);
+    assert.match(page, /value="auto">Automatico dal nome/);
+    assert.match(editor, /menu-convention-field/);
+    assert.match(editor, /payload\.convenzione = convention/);
     assert.match(page, /Conta nel forno/);
     assert.match(page, /Stampa nelle variazioni \(modifiche ordine\)/);
     assert.match(editor, /menu-variation-print/);
