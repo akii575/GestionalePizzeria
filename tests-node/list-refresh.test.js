@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const consegneUI = require("../src/main/resources/static/consegne-ui");
 
 function createPageContext(pageScript, currentAccount = { admin: true, staff: false, delivery: false }, orders = []) {
     const elements = new Map();
@@ -83,6 +84,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         window: {
             authReady: Promise.resolve(true),
             currentAccount,
+            consegneUI,
             orderCard: {
                 bindReprints() {
                     const controller = {
@@ -172,9 +174,9 @@ test("the delivery list sorts active deliveries by requested time and completed 
     const state = createPageContext(fs.readFileSync(scriptPath, "utf8"), undefined, [
         { numero: 2, totale: 0, orario: "20:30", statoConsegna: "da_consegnare" },
         { numero: 7, totale: 0, orario: "19:30", statoConsegna: "in_consegna" },
-        { numero: 9, totale: 0, statoConsegna: "da_consegnare" },
-        { numero: 8, totale: 0, statoConsegna: "consegnata", consegnataAlle: "2026-10-27T19:30:00.000Z" },
-        { numero: 4, totale: 0, statoConsegna: "consegnata", consegnataAlle: "2026-10-27T20:30:00.000Z" }
+        { numero: 9, totale: 0, dataOra: "2026-10-27T18:00:00.000Z", statoConsegna: "da_consegnare" },
+        { numero: 8, totale: 0, dataOra: "2026-10-27T17:30:00.000Z", statoConsegna: "consegnata", consegnataAlle: "2026-10-27T19:30:00.000Z" },
+        { numero: 4, totale: 0, dataOra: "2026-10-27T18:30:00.000Z", statoConsegna: "consegnata", consegnataAlle: "2026-10-27T20:30:00.000Z" }
     ]);
     await flushPagePromises();
 
@@ -196,7 +198,13 @@ for (const [page, listId] of [
     test(`${page} refreshes the open detail after a manual list redraw`, async () => {
         const scriptPath = path.join(__dirname, "../src/main/resources/static", page);
         const state = createPageContext(fs.readFileSync(scriptPath, "utf8"), undefined, [
-            { numero: 42, tipo: "tavolo", totale: 5, righe: [] }
+            {
+                numero: 42,
+                tipo: page === "consegne.js" ? "consegna" : "tavolo",
+                totale: 5,
+                orario: "19:30",
+                righe: []
+            }
         ]);
         await flushPagePromises();
         const detailController = state.detailControllers[0];
@@ -290,6 +298,7 @@ test("delivery accounts do not request the staff-only menu API", async () => {
     }, [{
         numero: 15,
         tipo: "consegna",
+        orario: "19:30",
         telefonoConsegna: "3331234567"
     }]);
     await flushPagePromises();
