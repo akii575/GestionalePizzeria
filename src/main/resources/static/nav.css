@@ -70,6 +70,23 @@ body.app-shell nav.app-bottom-nav {
 }
 
 @media (min-width: 768px) {
+    .app-header-actions .app-reset-header {
+        display: inline-flex;
+        width: auto;
+        height: 48px;
+        min-height: 48px;
+        gap: 8px;
+        border-color: var(--theme-red);
+        background: #fff;
+        color: var(--theme-red);
+    }
+
+    .app-header-actions .app-reset-header[hidden] {
+        display: none;
+    }
+}
+
+@media (min-width: 768px) {
     body.app-shell main {
         width: min(1180px, calc(100% - 104px));
         margin-left: 96px;
@@ -108,6 +125,32 @@ body.app-shell nav.app-bottom-nav {
         object-fit: contain;
     }
 
+    .app-sidebar-navigation {
+        position: relative;
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        flex-direction: column;
+    }
+
+    .app-sidebar-navigation::after {
+        position: absolute;
+        z-index: 1;
+        right: 0;
+        bottom: 10px;
+        left: 0;
+        height: 18px;
+        background: linear-gradient(to bottom, transparent, var(--theme-green-dark));
+        content: "";
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .16s ease;
+    }
+
+    .app-sidebar-navigation.has-more-below::after {
+        opacity: 1;
+    }
+
     body.app-shell nav.app-sidebar-links {
         display: grid;
         flex: 1 1 auto;
@@ -122,6 +165,9 @@ body.app-shell nav.app-bottom-nav {
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, .28) transparent;
         overscroll-behavior: contain;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, .18);
     }
 
     body.app-shell nav.app-sidebar-links::-webkit-scrollbar {
@@ -544,6 +590,10 @@ body.app-shell nav.app-bottom-nav {
         border-color: #F7C1C1;
         background: rgba(163, 45, 45, .35);
         color: #FCEBEB;
+    }
+
+    .app-header-actions .app-reset-header-label {
+        display: none;
     }
 
     .app-header-actions .app-reset-header[hidden] {

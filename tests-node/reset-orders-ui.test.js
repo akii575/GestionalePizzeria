@@ -17,6 +17,10 @@ function runOrdersPage(currentAccount, { missingIds = [] } = {}) {
             elements.set(id, {
                 listeners,
                 addEventListener(name, callback) { listeners.set(name, callback); },
+                click() {
+                    const listener = listeners.get("click");
+                    if (listener) listener({ target: this });
+                },
                 querySelectorAll() { return []; },
                 insertAdjacentHTML() {},
                 className: "",
@@ -147,7 +151,7 @@ test("shared order-list script loads orders when reset dialog elements are absen
     assert.equal(elements.get("reset-numeri").hidden, true);
 });
 
-test("mobile all-orders header reset delegates to the existing reset button", () => {
+test("all-orders header reset is admin-only and mobile reset remains in More", () => {
     const directory = path.join(__dirname, "../src/main/resources/static");
     const navigation = fs.readFileSync(path.join(directory, "nav.js"), "utf8");
     const styles = fs.readFileSync(path.join(directory, "nav.css"), "utf8");
@@ -155,12 +159,49 @@ test("mobile all-orders header reset delegates to the existing reset button", ()
     assert.match(navigation, /resetButton && window\.location\.pathname === "\/gestionale\.html"/);
     assert.match(navigation, /resetHeaderButton\.setAttribute\("aria-label", "Reset ordini"\)/);
     assert.match(navigation, /resetHeaderButton\.title = "Reset ordini"/);
+    assert.match(navigation, /resetHeaderLabel\.textContent = "Reset ordini"/);
     assert.match(navigation, /resetHeaderButton\.addEventListener\("click", \(\) => resetButton\.click\(\)\)/);
     assert.match(navigation, /resetHeaderButton\.hidden = resetButton\.hidden \|\| account\.admin !== true/);
     assert.match(navigation, /resetCopy\.hidden = resetButton\.hidden \|\| account\.admin !== true/);
+    assert.doesNotMatch(navigation, /sidebarActions\.append\(resetButton\)/);
+    assert.match(navigation, /sheetLinks\.append\(resetCopy\)/);
     assert.ok(navigation.indexOf("actions.append(refreshButton)") < navigation.indexOf("actions.append(resetHeaderButton)"));
     assert.ok(navigation.indexOf("actions.append(resetHeaderButton)") < navigation.indexOf("actions.append(searchButton)"));
     assert.match(styles, /\.app-header-actions \.app-reset-header,\s*\.app-header-actions \.app-reset-header\[hidden\]\s*\{\s*display:\s*none;/);
+    assert.match(styles, /@media \(min-width: 768px\)[\s\S]*?\.app-header-actions \.app-reset-header\s*\{[^}]*display:\s*inline-flex;[^}]*height:\s*48px;[^}]*border-color:\s*var\(--theme-red\);[^}]*background:\s*#fff;[^}]*color:\s*var\(--theme-red\);/);
     assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?\.app-header-actions \.app-reset-header\s*\{[^}]*display:\s*inline-flex;[^}]*width:\s*44px;[^}]*height:\s*44px;[^}]*border-color:\s*#F7C1C1;[^}]*background:\s*rgba\(163, 45, 45, \.35\);[^}]*color:\s*#FCEBEB;/);
+    assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?\.app-header-actions \.app-reset-header-label\s*\{\s*display:\s*none;/);
     assert.match(styles, /\.app-header-actions \.app-reset-header\[hidden\]\s*\{\s*display:\s*none;/);
+});
+
+test("desktop header reset delegates to the RESET confirmation", async () => {
+    const navigation = fs.readFileSync(path.join(staticDirectory, "nav.js"), "utf8");
+    const clickExpression = navigation.match(
+        /resetHeaderButton\.addEventListener\("click",\s*(\(\) => resetButton\.click\(\))\)/
+    )?.[1];
+    const hiddenExpression = navigation.match(
+        /resetHeaderButton\.hidden = (resetButton\.hidden \|\| account\.admin !== true)/
+    )?.[1];
+    assert.ok(clickExpression);
+    assert.ok(hiddenExpression);
+
+    const adminRun = runOrdersPage({ admin: true });
+    const staffRun = runOrdersPage({ admin: false, staff: true });
+    await new Promise(resolve => setImmediate(resolve));
+
+    const adminReset = adminRun.elements.get("reset-numeri");
+    const staffReset = staffRun.elements.get("reset-numeri");
+    assert.equal(vm.runInNewContext(hiddenExpression, {
+        resetButton: adminReset,
+        account: { admin: true }
+    }), false);
+    assert.equal(vm.runInNewContext(hiddenExpression, {
+        resetButton: staffReset,
+        account: { admin: false }
+    }), true);
+
+    vm.runInNewContext(`(${clickExpression})()`, { resetButton: adminReset });
+    assert.equal(adminRun.elements.get("reset-numeri-dialog").open, true);
+    assert.equal(adminRun.elements.get("reset-numeri-phrase").value, "");
+    assert.equal(adminRun.elements.get("reset-numeri-confirm").disabled, true);
 });
