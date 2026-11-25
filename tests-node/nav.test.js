@@ -238,6 +238,11 @@ test("sidebar icons have bounded dimensions and desktop email remains readable",
     assert.match(navigation, /label\.setAttribute\("aria-label", `Indirizzo email: \$\{email\}`\)/);
 });
 
+test("tablet sidebars use border-box sizing and dashboard content starts beside them", () => {
+    assert.match(navigationStyles, /\.app-sidebar,\s*\.app-sidebar \*,\s*\.app-sidebar \*::before,\s*\.app-sidebar \*::after\s*\{\s*box-sizing:\s*border-box;/);
+    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\)\s*\{\s*body\.app-shell main\.dashboard,\s*body\.app-shell main\.home\s*\{\s*box-sizing:\s*border-box;\s*width:\s*calc\(100% - 68px\);\s*margin-left:\s*68px;/);
+});
+
 test("desktop sidebars keep actions fixed and scroll a compact navigation list", () => {
     assert.match(navigationStyles, /body\.app-shell \.app-sidebar\s*\{[^}]*height:\s*100dvh;[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
     assert.match(navigationStyles, /body\.app-shell nav\.app-sidebar-links\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*align-content:\s*start;[^}]*grid-auto-rows:\s*auto;[^}]*overflow-y:\s*auto;/);
