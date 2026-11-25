@@ -34,7 +34,10 @@ function runOrdersPage(currentAccount, { missingIds = [] } = {}) {
     }
     const context = {
         document: {
-            body: { dataset: { serviceType: "" } },
+            body: {
+                dataset: { serviceType: "" },
+                addEventListener() {}
+            },
             getElementById(id) { return missingIds.includes(id) ? null : element(id); },
             addEventListener() {},
             visibilityState: "visible"
@@ -43,7 +46,9 @@ function runOrdersPage(currentAccount, { missingIds = [] } = {}) {
             authReady: Promise.resolve(true),
             currentAccount,
             orderCard: {
-                bindReprints() {},
+                bindReprints() {
+                    return { refresh() {}, isOpen() { return false; } };
+                },
                 bindDateFilter() {},
                 currentServiceDate() { return "2026-11-24"; },
                 createExpansionState() {

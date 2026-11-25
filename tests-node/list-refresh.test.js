@@ -14,6 +14,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
     const renderedCards = [];
     const renderedMarkup = new Map();
     const renderedOptions = [];
+    const detailControllers = [];
     let nextIntervalId = 0;
     let clock = 1_000;
 
@@ -65,7 +66,11 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
     }
 
     const document = {
-        body: { dataset: { serviceType: "" } },
+        body: {
+            dataset: { serviceType: "" },
+            addEventListener() {},
+            classList: { add() {}, remove() {} }
+        },
         visibilityState: "visible",
         getElementById: element,
         addEventListener(name, callback) {
@@ -79,7 +84,15 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
             authReady: Promise.resolve(true),
             currentAccount,
             orderCard: {
-                bindReprints() {},
+                bindReprints() {
+                    const controller = {
+                        dialog: { contains() { return false; } },
+                        refreshCalls: 0,
+                        refresh() { controller.refreshCalls++; }
+                    };
+                    detailControllers.push(controller);
+                    return controller;
+                },
                 bindDateFilter() {},
                 currentServiceDate() { return "2026-03-29"; },
                 createExpansionState() {
@@ -130,6 +143,7 @@ function createPageContext(pageScript, currentAccount = { admin: true, staff: fa
         renderedCards,
         renderedMarkup,
         renderedOptions,
+        detailControllers,
         element,
         advance(milliseconds) {
             clock += milliseconds;
@@ -179,23 +193,21 @@ for (const [page, listId] of [
     ["gestionale.js", "lista-ordini"],
     ["consegne.js", "lista-consegne"]
 ]) {
-    test(`${page} preserves the expanded card across a manual refresh`, async () => {
+    test(`${page} refreshes the open detail after a manual list redraw`, async () => {
         const scriptPath = path.join(__dirname, "../src/main/resources/static", page);
         const state = createPageContext(fs.readFileSync(scriptPath, "utf8"), undefined, [
             { numero: 42, tipo: "tavolo", totale: 5, righe: [] }
         ]);
         await flushPagePromises();
-        const expansionState = state.renderedOptions[0]?.expansionState;
-        assert.ok(expansionState);
-        expansionState.toggle(42);
+        const detailController = state.detailControllers[0];
+        assert.ok(detailController);
+        const initialRefreshCalls = detailController.refreshCalls;
 
         for (const listener of state.elementListeners.get("aggiorna")?.get("click") || []) listener();
         await flushPagePromises();
 
         assert.ok(state.renderedOptions.length >= 2);
-        const refreshedOptions = state.renderedOptions[state.renderedOptions.length - 1];
-        assert.equal(refreshedOptions.expansionState, expansionState);
-        assert.equal(refreshedOptions.expansionState.isOpen(42), true);
+        assert.ok(detailController.refreshCalls > initialRefreshCalls);
         assert.equal(state.renderedMarkup.get(listId).includes("|#42|"), true);
     });
 }

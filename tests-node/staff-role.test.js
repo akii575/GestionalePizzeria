@@ -336,7 +336,10 @@ test("gestionale skips calculating the daily total for staff", async () => {
     });
     const context = {
         document: {
-            body: { dataset: { serviceType: "" } },
+            body: {
+                dataset: { serviceType: "" },
+                addEventListener() {}
+            },
             getElementById: element,
             addEventListener() {},
             visibilityState: "visible"
@@ -345,7 +348,9 @@ test("gestionale skips calculating the daily total for staff", async () => {
             authReady: Promise.resolve(true),
             currentAccount: { admin: false, staff: true },
             orderCard: {
-                bindReprints() {},
+                bindReprints() {
+                    return { refresh() {}, isOpen() { return false; } };
+                },
                 bindDateFilter() {},
                 currentServiceDate() { return "2026-11-24"; },
                 createExpansionState() {

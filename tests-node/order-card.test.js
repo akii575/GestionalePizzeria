@@ -254,17 +254,42 @@ test("identical product rows group by product, extras, exclusions and notes", ()
     assert.doesNotMatch(html, /ingredienti/i);
 });
 
-test("only one compact row is expanded and its state survives rerendering", () => {
+test("compact rows open details as dialogs instead of expanding in the list", () => {
     const expansionState = orderCard.createExpansionState();
     const first = { tipo: "tavolo", tavoloOCliente: "Tavolo 1" };
     const second = { tipo: "tavolo", tavoloOCliente: "Tavolo 2", numero: 9 };
 
     expansionState.toggle(8);
-    assert.match(render(first, { expansionState }), /aria-expanded="true"/);
+    const firstMarkup = render(first, { expansionState });
     expansionState.toggle(9);
-    assert.match(render(first, { expansionState }), /aria-expanded="false"/);
-    assert.match(render(second, { expansionState }), /aria-expanded="true"/);
-    assert.match(render(second, { expansionState }), /class="order-card__expanded"[^>]*>/);
+    const secondMarkup = render(second, { expansionState });
+
+    for (const html of [firstMarkup, secondMarkup]) {
+        assert.match(html, /class="order-card__toggle"[^>]*aria-expanded="false" aria-haspopup="dialog"/);
+        assert.match(html, /class="order-card__expanded"[^>]* hidden>/);
+        assert.doesNotMatch(html, /order-card--expanded/);
+    }
+});
+
+test("the order detail dialog is modal, dismissible, responsive, and freezes page scrolling", () => {
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
+        "utf8"
+    );
+    const source = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "order-card.js"),
+        "utf8"
+    );
+
+    assert.match(source, /order-detail-dialog__close" type="button" aria-label="Chiudi/);
+    assert.match(source, /orderDialog\.showModal\(\)/);
+    assert.match(source, /event\.target === orderDialog\) orderDialog\.close\(\)/);
+    assert.match(source, /aria-haspopup="dialog"/);
+    assert.match(source, /orderDialog\.addEventListener\("close"/);
+    assert.match(styles, /\.order-detail-open\s*\{\s*overflow:\s*hidden;/);
+    assert.match(styles, /\.order-detail-dialog\s*\{[^}]*width:\s*min\(560px/);
+    assert.match(styles, /@media \(max-width: 680px\)[\s\S]*?\.order-detail-dialog\s*\{[^}]*inset:\s*auto 0 0;[^}]*width:\s*100%;[^}]*max-height:\s*90vh;[^}]*max-height:\s*90dvh;[^}]*border-radius:\s*22px 22px 0 0;/);
+    assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.order-detail-dialog\[open\]\s*\{\s*animation:\s*none;/);
 });
 
 test("staff compact totals stay hidden only on pages that hide the daily total", () => {

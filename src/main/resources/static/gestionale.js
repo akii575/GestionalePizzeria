@@ -13,8 +13,7 @@ const riepilogoTavoli = document.getElementById("riepilogo-tavoli");
 const eliminazioniInCorso = new Set();
 const aggiornamentiTavoloInCorso = new Set();
 const tipoServizio = document.body.dataset.serviceType || "";
-const statoEspansioneOrdini = window.orderCard.createExpansionState();
-window.orderCard.bindReprints(lista, statoEspansioneOrdini);
+const dettagliOrdine = window.orderCard.bindReprints(lista);
 window.orderCard.bindDateFilter(document.getElementById("data"), document.getElementById("apri-data"));
 
 function mostraStato(testo, classe) { statoPagina.textContent = testo; statoPagina.className = classe || ""; }
@@ -54,8 +53,7 @@ function render() {
             canEdit: window.currentAccount?.admin === true || window.currentAccount?.staff === true,
             hideTotalForStaff: true,
             showServiceTypeLabel: !tipoServizio,
-            menu: stato.menu,
-            expansionState: statoEspansioneOrdini
+            menu: stato.menu
     };
     const cards = elenco => elenco.slice()
         .sort((primo, secondo) => Number(secondo.numero) - Number(primo.numero))
@@ -64,12 +62,13 @@ function render() {
         lista.innerHTML = "";
         if (!ordini.length) {
             lista.innerHTML = '<div class="vuoto">Nessun ordine corrisponde ai filtri.</div>';
+            dettagliOrdine.refresh();
             return;
         }
         ordini.slice().sort((primo, secondo) => Number(secondo.numero) - Number(primo.numero)).forEach(ordine => {
             lista.insertAdjacentHTML("beforeend", window.orderCard.render(ordine, opzioniCard));
         });
-        lista.querySelectorAll("[data-elimina]").forEach(button => button.addEventListener("click", () => eliminaOrdine(button.dataset.elimina)));
+        dettagliOrdine.refresh();
         return;
     }
     if (paginaTavoli) {
@@ -83,7 +82,7 @@ function render() {
                     : '<div class="vuoto">Nessun tavolo pagato corrisponde ai filtri.</div>'}</div>
             </details>`;
     }
-    lista.querySelectorAll("[data-elimina]").forEach(button => button.addEventListener("click", () => eliminaOrdine(button.dataset.elimina)));
+    dettagliOrdine.refresh();
 }
 function toastAnnullaChiusura(ordine) {
     document.querySelector(".toast")?.remove();
@@ -136,6 +135,7 @@ async function aggiornaStatoTavolo(numero, tavoloChiuso, button = null) {
 async function eliminaOrdine(numero) {
     const id = String(numero);
     if (eliminazioniInCorso.has(id) || !window.confirm(`Eliminare l'ordine #${numero}?`)) return;
+    const eliminatoDalDettaglio = dettagliOrdine.isOpen(id);
     eliminazioniInCorso.add(id);
     try {
         const risposta = await fetch(`/api/ordini/${id}`, { method: "DELETE" });
@@ -145,7 +145,7 @@ async function eliminaOrdine(numero) {
         }
         stato.ordini = stato.ordini.filter(ordine => String(ordine.numero) !== id);
         render();
-        if (window.themeToast) window.themeToast(`Ordine #${numero} eliminato`);
+        if (!eliminatoDalDettaglio && window.themeToast) window.themeToast(`Ordine #${numero} eliminato`);
         await caricaOrdini();
     } catch (errore) {
         mostraStato(errore.message, "errore");
@@ -205,14 +205,20 @@ function configuraAggiornamento() {
 }
 document.getElementById("aggiorna").addEventListener("click", caricaOrdini);
 document.getElementById("filtro").addEventListener("input", render);
-lista.addEventListener("click", event => {
+document.body.addEventListener("click", event => {
     const button = event.target.closest("[data-tavolo-chiuso]");
-    if (!button || !lista.contains(button)) return;
-    void aggiornaStatoTavolo(
-        button.dataset.numero,
-        button.dataset.tavoloChiuso === "true",
-        button
-    );
+    if (button && (lista.contains(button) || dettagliOrdine.dialog.contains(button))) {
+        void aggiornaStatoTavolo(
+            button.dataset.numero,
+            button.dataset.tavoloChiuso === "true",
+            button
+        );
+        return;
+    }
+    const deleteButton = event.target.closest("[data-elimina]");
+    if (deleteButton && (lista.contains(deleteButton) || dettagliOrdine.dialog.contains(deleteButton))) {
+        void eliminaOrdine(deleteButton.dataset.elimina);
+    }
 });
 document.getElementById("data").addEventListener("change", caricaOrdini);
 document.addEventListener("civico7:online", () => {
@@ -223,7 +229,7 @@ document.addEventListener("visibilitychange", () => {
     configuraAggiornamento();
 });
 if (window.paymentUI) {
-    window.paymentUI.bind(lista, {
+    window.paymentUI.bind(document.body, {
         canEdit: () => window.currentAccount?.admin === true || window.currentAccount?.staff === true,
         onUpdated: ordine => {
             const esistente = stato.ordini.find(elemento => String(elemento.numero) === String(ordine.numero));
