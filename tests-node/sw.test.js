@@ -21,7 +21,8 @@ function createServiceWorker({
     setTimer,
     clearTimer,
     cachePut,
-    onWaitUntil
+    onWaitUntil,
+    beforeCacheOpen
 } = {}) {
     const listeners = new Map();
     const waitUntilPromises = [];
@@ -64,7 +65,10 @@ function createServiceWorker({
         URL,
         Response,
         caches: {
-            open: async () => cache,
+            open: async () => {
+                if (beforeCacheOpen) await beforeCacheOpen();
+                return cache;
+            },
             keys: async () => [],
             delete: async () => true
         },
@@ -183,22 +187,42 @@ test("activate enables navigation preload when supported", async () => {
     assert.equal(worker.navigationPreloadEnabled, 1);
 });
 
-test("cached pages respond before revalidation and are refreshed inside waitUntil", async () => {
+test("network responses replace cached pages and refresh the cache", async () => {
     const cached = pageResponse("cached");
     const refreshed = pageResponse("refreshed");
-    const preload = deferred();
     const worker = createServiceWorker({ cachedResponse: cached });
     const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
-    const responsePromise = worker.dispatchFetch(request, preload.promise);
+    const responsePromise = worker.dispatchFetch(request, Promise.resolve(refreshed));
 
-    assert.equal(await responsePromise, cached);
-    assert.equal(worker.cacheOperations.length, 0);
-
-    preload.resolve(refreshed);
+    assert.equal(await responsePromise, refreshed);
     await Promise.all(worker.waitUntilPromises);
     assert.equal(worker.cacheOperations[0].type, "put");
     assert.equal(worker.cacheOperations[0].request, request);
     assert.equal(worker.cacheValue.body, "refreshed");
+});
+
+test("network pages are copied before the browser reads their body", async () => {
+    let bodyUsed = false;
+    const networkResponse = {
+        body: "network",
+        status: 200,
+        redirected: false,
+        url: "https://civico7.example/storico.html",
+        clone() {
+            if (bodyUsed) throw new TypeError("Response body is already used");
+            return pageResponse("network");
+        }
+    };
+    const worker = createServiceWorker({
+        beforeCacheOpen: () => new Promise(resolve => setImmediate(resolve))
+    });
+    const request = { method: "GET", url: "https://civico7.example/storico.html", mode: "navigate" };
+    const responsePromise = worker.dispatchFetch(request, Promise.resolve(networkResponse));
+
+    assert.equal(await responsePromise, networkResponse);
+    bodyUsed = true;
+    await Promise.all(worker.waitUntilPromises);
+    assert.equal(worker.cacheValue.body, "network");
 });
 
 test("uncached navigation uses preload or a bare fetch and cache writes do not delay its response", async () => {
@@ -240,13 +264,101 @@ test("a redirect to login removes the cached page", async () => {
     });
     const responsePromise = worker.dispatchFetch(request, Promise.resolve(loginRedirect));
 
-    assert.equal((await responsePromise).body, "cached");
+    assert.equal(await responsePromise, loginRedirect);
     await Promise.all(worker.waitUntilPromises);
     assert.deepEqual(worker.cacheOperations.map(operation => operation.type), ["delete"]);
     assert.equal(worker.cacheValue, null);
 });
 
-test("uncached navigation falls back to the offline page after 2.5 seconds", async () => {
+test("server errors use the cached page without caching the error response", async () => {
+    const cached = pageResponse("cached");
+    const serverError = pageResponse("server error", { status: 503 });
+    const worker = createServiceWorker({ cachedResponse: cached });
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+
+    assert.equal(await worker.dispatchFetch(request, Promise.resolve(serverError)), cached);
+    await Promise.all(worker.waitUntilPromises);
+    assert.deepEqual(worker.cacheOperations, []);
+});
+
+test("redirected pages are not cached", async () => {
+    const redirect = pageResponse("redirect", {
+        redirected: true,
+        url: "https://civico7.example/redirected.html"
+    });
+    const worker = createServiceWorker();
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+
+    assert.equal(await worker.dispatchFetch(request, Promise.resolve(redirect)), redirect);
+    await Promise.all(worker.waitUntilPromises);
+    assert.deepEqual(worker.cacheOperations, []);
+});
+
+test("cached pages are used when navigation has no response after four seconds", async () => {
+    const timers = [];
+    const cached = pageResponse("cached");
+    const worker = createServiceWorker({
+        cachedResponse: cached,
+        setTimer(callback, delay) {
+            const timer = { callback, delay };
+            timers.push(timer);
+            return timer;
+        },
+        clearTimer() {}
+    });
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+    const responsePromise = worker.dispatchFetch(request, new Promise(() => {}));
+
+    await new Promise(resolve => setImmediate(resolve));
+    const timeout = timers.find(timer => timer.delay > 0 && timer.delay <= 4000);
+    assert.ok(timeout);
+    timeout.callback();
+    assert.equal(await responsePromise, cached);
+});
+
+test("uncached navigation waits for a network response that takes three seconds", async () => {
+    const preload = deferred();
+    const worker = createServiceWorker();
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+    const responsePromise = worker.dispatchFetch(request, preload.promise);
+
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    const networkResponse = pageResponse("network");
+    preload.resolve(networkResponse);
+
+    assert.equal(await responsePromise, networkResponse);
+    await Promise.all(worker.waitUntilPromises);
+});
+
+test("failed navigation uses a cached page", async () => {
+    const cached = pageResponse("cached");
+    const worker = createServiceWorker({
+        cachedResponse: cached,
+        fetchImpl: async () => {
+            throw new Error("network unavailable");
+        }
+    });
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+
+    assert.equal(await worker.dispatchFetch(request), cached);
+    await Promise.all(worker.waitUntilPromises);
+});
+
+test("failed navigation without a cache returns the offline page", async () => {
+    const worker = createServiceWorker({
+        fetchImpl: async () => {
+            throw new Error("network unavailable");
+        }
+    });
+    const request = { method: "GET", url: "https://civico7.example/tavoli.html", mode: "navigate" };
+
+    const response = await worker.dispatchFetch(request);
+    assert.equal(response.status, 503);
+    assert.match(await response.text(), /Nessuna connessione/);
+    await Promise.all(worker.waitUntilPromises);
+});
+
+test("uncached navigation returns the offline page after fifteen seconds", async () => {
     const timers = [];
     const worker = createServiceWorker({
         setTimer(callback, delay) {
@@ -260,7 +372,7 @@ test("uncached navigation falls back to the offline page after 2.5 seconds", asy
     const responsePromise = worker.dispatchFetch(request, new Promise(() => {}));
 
     await new Promise(resolve => setImmediate(resolve));
-    const timeout = timers.find(timer => timer.delay === 2500);
+    const timeout = timers.find(timer => timer.delay > 0 && timer.delay <= 15000);
     assert.ok(timeout);
     timeout.callback();
     const response = await responsePromise;

@@ -67,12 +67,16 @@ async function updatePageCache(request, response) {
     }
     if (response.status !== 200 || response.redirected) return;
 
+    // Copia subito: il browser legge la risposta mentre la cache si apre.
+    const copy = response.clone();
     const cache = await caches.open(CACHE_NAME);
-    await cache.put(request, response.clone());
+    await cache.put(request, copy);
 }
 
 function handlePageRequest(event) {
     const request = event.request;
+    const requestStartedAt = Date.now();
+    const cachedPromise = cachedResponse(request);
     const networkPromise = pageNetworkResponse(event, request);
     const cacheUpdatePromise = networkPromise
         .then(response => updatePageCache(request, response))
@@ -81,20 +85,39 @@ function handlePageRequest(event) {
         });
     event.waitUntil(cacheUpdatePromise);
 
-    return cachedResponse(request).then(async cached => {
-        if (cached) return cached;
+    const networkResultPromise = networkPromise.then(
+        response => ({ type: "response", response }),
+        error => ({ type: "error", error })
+    );
 
+    return Promise.race([
+        networkResultPromise,
+        cachedPromise.then(cached => ({ type: "cache", cached }))
+    ]).then(async firstResult => {
+        if (firstResult.type === "response") {
+            if (firstResult.response.status >= 500) {
+                return (await cachedPromise) || firstResult.response;
+            }
+            return firstResult.response;
+        }
+        if (firstResult.type === "error") {
+            return (await cachedPromise) || offlinePage();
+        }
+
+        const cached = firstResult.cached;
+        const timeoutMs = cached ? 4000 : 15000;
+        const remainingTimeoutMs = Math.max(0, timeoutMs - (Date.now() - requestStartedAt));
         let timeoutId;
         const timeoutPromise = new Promise(resolve => {
-            timeoutId = setTimeout(() => resolve(null), 2500);
+            timeoutId = setTimeout(() => resolve({ type: "timeout" }), remainingTimeoutMs);
         });
         try {
-            const response = await Promise.race([networkPromise, timeoutPromise]);
-            if (!response) return offlinePage();
-            if (response.status >= 500) return (await cachedResponse(request)) || response;
-            return response;
-        } catch {
-            return (await cachedResponse(request)) || offlinePage();
+            const result = await Promise.race([networkResultPromise, timeoutPromise]);
+            if (result.type === "timeout" || result.type === "error") {
+                return cached || offlinePage();
+            }
+            if (result.response.status >= 500) return cached || result.response;
+            return result.response;
         } finally {
             clearTimeout(timeoutId);
         }
