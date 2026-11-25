@@ -67,7 +67,7 @@
 .consegne-fascia__pagamenti {
     display: grid;
     grid-column: 1 / -1;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 210px));
     gap: 8px;
 }
 
@@ -111,9 +111,17 @@
     color: #8a4600;
 }
 
-.consegne-fascia__attive {
+html body.app-shell main.dashboard .lista-consegne > .consegne-fascia {
+    grid-column: 1 / -1;
+    align-self: start;
+}
+
+.consegne-fascia__attive,
+.consegne-completate__lista {
     display: grid;
     min-width: 0;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+    align-items: stretch;
     gap: 8px;
 }
 
@@ -134,8 +142,6 @@
 }
 
 .consegne-completate__lista {
-    display: grid;
-    gap: 8px;
     padding-top: 8px;
 }
 
