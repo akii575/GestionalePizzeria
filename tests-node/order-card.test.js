@@ -271,6 +271,179 @@ test("compact rows open details as dialogs instead of expanding in the list", ()
     }
 });
 
+test("closing and reopening an order keeps the card detail intact and complete", () => {
+    class FakeElement {
+        constructor() {
+            this.listeners = new Map();
+            this.attributes = new Map();
+            this.children = [];
+            this.parentNode = null;
+            this.classList = {
+                add() {},
+                remove() {}
+            };
+        }
+
+        addEventListener(type, listener) {
+            this.listeners.set(type, listener);
+        }
+
+        dispatch(type, event = {}) {
+            this.listeners.get(type)?.({ target: this, ...event });
+        }
+
+        append(element) {
+            element.parentNode?.removeChild?.(element);
+            element.parentNode = this;
+            this.children.push(element);
+        }
+
+        replaceChildren(...elements) {
+            for (const child of this.children) child.parentNode = null;
+            this.children = [];
+            elements.forEach(element => this.append(element));
+        }
+
+        removeChild(element) {
+            this.children = this.children.filter(child => child !== element);
+            element.parentNode = null;
+        }
+
+        setAttribute(name, value) {
+            this.attributes.set(name, String(value));
+        }
+
+        getAttribute(name) {
+            return this.attributes.get(name) ?? null;
+        }
+
+        removeAttribute(name) {
+            this.attributes.delete(name);
+        }
+    }
+
+    class FakeExpanded extends FakeElement {
+        constructor(markup) {
+            super();
+            this.innerHTML = markup;
+            this.id = "order-detail-8";
+            this.actionButtons = new FakeElement();
+        }
+
+        cloneNode() {
+            const clone = new FakeExpanded(this.innerHTML);
+            clone.id = this.id;
+            return clone;
+        }
+
+        removeAttribute(name) {
+            super.removeAttribute(name);
+            if (name === "id") this.id = "";
+        }
+
+        querySelector(selector) {
+            if (selector === ".order-card__actions") return this.actionButtons;
+            return null;
+        }
+    }
+
+    class FakeDialog extends FakeElement {
+        set innerHTML(markup) {
+            this.markup = markup;
+            if (markup.includes("order-detail-dialog__content")) {
+                this.selectors = new Map([
+                    ["#order-detail-dialog-title", new FakeElement()],
+                    [".order-detail-dialog__content", new FakeElement()],
+                    [".order-detail-dialog__footer", new FakeElement()],
+                    [".order-detail-dialog__close", new FakeElement()]
+                ]);
+            } else {
+                this.selectors = new Map([[".app-ristampa-stato", new FakeElement()]]);
+            }
+        }
+
+        querySelector(selector) {
+            return this.selectors.get(selector) || null;
+        }
+
+        querySelectorAll() {
+            return [];
+        }
+
+        showModal() {
+            this.open = true;
+        }
+
+        close() {
+            this.open = false;
+            this.dispatch("close");
+        }
+    }
+
+    const sourceMarkup = render({
+        numero: 8,
+        righe: [{ prodotto: "Capricciosa", totale: 12 }]
+    });
+    const expanded = new FakeExpanded(sourceMarkup);
+    const article = new FakeElement();
+    article.dataset = { orderNumber: "8" };
+    const toggle = new FakeElement();
+    toggle.dataset = { orderNumber: "8" };
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.closest = selector => selector === ".order-card__toggle" ? toggle : selector === ".order-card" ? article : null;
+    toggle.focus = () => {};
+    toggle.isConnected = true;
+    article.querySelector = selector => {
+        if (selector === ".order-card__expanded") return expanded.parentNode === article ? expanded : null;
+        if (selector === ".order-card__toggle") return toggle;
+        if (selector === ".order-card__reference") return { textContent: "Tavolo 1" };
+        return null;
+    };
+    expanded.parentNode = article;
+
+    const container = new FakeElement();
+    container.querySelectorAll = () => [article];
+    container.contains = element => element === toggle;
+    const body = new FakeElement();
+    body.append = () => {};
+    const previousDocument = global.document;
+    const previousWindow = global.window;
+    global.document = {
+        body,
+        activeElement: null,
+        createElement: () => new FakeDialog()
+    };
+    global.window = {};
+
+    try {
+        const controller = orderCard.bindReprints(container);
+        const clickToggle = () => container.dispatch("click", {
+            target: { closest: selector => selector === ".order-card__toggle" ? toggle : null }
+        });
+        const detailDialog = controller.dialog;
+        const detailContent = detailDialog.querySelector(".order-detail-dialog__content");
+
+        clickToggle();
+        assert.equal(detailDialog.open, true);
+        assert.equal(article.querySelector(".order-card__expanded"), expanded);
+        assert.match(detailContent.children[0].innerHTML, /Capricciosa/);
+        assert.match(detailContent.children[0].innerHTML, /data-elimina="8"/);
+        assert.equal(detailContent.children[0].id, "");
+        detailDialog.querySelector(".order-detail-dialog__close").dispatch("click");
+
+        clickToggle();
+        assert.equal(detailDialog.open, true);
+        assert.equal(article.querySelector(".order-card__expanded"), expanded);
+        assert.match(detailContent.children[0].innerHTML, /Capricciosa/);
+        assert.match(detailContent.children[0].innerHTML, /data-elimina="8"/);
+    } finally {
+        if (previousDocument === undefined) delete global.document;
+        else global.document = previousDocument;
+        if (previousWindow === undefined) delete global.window;
+        else global.window = previousWindow;
+    }
+});
+
 test("the order detail dialog is modal, dismissible, responsive, and freezes page scrolling", () => {
     const styles = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),

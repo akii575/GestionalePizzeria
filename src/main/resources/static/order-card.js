@@ -407,13 +407,15 @@ const orderCard = (() => {
             return [...container.querySelectorAll(".order-card")]
                 .find(card => card.dataset.orderNumber === String(number)) || null;
         }
-        function moveDetailParts(expanded) {
-            expanded.hidden = false;
-            orderDialogContent.replaceChildren(expanded);
+        function renderDetailParts(expanded) {
+            const detailCopy = expanded.cloneNode(true);
+            detailCopy.hidden = false;
+            detailCopy.removeAttribute("id");
+            orderDialogContent.replaceChildren(detailCopy);
             orderDialogFooter.replaceChildren();
-            const deliveryStatus = expanded.querySelector(".order-card__delivery-detail-status");
-            const deliveryUndo = expanded.querySelector(".order-card__delivery-undo");
-            const actions = expanded.querySelector(".order-card__actions");
+            const deliveryStatus = detailCopy.querySelector(".order-card__delivery-detail-status");
+            const deliveryUndo = detailCopy.querySelector(".order-card__delivery-undo");
+            const actions = detailCopy.querySelector(".order-card__actions");
             for (const action of [deliveryStatus, deliveryUndo, actions]) {
                 if (action) orderDialogFooter.append(action);
             }
@@ -460,7 +462,7 @@ const orderCard = (() => {
             orderDialogTitle.textContent = article.querySelector(".order-card__reference")?.textContent
                 || `Ordine #${openOrderNumber}`;
             orderDialogTitle.textContent += ` · #${openOrderNumber}`;
-            moveDetailParts(expanded);
+            renderDetailParts(expanded);
             orderDialogContent.scrollTop = scrollTop;
             restoreDialogFocus(selector);
         }
@@ -494,7 +496,7 @@ const orderCard = (() => {
             openerButton.setAttribute("aria-expanded", "true");
             const reference = article.querySelector(".order-card__reference")?.textContent || "Ordine";
             orderDialogTitle.textContent = `${reference} · #${openOrderNumber}`;
-            moveDetailParts(expanded);
+            renderDetailParts(expanded);
             document.body.classList.add("order-detail-open");
             orderDialog.showModal();
         });
