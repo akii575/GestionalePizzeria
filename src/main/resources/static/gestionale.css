@@ -764,7 +764,7 @@ html body.app-shell main.dashboard .order-card__actions {
     html body.app-shell main.dashboard {
         width: 100%;
         margin-left: 0;
-        padding: 0 16px 24px;
+        padding: 0 16px calc(var(--app-mobile-nav-height) + 16px);
     }
 
     html body.app-shell main.dashboard .filtri {

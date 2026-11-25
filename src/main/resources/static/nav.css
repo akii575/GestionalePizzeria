@@ -751,7 +751,9 @@ body.app-shell nav.app-bottom-nav {
     body.app-shell nav.app-more-links {
         display: grid;
         width: 100%;
+        grid-template-columns: minmax(0, 1fr);
         align-items: stretch;
+        justify-content: stretch;
         gap: 2px;
         margin: 4px 0 12px;
         padding: 0;
@@ -1877,6 +1879,12 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
     html body.app-shell main.dashboard:not(.menu-dashboard) .lista-consegne {
         gap: 8px;
         margin-top: 0;
+    }
+}
+
+@media (max-width: 767px) and (max-height: 560px), (max-width: 767px) and (orientation: landscape) {
+    html body.app-shell main.dashboard:not(.menu-dashboard):not(.storico-dashboard) {
+        padding-bottom: calc(var(--app-mobile-nav-height) + 16px);
     }
 }
 
