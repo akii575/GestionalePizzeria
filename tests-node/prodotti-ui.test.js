@@ -152,6 +152,51 @@ test("editing an order preserves its rows, extras, exclusions, and one-row-per-p
     });
 });
 
+test("editing serializes row and order discounts without trusting computed amounts", () => {
+    const rows = preparaRigheModifica([{
+        prodotto: "Margherita",
+        prezzoBase: 5,
+        totaleLordo: 5,
+        totale: 4,
+        sconto: {
+            tipo: "importo",
+            valore: 1,
+            motivo: "Promozione",
+            importo: 1
+        },
+        extra: [],
+        senza: [],
+        note: []
+    }], [{
+        nome: "Margherita",
+        categoria: "pizze",
+        prezzo: 5,
+        ingredienti: [],
+        ammetteExtra: true
+    }], []);
+    const payload = creaPayloadComanda({
+        tipo: "tavolo",
+        tavoloOCliente: "Tavolo 1",
+        numeroPersone: 1,
+        note: "",
+        sconto: { tipo: "percentuale", valore: 10, motivo: "Cliente abituale", importo: 0.4 },
+        convenzione: null
+    }, rows);
+
+    assert.deepEqual(payload.righe[0].sconto, {
+        tipo: "importo",
+        valore: 1,
+        motivo: "Promozione"
+    });
+    assert.deepEqual(payload.sconto, {
+        tipo: "percentuale",
+        valore: 10,
+        motivo: "Cliente abituale"
+    });
+    assert.equal(Object.hasOwn(payload.righe[0], "totale"), false);
+    assert.equal(Object.hasOwn(payload, "totale"), false);
+});
+
 test("editing preserves an unavailable product so the waiter can remove it", () => {
     const rows = preparaRigheModifica([
         {
@@ -1110,4 +1155,19 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.prezzo-prodotto\s*\{[^}]*font-size:\s*14px;/);
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn \.ingredienti\s*\{[^}]*font-size:\s*11\.5px;[^}]*-webkit-line-clamp:\s*2;/);
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn\.ha-quantita \.ingredienti\s*\{[^}]*padding-right:\s*20px;/);
+});
+
+test("university menu convention is counted before it is selected", () => {
+    const script = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.js"),
+        "utf8"
+    );
+    const start = script.indexOf("function anteprimaTotaliOrdine()");
+    const end = script.indexOf("\nfunction ", start + 1);
+    const preview = script.slice(start, end);
+    const menuCount = preview.indexOf("const menuConvenzione = orderDiscountRules.calculateMenuConvention(menuItems);");
+
+    assert.ok(start >= 0 && menuCount > 0);
+    assert.ok(menuCount < preview.indexOf("if (scontoOrdine)"));
+    assert.match(script, /<p class="convenzione-titolo" id="convenzione-titolo">Convenzione universitaria<\/p>/);
 });

@@ -113,6 +113,14 @@ function receiptAmount(price) {
     return `EUR ${rounded.toFixed(2).replace(".", ",")}`;
 }
 
+function formatDiscountLine(label, amount, width, indent = "") {
+    const formattedAmount = receiptAmount(amount).replace(/^EUR\s+/, "");
+    const value = `${label}  -${formattedAmount}`;
+    return indent
+        ? wrapReceiptPrefix(indent, value, width)
+        : wrapReceiptText(value, width);
+}
+
 function wrapReceiptItemParts(description, price, width) {
     const name = String(description).toLocaleUpperCase("it-IT").trim();
     const amount = receiptAmount(price);
@@ -219,7 +227,8 @@ function receiptRowKey(row) {
             .sort((first, second) => first[0].localeCompare(second[0], "it")),
         senza,
         notes,
-        receiptBasePrice(row)
+        receiptBasePrice(row),
+        row.sconto || null
     ]);
 }
 
@@ -463,6 +472,15 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
                     lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth));
                 }
             }
+            if (row.sconto) {
+                const discountLabel = row.sconto.tipo === "omaggio" ? "OMAGGIO" : "SCONTO";
+                lines.push(...formatDiscountLine(
+                    `${discountLabel} ${row.sconto.motivo || ""}`,
+                    Number(row.sconto.importo || 0) * quantity,
+                    receiptWidth,
+                    "  "
+                ));
+            }
         }
         lines.push(divider);
     }
@@ -476,6 +494,23 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         }
         if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
             lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
+        }
+        if (options.tipoStampa !== "aggiunta" && Number(order.sconto?.importo) > 0) {
+            lines.push(...formatDiscountLine(
+                `SCONTO ${order.sconto.motivo || ""}`,
+                Number(order.sconto.importo),
+                receiptWidth
+            ));
+        }
+        if (options.tipoStampa !== "aggiunta" && order.convenzione) {
+            const conventionLabel = order.convenzione.tipo === "menu"
+                ? `CONVENZIONE UNIV. ${Number(order.convenzione.menu) || 0} MENU 6 EURO`
+                : "CONVENZIONE UNIV. 10%";
+            lines.push(...formatDiscountLine(
+                conventionLabel,
+                Number(order.convenzione.importo) || 0,
+                receiptWidth
+            ));
         }
     }
     if (receiptOptions.profile === "sala" && options.tipoStampa !== "aggiunta") {

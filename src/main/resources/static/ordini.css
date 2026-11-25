@@ -3546,3 +3546,179 @@ body {
         -webkit-line-clamp: 2;
     }
 }
+
+.riepilogo-prezzo {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+}
+
+.riepilogo-prezzo del,
+.conferma-riga del {
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.riepilogo-sconto-dettaglio,
+.riepilogo-finanziario__riga {
+    color: var(--theme-muted);
+    font-size: 12px;
+}
+
+.riepilogo-item__descrizione .riepilogo-sconto-apri {
+    justify-self: start;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--theme-line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--theme-blue);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.riepilogo-sconti {
+    display: grid;
+    gap: 10px;
+    padding: 10px 0;
+    border-top: 1px solid var(--theme-line);
+}
+
+.riepilogo-sconti-controlli {
+    display: grid;
+    gap: 8px;
+}
+
+.sconto-ordine-apri,
+.convenzione-scelta {
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid var(--theme-line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--theme-ink);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.convenzione-titolo {
+    margin: 4px 0 -2px;
+    color: #4b5563;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.convenzione-scelte {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.sconto-ordine-apri.is-active,
+.convenzione-scelta.is-active {
+    border-color: var(--theme-blue);
+    background: #eaf3ff;
+    color: var(--theme-blue);
+}
+
+.convenzione-anteprima {
+    margin: -2px 0 0;
+    color: var(--theme-muted);
+    font-size: 12px;
+}
+
+.riepilogo-finanziario {
+    display: grid;
+    gap: 5px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--theme-line);
+}
+
+.riepilogo-finanziario__riga {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.riepilogo-finanziario__riga strong {
+    flex: 0 0 auto;
+    color: var(--theme-ink);
+    font-size: 12px;
+}
+
+.riepilogo-finanziario__riga:last-child {
+    padding-top: 5px;
+    border-top: 1px solid var(--theme-line);
+    color: var(--theme-ink);
+    font-weight: 700;
+}
+
+.conferma-sconti {
+    padding: 10px 0;
+}
+
+.conferma-sconto-riga {
+    color: var(--theme-red);
+}
+
+.sconto-contenuto {
+    display: grid;
+    gap: 10px;
+}
+
+.sconto-contenuto h2,
+.sconto-contenuto p {
+    margin: 0;
+}
+
+.sconto-contenuto label {
+    display: grid;
+    gap: 5px;
+    color: var(--theme-muted);
+    font-size: 14px;
+}
+
+.sconto-contenuto input,
+.sconto-contenuto select {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid var(--theme-line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--theme-ink);
+    font: inherit;
+}
+
+.sconto-contenuto .conferma-azioni {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sconto-errore {
+    color: var(--theme-red);
+    font-size: 13px;
+}
+
+@media (max-width: 767px) {
+    .riepilogo-sconti {
+        gap: 8px;
+    }
+
+    .riepilogo-item__descrizione .riepilogo-sconto-apri {
+        min-height: 36px;
+    }
+
+    .conferma-sconti .riepilogo-finanziario__riga {
+        font-size: 13px;
+    }
+
+    .sconto-modale .conferma-contenuto {
+        width: min(100% - 24px, 440px);
+        padding: 20px;
+    }
+}

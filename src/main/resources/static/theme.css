@@ -885,3 +885,49 @@ html body.app-shell main.dashboard .order-card__compact-state--paid-table {
     .order-card__contacts { margin-inline: 8px; }
     .order-card__delivery-contact { gap: 5px; }
 }
+
+.order-card__product-price {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+    white-space: normal;
+}
+
+.order-card__product-price del {
+    color: var(--theme-muted);
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.order-card__product-price strong {
+    font-size: inherit;
+}
+
+.order-card__discount {
+    color: var(--theme-red);
+    font-size: 11px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.order-card__discount-summary,
+.order-card__net-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    padding: 7px 0;
+    border-top: 1px solid #eef0f2;
+    color: var(--theme-muted);
+    font-size: 12px;
+}
+
+.order-card__discount-summary strong {
+    flex: 0 0 auto;
+    color: var(--theme-red);
+}
+
+.order-card__net-total {
+    color: var(--theme-ink);
+    font-weight: 700;
+}

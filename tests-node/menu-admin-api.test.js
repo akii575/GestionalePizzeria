@@ -181,6 +181,7 @@ test("menu admin API allows only admins and returns archived records", async () 
     assert.equal(adminResponse.statusCode, 200);
     assert.equal(adminResponse.body.categorie.length, 3);
     assert.equal(adminResponse.body.prodotti.length, 2);
+    assert.equal(adminResponse.body.prodotti.find(product => product.id === "margherita").convenzione, "pizza");
     assert.equal(adminResponse.body.extra.length, 2);
     assert.equal(adminResponse.body.versione, 3);
     assert.equal(adminResponse.headers["Cache-Control"], "no-store");
@@ -360,12 +361,14 @@ test("menu admin API creates and updates records while incrementing the menu ver
             categoriaId: categoryId,
             prezzo: 1.2,
             ingredienti: ["Fredda"],
-            disponibile: false
+            disponibile: false,
+            convenzione: "bibita"
         }
     });
     assert.equal(createdProduct.body.versione, 6);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).disponibile, false);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).componibile, false);
+    assert.equal(db.get("menuProdotti", createdProduct.body.id).convenzione, "bibita");
 
     const updatedProduct = await invoke("PUT", {
         token: "admin",
@@ -375,12 +378,29 @@ test("menu admin API creates and updates records while incrementing the menu ver
             nome: "Acqua frizzante",
             categoriaId: categoryId,
             prezzo: 1.5,
-            ingredienti: []
+            ingredienti: [],
+            convenzione: "pizza"
         }
     });
     assert.equal(updatedProduct.body.versione, 7);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).prezzo, 1.5);
     assert.equal(db.get("menuProdotti", createdProduct.body.id).disponibile, false);
+    assert.equal(db.get("menuProdotti", createdProduct.body.id).convenzione, "pizza");
+
+    const invalidConvention = await invoke("PUT", {
+        token: "admin",
+        body: {
+            risorsa: "prodotti",
+            id: createdProduct.body.id,
+            nome: "Acqua frizzante",
+            categoriaId: categoryId,
+            prezzo: 1.5,
+            ingredienti: [],
+            convenzione: "dolce"
+        }
+    });
+    assert.equal(invalidConvention.statusCode, 400);
+    assert.equal(db.get("metadata", "menuVersion").versione, 7);
 });
 
 test("menu admin API saves the composable product flag only for extra-enabled categories", async () => {

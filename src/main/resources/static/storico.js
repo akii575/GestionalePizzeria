@@ -77,8 +77,10 @@ const storicoPage = (() => {
             days.push({
                 data: date,
                 incasso: Number(saved?.incasso) || 0,
+                sconti: Number(saved?.sconti) || 0,
                 comande: Number(saved?.comande) || 0,
                 coperti: Number(saved?.coperti) || 0,
+                convenzioni: Number(saved?.convenzioni) || 0,
                 perTipo,
                 inCorso: date === currentServiceDay
             });
@@ -137,6 +139,8 @@ const storicoPage = (() => {
             document.getElementById("storico-comande").textContent = integer.format(data.totali.comande);
             document.getElementById("storico-scontrino").textContent = money.format(data.totali.scontrinoMedio);
             document.getElementById("storico-coperti").textContent = integer.format(data.totali.coperti);
+            document.getElementById("storico-sconti").textContent = money.format(data.totali.sconti);
+            document.getElementById("storico-convenzioni").textContent = integer.format(data.totali.convenzioni);
 
             const previousHasData = Number(data.periodoPrecedente.comande) > 0;
             const previous = Number(data.periodoPrecedente.incasso) || 0;
@@ -246,7 +250,13 @@ const storicoPage = (() => {
             const covers = document.createElement("p");
             covers.className = "storico-dialog__coperti";
             covers.textContent = `Coperti: ${integer.format(giornata.coperti)}`;
-            content.append(table, covers);
+            const discounts = document.createElement("p");
+            discounts.className = "storico-dialog__coperti";
+            discounts.textContent = `Sconti concessi: ${money.format(giornata.sconti)}`;
+            const conventions = document.createElement("p");
+            conventions.className = "storico-dialog__coperti";
+            conventions.textContent = `Ordini convenzione: ${integer.format(giornata.convenzioni)}`;
+            content.append(table, covers, discounts, conventions);
             dialog.showModal();
         }
 

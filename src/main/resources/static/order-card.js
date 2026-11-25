@@ -202,11 +202,19 @@ const orderCard = (() => {
             const senza = (Array.isArray(row.senza) ? row.senza : [])
                 .filter(ingrediente => typeof ingrediente === "string" && ingrediente.trim());
             const price = Number(row.totale ?? row.prezzoBase ?? 0);
-            const identity = JSON.stringify([row.prodotto, extraIdentity(row), senza.slice().sort(), rowNotes(row)]);
+            const grossPrice = Number(row.totaleLordo ?? row.totale ?? row.prezzoBase ?? 0);
+            const identity = JSON.stringify([
+                row.prodotto,
+                extraIdentity(row),
+                senza.slice().sort(),
+                rowNotes(row),
+                row.sconto || null
+            ]);
             const group = groups.get(identity);
             if (group) {
                 group.quantity += 1;
                 group.total += price;
+                group.grossTotal += grossPrice;
             } else {
                 groups.set(identity, {
                     row,
@@ -214,7 +222,8 @@ const orderCard = (() => {
                     senza,
                     notes: rowNotes(row),
                     quantity: 1,
-                    total: price
+                    total: price,
+                    grossTotal: grossPrice
                 });
             }
         });
@@ -222,7 +231,7 @@ const orderCard = (() => {
     }
 
     function renderProducts(rows) {
-        return groupProducts(rows).map(({ row, extras, senza, notes, quantity, total }) => {
+        return groupProducts(rows).map(({ row, extras, senza, notes, quantity, total, grossTotal }) => {
             const senzaMarkup = senza.length
                 ? `<small class="order-card__without-ingredients">senza ${escapeHtml(senza.join(", "))}</small>`
                 : "";
@@ -232,8 +241,27 @@ const orderCard = (() => {
             const noteMarkup = notes.map(note => (
                 `<small class="order-card__product-note">${escapeHtml(note)}</small>`
             )).join("");
-            return `<li><div class="order-card__product-row"><span class="order-card__product-quantity">${quantity}×</span><div class="order-card__product-name"><strong>${escapeHtml(row.prodotto)}</strong>${senzaMarkup}${extraMarkup}${noteMarkup}</div><span class="order-card__product-price">${euro.format(total)}</span></div></li>`;
+            const discount = row.sconto && Number(row.sconto.importo) > 0
+                ? `<small class="order-card__discount">${row.sconto.tipo === "omaggio" ? "OMAGGIO" : "SCONTO"} ${escapeHtml(row.sconto.motivo || "")} · −${euro.format(Number(row.sconto.importo) * quantity)}</small>`
+                : "";
+            const price = discount
+                ? `<del>${euro.format(grossTotal)}</del><strong>${euro.format(total)}</strong>`
+                : euro.format(total);
+            return `<li><div class="order-card__product-row"><span class="order-card__product-quantity">${quantity}×</span><div class="order-card__product-name"><strong>${escapeHtml(row.prodotto)}</strong>${senzaMarkup}${extraMarkup}${noteMarkup}${discount}</div><span class="order-card__product-price">${price}</span></div></li>`;
         }).join("");
+    }
+
+    function renderDiscountSummary(order) {
+        const orderDiscount = Number(order.sconto?.importo) > 0
+            ? `<p class="order-card__discount-summary"><span>Sconto sul totale · ${escapeHtml(order.sconto.motivo || "")}</span><strong>−${euro.format(Number(order.sconto.importo))}</strong></p>`
+            : "";
+        const convention = Number(order.convenzione?.importo) >= 0
+                && order.convenzione
+            ? `<p class="order-card__discount-summary"><span>${order.convenzione.tipo === "menu"
+                ? `Convenzione universitaria · ${Number(order.convenzione.menu) || 0} menu 6 euro`
+                : "Convenzione universitaria · 10%"}</span><strong>−${euro.format(Number(order.convenzione.importo) || 0)}</strong></p>`
+            : "";
+        return `${orderDiscount}${convention}<p class="order-card__net-total"><span>Totale netto</span><strong>${euro.format(Number(order.totale || 0))}</strong></p>`;
     }
 
     function renderPayment(order, canEdit, type) {
@@ -600,6 +628,7 @@ const orderCard = (() => {
                         <ul class="order-card__products">${renderProducts(order.righe)}</ul>
                         ${coverCharge}
                         ${deliveryFee}
+                        ${renderDiscountSummary(order)}
                         ${note}
                     </section>
                     ${renderActions(order, type, canEdit)}

@@ -177,6 +177,25 @@ test("saved product summaries are capped at 300 names", () => {
     assert.equal(saved.prodotti["Prodotto 304"].incasso, 304);
 });
 
+test("saved service-day summaries include discounts and convention orders", () => {
+    const summary = groupOrdersByServiceDay([
+        order(2, "2026-05-10T12:00:00.000Z", "tavolo", 7.5, {
+            righe: [{
+                prodotto: "Pizza",
+                quantita: 1,
+                totale: 4,
+                sconto: { importo: 1 }
+            }],
+            sconto: { importo: 0.5 },
+            convenzione: { tipo: "percentuale", importo: 0.25 }
+        })
+    ]).get("2026-05-10");
+    const saved = finalizeSummary(summary);
+
+    assert.equal(saved.sconti, 1.75);
+    assert.equal(saved.convenzioni, 1);
+});
+
 test("chart preparation fills all selected days with zeros and marks the current day", () => {
     const days = prepareChartData([
         {
@@ -377,11 +396,56 @@ test("history combines saved partials and live orders and computes the preceding
     assert.equal(response.body.serate[0].coperti, 5);
     assert.deepEqual(response.body.totali, {
         incasso: 35.25,
+        sconti: 0,
         comande: 3,
         coperti: 5,
+        convenzioni: 0,
         scontrinoMedio: 11.75
     });
     assert.deepEqual(response.body.periodoPrecedente, { incasso: 20, comande: 2 });
+});
+
+test("history totals row discounts, order discounts, and conventions from saved and live orders", async t => {
+    mockAdmin(t);
+    const db = createDatabase({
+        serate: {
+            "2026-03-10": {
+                parziali: {
+                    morning: {
+                        incasso: 9,
+                        sconti: 1.5,
+                        comande: 1,
+                        coperti: 0,
+                        convenzioni: 1,
+                        perTipo: { banco: { comande: 1, incasso: 9 } }
+                    }
+                }
+            }
+        },
+        orders: {
+            discounted: {
+                ...order(9, "2026-03-10T12:00:00.000Z", "tavolo", 8),
+                righe: [{
+                    prodotto: "Pizza",
+                    totale: 4,
+                    sconto: { tipo: "importo", importo: 1 }
+                }],
+                sconto: { tipo: "percentuale", importo: 0.5 },
+                convenzione: { tipo: "percentuale", importo: 0.25 }
+            }
+        }
+    });
+    t.mock.method(firebaseAdmin, "getFirebaseServices", () => ({ db }));
+    const response = await invoke(apiRoute("storico"), {
+        query: { da: "2026-03-10", a: "2026-03-10" },
+        headers: { "x-test-role": "admin" }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.serate[0].sconti, 3.25);
+    assert.equal(response.body.serate[0].convenzioni, 2);
+    assert.equal(response.body.totali.sconti, 3.25);
+    assert.equal(response.body.totali.convenzioni, 2);
 });
 
 test("history rejects staff and delivery accounts and validates its date range", async t => {
@@ -429,6 +493,8 @@ test("the historical page is admin-only and is served through the protected page
     assert.match(pageSource, /src="\/vendor\/chart\.umd\.js"/);
     assert.match(pageSource, /<h1>Storico delle giornate<\/h1>/);
     assert.match(pageSource, /<h2>Incasso per giornata<\/h2>/);
+    assert.match(pageSource, /<h2>Sconti concessi<\/h2>/);
+    assert.match(pageSource, /<h2>Ordini convenzione<\/h2>/);
     assert.match(pageSource, /Ogni giornata comprende pranzo e cena, dalle 05:00 alle 05:00\./);
     assert.match(pageSource, /Nessuna giornata nel periodo scelto\. Lo storico si riempie dalle prossime chiusure\./);
     assert.match(pageSource, /<h2 id="storico-dettaglio-titolo">Dettaglio giornata<\/h2>/);
