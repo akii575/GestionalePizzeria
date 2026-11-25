@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="it">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+        <meta name="theme-color" content="#1A5EA9" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Civico7" />
+        <title>Storico | CIVICO7</title>
+        <style>html.auth-loading body{visibility:hidden}</style>
+        <script src="/auth-guard.js"></script>
+        <link rel="stylesheet" href="/theme.css" />
+        <link rel="stylesheet" href="/nav.css" />
+        <link rel="stylesheet" href="/storico.css" />
+    </head>
+    <body>
+        <main class="dashboard storico-dashboard">
+            <header class="dashboard-header">
+                <h1>Storico delle giornate</h1>
+            </header>
+            <section class="storico-filters" aria-label="Intervallo storico">
+                <div class="storico-presets" role="group" aria-label="Intervalli predefiniti">
+                    <button type="button" data-days="7">Ultimi 7 giorni</button>
+                    <button type="button" data-days="30" aria-pressed="true">Ultimi 30 giorni</button>
+                    <button type="button" data-days="90">Ultimi 3 mesi</button>
+                </div>
+                <form id="storico-periodo" class="storico-date-range">
+                    <label for="storico-da">Da
+                        <input id="storico-da" name="da" type="date" required />
+                    </label>
+                    <label for="storico-a">A
+                        <input id="storico-a" name="a" type="date" required />
+                    </label>
+                    <button type="submit">Applica</button>
+                </form>
+            </section>
+            <p id="storico-status" class="storico-status" role="status" aria-live="polite"></p>
+            <section id="storico-contenuto" aria-live="polite">
+                <section class="storico-metriche" aria-label="Riepilogo periodo">
+                    <article class="storico-metrica">
+                        <h2>Incasso</h2>
+                        <strong id="storico-incasso">—</strong>
+                        <span id="storico-variazione">vs periodo precedente</span>
+                    </article>
+                    <article class="storico-metrica">
+                        <h2>Comande</h2>
+                        <strong id="storico-comande">—</strong>
+                    </article>
+                    <article class="storico-metrica">
+                        <h2>Scontrino medio</h2>
+                        <strong id="storico-scontrino">—</strong>
+                    </article>
+                    <article class="storico-metrica">
+                        <h2>Coperti</h2>
+                        <strong id="storico-coperti">—</strong>
+                    </article>
+                </section>
+                <section id="storico-vuoto" class="storico-empty" hidden>
+                    Nessuna giornata nel periodo scelto. Lo storico si riempie dalle prossime chiusure.
+                </section>
+                <section id="storico-grafico" class="storico-panel" aria-label="Incasso per giornata" hidden>
+                    <h2>Incasso per giornata</h2>
+                    <p class="storico-chart-description">Ogni giornata comprende pranzo e cena, dalle 05:00 alle 05:00.</p>
+                    <ul class="storico-legend" aria-label="Legenda del grafico">
+                        <li data-type="tavolo"><span aria-hidden="true"></span>Tavoli</li>
+                        <li data-type="consegna"><span aria-hidden="true"></span>Consegne</li>
+                        <li data-type="ritiro"><span aria-hidden="true"></span>Ritiri</li>
+                        <li data-type="banco"><span aria-hidden="true"></span>Banco</li>
+                    </ul>
+                    <div class="storico-chart-scroll">
+                        <div id="storico-chart-inner" class="storico-chart-inner">
+                            <canvas id="storico-chart" aria-label="Grafico a barre impilate dell'incasso per giornata"></canvas>
+                        </div>
+                    </div>
+                </section>
+            </section>
+        </main>
+        <dialog id="storico-dettaglio" class="storico-dialog" aria-labelledby="storico-dettaglio-titolo">
+            <header>
+                <h2 id="storico-dettaglio-titolo">Dettaglio giornata</h2>
+                <button id="storico-dettaglio-chiudi" type="button" aria-label="Chiudi dettaglio">×</button>
+            </header>
+            <div id="storico-dettaglio-contenuto"></div>
+        </dialog>
+        <script src="/vendor/chart.umd.js"></script>
+        <script src="/theme.js"></script>
+        <script src="/nav.js"></script>
+        <script src="/storico.js"></script>
+    </body>
+</html>

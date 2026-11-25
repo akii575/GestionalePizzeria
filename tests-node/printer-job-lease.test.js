@@ -103,6 +103,9 @@ function createDatabase(seed = {}, { failQueueUnpause = 0 } = {}) {
     });
     const collection = name => ({
         doc: id => ref(name, id),
+        async get() {
+            return querySnapshot(name, [...documents(name).entries()]);
+        },
         limit: size => ({
             async get() {
                 return querySnapshot(name, [...documents(name).entries()].slice(0, size));
@@ -330,7 +333,7 @@ test("every order API mutation increments metadata/ordersVersion", async () => {
                     orderCounter: { value: 7 },
                     printerControl: { paused: false }
                 },
-                orders: { "7": { numero: 7 } }
+                orders: { "7": { numero: 7, dataOra: "2026-10-12T12:00:00.000Z" } }
             }
         }
     ];
@@ -668,7 +671,7 @@ test("individual deletion clears a stale queue pause from an interrupted reset",
 
 test("reset clears orders and expired print jobs but waits for active leases", async () => {
     database = createDatabase({
-        orders: { "7": { numero: 7 } },
+        orders: { "7": { numero: 7, dataOra: "2026-10-12T12:00:00.000Z" } },
         printerJobs: {
             "000000000007": {
                 numero: 7,

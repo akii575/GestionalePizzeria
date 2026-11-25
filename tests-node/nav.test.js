@@ -200,6 +200,10 @@ test("account email appears only in the More sheet and desktop sidebar", () => {
     assert.doesNotMatch(themeStyles, /\.account-toolbar/);
 });
 
+test("the history navigation link is only added for admins", () => {
+    assert.match(navigation, /if \(account\.admin === true\) \{\s*links\.push\(\{ label: "Storico", href: "\/storico\.html", icon: "history" \}\);/);
+});
+
 test("the More menu logout clears account and offline caches", async () => {
     assert.match(navigation, /sheetLinks\.append\(createButtonLink\("Esci", "logout", \(\) => logoutButton\.click\(\)\)\);/);
     assert.match(navigation, /window\.civico7ClearOfflineCaches = async \(\) => \{[\s\S]*?window\.caches\.keys\(\)[\s\S]*?window\.caches\.delete\(name\)/);

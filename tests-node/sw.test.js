@@ -124,6 +124,8 @@ test("copy-static substitutes the version token and precaches static assets", ()
     assert.ok(precache.some(url => url.endsWith(".js")));
     assert.ok(precache.some(url => url.startsWith("/fonts/") && url.endsWith(".woff2")));
     assert.ok(precache.some(url => url.startsWith("/icons/")));
+    assert.ok(precache.includes("/vendor/chart.umd.js"));
+    assert.ok(fs.statSync(path.join(root, "public", "vendor", "chart.umd.js")).size > 1000);
     assert.ok(precache.includes("/manifest.webmanifest"));
     assert.equal(precache.some(url => url.startsWith("/api/")), false);
 });
