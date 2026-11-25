@@ -451,7 +451,7 @@ test("menu admin API toggles availability, archives and restores records", async
     assert.equal(db.get("menuCategorie", "dolci").archiviata, false);
 });
 
-test("menu admin API reorders categories and products transactionally", async () => {
+test("menu admin API rejects manual product and extra ordering but reorders categories transactionally", async () => {
     const db = useDatabase();
     const products = await invoke("PUT", {
         token: "admin",
@@ -462,15 +462,25 @@ test("menu admin API reorders categories and products transactionally", async ()
             ids: ["marinara", "margherita"]
         }
     });
-    assert.equal(products.body.versione, 4);
-    assert.equal(db.get("menuProdotti", "marinara").ordine, 0);
-    assert.equal(db.get("menuProdotti", "margherita").ordine, 1);
+    assert.equal(products.statusCode, 400);
+    assert.equal(products.body.errore, "L'ordine di prodotti ed extra e' alfabetico automatico.");
+    assert.equal(db.get("metadata", "menuVersion").versione, 3);
+
+    const extras = await invoke("PUT", {
+        token: "admin",
+        body: { risorsa: "extra", azione: "ordine", ids: ["hidden", "bocconcino"] }
+    });
+    assert.equal(extras.statusCode, 400);
+    assert.equal(extras.body.errore, "L'ordine di prodotti ed extra e' alfabetico automatico.");
+    assert.equal(db.get("metadata", "menuVersion").versione, 3);
 
     const categories = await invoke("PUT", {
         token: "admin",
         body: { risorsa: "categorie", azione: "ordine", ids: ["dolci", "pizze"] }
     });
-    assert.equal(categories.body.versione, 5);
+    assert.equal(categories.statusCode, 200);
+    assert.equal(categories.body.versione, 4);
+    assert.equal(db.get("metadata", "menuVersion").versione, 4);
     assert.equal(db.get("menuCategorie", "dolci").ordine, 0);
     assert.equal(db.get("menuCategorie", "pizze").ordine, 1);
 
@@ -479,6 +489,7 @@ test("menu admin API reorders categories and products transactionally", async ()
         body: { risorsa: "categorie", azione: "ordine", ids: ["pizze", "pizze"] }
     });
     assert.equal(invalidOrder.statusCode, 400);
+    assert.equal(db.get("metadata", "menuVersion").versione, 4);
 });
 
 test("menu admin API rejects mutations from unauthenticated or cross-origin requests", async () => {
