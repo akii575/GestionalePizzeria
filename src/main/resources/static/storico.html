@@ -22,7 +22,7 @@
     <body>
         <main class="dashboard storico-dashboard">
             <header class="dashboard-header">
-                <h1>Storico serate</h1>
+                <h1>Storico delle giornate</h1>
             </header>
             <section class="storico-filters" aria-label="Intervallo storico">
                 <div class="storico-presets" role="group" aria-label="Intervalli predefiniti">
@@ -62,13 +62,20 @@
                     </article>
                 </section>
                 <section id="storico-vuoto" class="storico-empty" hidden>
-                    Nessuna serata nel periodo scelto. Lo storico si riempie dalle prossime chiusure.
+                    Nessuna giornata nel periodo scelto. Lo storico si riempie dalle prossime chiusure.
                 </section>
-                <section id="storico-grafico" class="storico-panel" aria-label="Incasso per serata" hidden>
-                    <h2>Incasso per serata</h2>
+                <section id="storico-grafico" class="storico-panel" aria-label="Incasso per giornata" hidden>
+                    <h2>Incasso per giornata</h2>
+                    <p class="storico-chart-description">Ogni giornata comprende pranzo e cena, dalle 05:00 alle 05:00.</p>
+                    <ul class="storico-legend" aria-label="Legenda del grafico">
+                        <li data-type="tavolo"><span aria-hidden="true"></span>Tavoli</li>
+                        <li data-type="consegna"><span aria-hidden="true"></span>Consegne</li>
+                        <li data-type="ritiro"><span aria-hidden="true"></span>Ritiri</li>
+                        <li data-type="banco"><span aria-hidden="true"></span>Banco</li>
+                    </ul>
                     <div class="storico-chart-scroll">
                         <div id="storico-chart-inner" class="storico-chart-inner">
-                            <canvas id="storico-chart" aria-label="Grafico a barre impilate dell'incasso per serata"></canvas>
+                            <canvas id="storico-chart" aria-label="Grafico a barre impilate dell'incasso per giornata"></canvas>
                         </div>
                     </div>
                 </section>
@@ -76,7 +83,7 @@
         </main>
         <dialog id="storico-dettaglio" class="storico-dialog" aria-labelledby="storico-dettaglio-titolo">
             <header>
-                <h2 id="storico-dettaglio-titolo">Dettaglio serata</h2>
+                <h2 id="storico-dettaglio-titolo">Dettaglio giornata</h2>
                 <button id="storico-dettaglio-chiudi" type="button" aria-label="Chiudi dettaglio">×</button>
             </header>
             <div id="storico-dettaglio-contenuto"></div>

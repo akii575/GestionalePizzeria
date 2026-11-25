@@ -55,8 +55,25 @@
     box-shadow: var(--theme-shadow);
 }
 .storico-panel h2 { margin: 0 0 16px; color: var(--theme-green-dark); font-size: 18px; }
-.storico-chart-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
-.storico-chart-inner { position: relative; height: 360px; min-width: 640px; }
+.storico-chart-description { margin: -8px 0 14px; color: var(--theme-muted); font-size: 13px; }
+.storico-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px 20px;
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+}
+.storico-legend li { display: inline-flex; align-items: center; gap: 7px; color: var(--theme-muted); font-size: 13px; }
+.storico-legend li span { width: 12px; height: 12px; border-radius: 2px; }
+.storico-legend [data-type="tavolo"] span { background: #1a5ea9; }
+.storico-legend [data-type="consegna"] span { background: #bf4a42; }
+.storico-legend [data-type="ritiro"] span { background: #e4b034; }
+.storico-legend [data-type="banco"] span { background: #4b8f69; }
+.storico-chart-scroll { width: 100%; overflow: hidden; }
+.storico-chart-scroll--scrollable { overflow-x: auto; overscroll-behavior-x: contain; }
+.storico-chart-inner { position: relative; width: 100%; min-width: 0; height: 320px; }
 .storico-chart-inner canvas { max-width: none; }
 .storico-empty { color: var(--theme-muted); text-align: center; }
 .storico-dialog {
@@ -87,5 +104,5 @@
     .storico-presets button { padding: 8px; font-size: 13px; }
     .storico-date-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .storico-date-range button { grid-column: 1 / -1; }
-    .storico-chart-inner { height: 320px; }
+    .storico-chart-inner { height: 260px; }
 }

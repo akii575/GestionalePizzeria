@@ -5,7 +5,8 @@ const path = require("node:path");
 const { apiRoute } = require("./api-router-helper");
 const auth = require("../lib/auth");
 const firebaseAdmin = require("../lib/firebase-admin");
-const { groupOrdersByServiceDay } = require("../lib/serate");
+const { finalizeSummary, groupOrdersByServiceDay } = require("../lib/serate");
+const { prepareChartData } = require("../src/main/resources/static/storico.js");
 
 function createDatabase(seed = {}, { failSummarySave = false, beforeOrderDelete } = {}) {
     const collections = new Map(
@@ -171,10 +172,50 @@ test("saved product summaries are capped at 300 names", () => {
     ]).get("2026-05-10");
 
     assert.equal(Object.keys(summary.prodotti).length, 305);
-    const { finalizeSummary } = require("../lib/serate");
     const saved = finalizeSummary(summary);
     assert.equal(Object.keys(saved.prodotti).length, 300);
     assert.equal(saved.prodotti["Prodotto 304"].incasso, 304);
+});
+
+test("chart preparation fills all selected days with zeros and marks the current day", () => {
+    const days = prepareChartData([
+        {
+            data: "2026-03-01",
+            incasso: 24,
+            comande: 2,
+            coperti: 3,
+            perTipo: { tavolo: { incasso: 24, comande: 2 } }
+        },
+        {
+            data: "2026-03-07",
+            incasso: 8,
+            comande: 1,
+            coperti: 0,
+            perTipo: { banco: { incasso: 8, comande: 1 } }
+        }
+    ], "2026-03-01", "2026-03-07", "2026-03-04");
+
+    assert.equal(days.length, 7);
+    assert.deepEqual(days.map(day => day.data), [
+        "2026-03-01",
+        "2026-03-02",
+        "2026-03-03",
+        "2026-03-04",
+        "2026-03-05",
+        "2026-03-06",
+        "2026-03-07"
+    ]);
+    assert.equal(days[0].incasso, 24);
+    assert.equal(days[6].perTipo.banco.incasso, 8);
+    for (const index of [1, 2, 3, 4, 5]) {
+        assert.equal(days[index].incasso, 0);
+        assert.equal(days[index].comande, 0);
+        assert.ok(Object.values(days[index].perTipo).every(
+            summary => summary.incasso === 0 && summary.comande === 0
+        ));
+    }
+    assert.equal(days[3].inCorso, true);
+    assert.equal(days.filter(day => day.inCorso).length, 1);
 });
 
 test("reset stores per-service-day summaries before deleting orders", async t => {
@@ -355,4 +396,11 @@ test("the historical page is admin-only and is served through the protected page
         "utf8"
     );
     assert.match(pageSource, /src="\/vendor\/chart\.umd\.js"/);
+    assert.match(pageSource, /<h1>Storico delle giornate<\/h1>/);
+    assert.match(pageSource, /<h2>Incasso per giornata<\/h2>/);
+    assert.match(pageSource, /Ogni giornata comprende pranzo e cena, dalle 05:00 alle 05:00\./);
+    assert.match(pageSource, /Nessuna giornata nel periodo scelto\. Lo storico si riempie dalle prossime chiusure\./);
+    assert.match(pageSource, /<h2 id="storico-dettaglio-titolo">Dettaglio giornata<\/h2>/);
+    const readme = fs.readFileSync(path.join(__dirname, "../README.md"), "utf8");
+    assert.doesNotMatch(readme, /serat[ae]/i);
 });
