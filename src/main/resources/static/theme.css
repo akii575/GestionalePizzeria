@@ -762,7 +762,7 @@ html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
     min-height: 44px;
     align-items: center;
     gap: 9px;
-    margin: 12px 0;
+    margin: 12px;
     padding: 9px 14px;
     border: 1px solid var(--theme-green, var(--verde));
     border-radius: 10px;
