@@ -22,7 +22,7 @@ function request(cookie) {
     return { headers: { cookie: `__Host-session=${encodeURIComponent(cookie)}` } };
 }
 
-test("session verification is cached for five minutes and then repeated", async t => {
+test("session verification is cached for 60 seconds and then repeated", async t => {
     let now = Date.now();
     t.mock.method(Date, "now", () => now);
     let verificationCount = 0;
@@ -43,8 +43,40 @@ test("session verification is cached for five minutes and then repeated", async 
     assert.deepEqual(cached, first);
     assert.equal(verificationCount, 1);
 
-    now += 5 * 60 * 1000 + 1;
+    now += 60 * 1000 + 1;
     await auth.requireStaffAccess(request("cache-session"));
+    assert.equal(verificationCount, 2);
+});
+
+test("a revoked staff role is enforced after the 60-second cache expires", async t => {
+    let now = Date.now();
+    t.mock.method(Date, "now", () => now);
+    let verificationCount = 0;
+    services = {
+        auth: {
+            async verifySessionCookie() {
+                verificationCount++;
+                return {
+                    uid: "revoked-staff",
+                    staff: verificationCount === 1,
+                    exp: Math.floor((now + 60 * 60 * 1000) / 1000)
+                };
+            }
+        }
+    };
+    t.after(() => { services = null; });
+
+    await auth.requireStaffAccess(request("revoked-staff-session"));
+    now += 60 * 1000 - 1;
+    await auth.requireStaffAccess(request("revoked-staff-session"));
+    assert.equal(verificationCount, 1);
+
+    now += 1;
+    await assert.rejects(auth.requireStaffAccess(request("revoked-staff-session")), error => {
+        assert.equal(error.statusCode, 403);
+        assert.equal(error.message, "Accesso negato.");
+        return true;
+    });
     assert.equal(verificationCount, 2);
 });
 

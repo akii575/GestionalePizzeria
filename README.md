@@ -30,7 +30,7 @@ npm run set-admin -- mattia.torneo2000@gmail.com
 
 Il comando conserva gli altri custom claims e revoca le sessioni precedenti;
 l'amministratore deve poi accedere di nuovo. Per rimuovere il ruolo, usa lo stesso
-comando con `--revoke`:
+comando con `--revoke`; la revoca diventa effettiva sulle API entro un minuto:
 
 ```powershell
 npm run set-admin -- mattia.torneo2000@gmail.com --revoke
@@ -44,7 +44,8 @@ npm run set-delivery -- consegnatore@example.com
 ```
 
 Per revocare il ruolo usa `npm run set-delivery -- consegnatore@example.com --revoke`.
-L'utente deve accedere di nuovo dopo l'assegnazione o la revoca. I consegnatori
+Dopo l'assegnazione l'utente deve accedere di nuovo; la revoca diventa effettiva
+sulle API entro un minuto. I consegnatori
 possono vedere tutte le consegne, comprese quelle precedenti, ma non possono
 creare, modificare o eliminare ordini.
 
@@ -62,8 +63,8 @@ Banco, Tavoli e Tutti gli ordini non vede il riepilogo "Totale visualizzato"; il
 visibile. Il totale delle consegne, i totali delle singole comande e gli scontrini
 restano invariati. Se un account ha entrambi i claim `admin: true` e `staff: true`,
 prevale admin e il riepilogo resta visibile. Per revocare il ruolo usa
-`npm run set-staff -- staff@example.com --revoke`. L'utente deve accedere di nuovo
-dopo assegnazione o revoca.
+`npm run set-staff -- staff@example.com --revoke`. Dopo l'assegnazione l'utente
+deve accedere di nuovo; la revoca diventa effettiva sulle API entro un minuto.
 
 Per gestire gli account, usa **Firebase Console > Authentication > Users**.
 La registrazione pubblica non e' implementata.
