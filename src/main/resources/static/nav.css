@@ -1,3 +1,7 @@
+.app-sidebar, .app-sidebar *, .app-sidebar *::before, .app-sidebar *::after {
+    box-sizing: border-box;
+}
+
 .app-sidebar,
 .app-bottom-nav,
 .app-more-backdrop {
@@ -2034,4 +2038,13 @@ body.orders-composer-page.app-shell main.container .composer-main > .prodotti-wr
 body.orders-composer-page.app-shell main.container #ricerca-risultati .prodotto-btn {
     scroll-snap-align: none;
     scroll-snap-stop: normal;
+}
+
+@media (min-width: 800px) and (max-width: 1439px) {
+    body.app-shell main.dashboard,
+    body.app-shell main.home {
+        box-sizing: border-box;
+        width: calc(100% - 68px);
+        margin-left: 68px;
+    }
 }

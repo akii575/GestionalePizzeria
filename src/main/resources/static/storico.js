@@ -51,6 +51,13 @@ const storicoPage = (() => {
         ].join("-");
     }
 
+    function shouldShowTotals(chartWidth, days) {
+        return Number.isFinite(chartWidth)
+            && Number.isInteger(days)
+            && days > 0
+            && chartWidth / days >= 34;
+    }
+
     function prepareChartData(source, startDate, endDate, currentServiceDay) {
         const start = dateFromKey(startDate);
         const end = dateFromKey(endDate);
@@ -150,16 +157,6 @@ const storicoPage = (() => {
             if (change < 0) variation.classList.add("storico-variazione--negativa");
         }
 
-        function chartLayout() {
-            const scroll = document.querySelector(".storico-chart-scroll");
-            const wrapper = document.getElementById("storico-chart-inner");
-            const scrollable = window.matchMedia("(max-width: 760px)").matches && giornate.length > 14;
-            scroll.classList.toggle("storico-chart-scroll--scrollable", scrollable);
-            wrapper.style.width = scrollable
-                ? `${Math.max(scroll.clientWidth, giornate.length * 52)}px`
-                : "100%";
-        }
-
         const totalsPlugin = {
             id: "storico-total-and-current-day",
             afterDatasetsDraw(instance) {
@@ -190,7 +187,9 @@ const storicoPage = (() => {
                         );
                         context.setLineDash([]);
                     }
-                    if (giornate.length <= 31 && giornata.incasso > 0) {
+                    if (giornate.length <= 31
+                        && shouldShowTotals(instance.chartArea.width, giornate.length)
+                        && giornata.incasso > 0) {
                         context.fillStyle = "#1b2b25";
                         context.fillText(wholeEuro.format(giornata.incasso), xPosition, yPosition - 5);
                     }
@@ -252,7 +251,6 @@ const storicoPage = (() => {
         }
 
         function drawChart() {
-            chartLayout();
             if (chart) chart.destroy();
             chart = new window.Chart(document.getElementById("storico-chart"), {
                 type: "bar",
@@ -275,7 +273,7 @@ const storicoPage = (() => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: { padding: { top: giornate.length <= 31 ? 20 : 4 } },
+                    layout: { padding: { top: giornate.length <= 31 ? 20 : 4, right: 24 } },
                     interaction: { mode: "index", intersect: false },
                     onClick(event, elements) {
                         if (elements.length) showDetails(giornate[elements[0].index]);
@@ -303,7 +301,12 @@ const storicoPage = (() => {
                         x: {
                             stacked: true,
                             grid: { display: false },
-                            ticks: { autoSkip: true, minRotation: 0, maxRotation: 0 }
+                            ticks: {
+                                autoSkip: true,
+                                maxTicksLimit: window.innerWidth < 600 ? 6 : undefined,
+                                minRotation: 0,
+                                maxRotation: 0
+                            }
                         },
                         y: {
                             stacked: true,
@@ -367,14 +370,14 @@ const storicoPage = (() => {
             .addEventListener("click", () => document.getElementById("storico-dettaglio").close());
         window.addEventListener("resize", () => {
             if (!chart) return;
-            chartLayout();
+            chart.options.scales.x.ticks.maxTicksLimit = window.innerWidth < 600 ? 6 : undefined;
             chart.resize();
         });
 
         if (!window.authReady || await window.authReady) setRange(30);
     }
 
-    return Object.freeze({ initialize, prepareChartData });
+    return Object.freeze({ initialize, prepareChartData, shouldShowTotals });
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = storicoPage;

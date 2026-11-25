@@ -1,4 +1,7 @@
+.storico-dashboard, .storico-dashboard *, .storico-dashboard *::before, .storico-dashboard *::after,
+.storico-dialog, .storico-dialog * { box-sizing: border-box; }
 .storico-dashboard { display: grid; gap: 18px; }
+.storico-dashboard > * { min-width: 0; }
 .storico-dashboard > .app-page-header { margin-bottom: 0; }
 .storico-filters {
     display: flex;
@@ -47,6 +50,7 @@
 .storico-metrica span { color: var(--theme-muted); font-size: 12px; }
 .storico-metrica .storico-variazione--positiva { color: #167447; }
 .storico-metrica .storico-variazione--negativa { color: var(--theme-red); }
+.storico-panel { min-width: 0; max-width: 100%; }
 .storico-panel, .storico-empty {
     padding: 20px;
     border: var(--theme-surface-border);
@@ -72,9 +76,8 @@
 .storico-legend [data-type="ritiro"] span { background: #e4b034; }
 .storico-legend [data-type="banco"] span { background: #4b8f69; }
 .storico-chart-scroll { width: 100%; overflow: hidden; }
-.storico-chart-scroll--scrollable { overflow-x: auto; overscroll-behavior-x: contain; }
 .storico-chart-inner { position: relative; width: 100%; min-width: 0; height: 320px; }
-.storico-chart-inner canvas { max-width: none; }
+.storico-chart-inner canvas { max-width: 100%; }
 .storico-empty { color: var(--theme-muted); text-align: center; }
 .storico-dialog {
     width: min(520px, calc(100% - 32px));

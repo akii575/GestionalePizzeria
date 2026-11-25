@@ -6,7 +6,7 @@ const { apiRoute } = require("./api-router-helper");
 const auth = require("../lib/auth");
 const firebaseAdmin = require("../lib/firebase-admin");
 const { finalizeSummary, groupOrdersByServiceDay } = require("../lib/serate");
-const { prepareChartData } = require("../src/main/resources/static/storico.js");
+const { prepareChartData, shouldShowTotals } = require("../src/main/resources/static/storico.js");
 
 function createDatabase(seed = {}, { failSummarySave = false, beforeOrderDelete } = {}) {
     const collections = new Map(
@@ -216,6 +216,22 @@ test("chart preparation fills all selected days with zeros and marks the current
     }
     assert.equal(days[3].inCorso, true);
     assert.equal(days.filter(day => day.inCorso).length, 1);
+});
+
+test("chart totals are shown only when there is enough width per day", () => {
+    assert.equal(shouldShowTotals(330, 30), false);
+    assert.equal(shouldShowTotals(330, 7), true);
+    assert.equal(shouldShowTotals(1200, 30), true);
+});
+
+test("history dashboard prevents grid children from widening the page", () => {
+    const styles = fs.readFileSync(
+        path.join(__dirname, "../src/main/resources/static/storico.css"),
+        "utf8"
+    );
+    assert.match(styles, /\.storico-dashboard,\s*\.storico-dashboard \*,\s*\.storico-dashboard \*::before,\s*\.storico-dashboard \*::after,\s*\.storico-dialog,\s*\.storico-dialog \*\s*\{\s*box-sizing:\s*border-box;/);
+    assert.match(styles, /\.storico-dashboard > \*\s*\{[^}]*min-width:\s*0;/);
+    assert.match(styles, /\.storico-panel\s*\{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/);
 });
 
 test("reset stores per-service-day summaries before deleting orders", async t => {
