@@ -10,8 +10,7 @@ const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR"
 const lista = document.getElementById("lista-consegne");
 const statoPagina = document.getElementById("stato");
 const aggiornamentiStatoInCorso = new Set();
-const statoEspansioneConsegne = window.orderCard.createExpansionState();
-window.orderCard.bindReprints(lista, statoEspansioneConsegne);
+const dettagliOrdine = window.orderCard.bindReprints(lista);
 window.orderCard.bindDateFilter(document.getElementById("data"), document.getElementById("apri-data"));
 
 function statoConsegna(ordine) {
@@ -77,6 +76,7 @@ function render() {
     lista.replaceChildren();
     if (!ordini.length) {
         lista.innerHTML = '<div class="vuoto">Nessuna consegna corrisponde ai filtri.</div>';
+        dettagliOrdine.refresh();
         return;
     }
 
@@ -92,8 +92,7 @@ function render() {
             hideTotalForStaff: false,
             deliveryMode: true,
             isRider,
-            menu: stato.menu,
-            expansionState: statoEspansioneConsegne
+            menu: stato.menu
         });
     const activeMarkup = consegneAttive.map(cardMarkup).join("");
     const deliveredMarkup = consegneCompletate.length
@@ -101,15 +100,7 @@ function render() {
         : "";
     lista.innerHTML = `${activeMarkup}${deliveredMarkup}`;
 
-    lista.querySelectorAll("[data-elimina]").forEach(button => {
-        button.addEventListener("click", () => eliminaConsegna(button.dataset.elimina));
-    });
-    lista.querySelectorAll("[data-stato-consegna]").forEach(button => {
-        button.addEventListener("click", () => aggiornaStatoConsegna(
-            button.dataset.numero,
-            button.dataset.statoConsegna
-        ));
-    });
+    dettagliOrdine.refresh();
 }
 
 async function aggiornaStatoConsegna(numero, nuovoStato) {
@@ -242,6 +233,17 @@ async function avvia() {
 
 document.getElementById("aggiorna").addEventListener("click", caricaConsegne);
 document.getElementById("filtro").addEventListener("input", render);
+document.body.addEventListener("click", event => {
+    const statusButton = event.target.closest("[data-stato-consegna]");
+    if (statusButton && (lista.contains(statusButton) || dettagliOrdine.dialog.contains(statusButton))) {
+        void aggiornaStatoConsegna(statusButton.dataset.numero, statusButton.dataset.statoConsegna);
+        return;
+    }
+    const deleteButton = event.target.closest("[data-elimina]");
+    if (deleteButton && (lista.contains(deleteButton) || dettagliOrdine.dialog.contains(deleteButton))) {
+        void eliminaConsegna(deleteButton.dataset.elimina);
+    }
+});
 document.getElementById("data").addEventListener("change", caricaConsegne);
 document.addEventListener("civico7:online", () => {
     void caricaConsegne({ completa: true });
@@ -251,7 +253,7 @@ document.addEventListener("visibilitychange", () => {
     configuraAggiornamento();
 });
 if (window.paymentUI) {
-    window.paymentUI.bind(lista, {
+    window.paymentUI.bind(document.body, {
         canEdit: () => window.currentAccount?.admin === true || window.currentAccount?.staff === true,
         onUpdated: ordine => {
             const esistente = stato.ordini.find(elemento => String(elemento.numero) === String(ordine.numero));

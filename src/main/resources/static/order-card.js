@@ -1,6 +1,5 @@
 const orderCard = (() => {
     const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
-    const expandedOrderState = createExpansionState();
 
     function createExpansionState() {
         let openOrderNumber = null;
@@ -339,8 +338,11 @@ const orderCard = (() => {
         aggiornaEtichetta();
     }
 
-    function bindReprints(container, expansionState = expandedOrderState) {
+    function bindReprints(container) {
         let triggerButton = null;
+        let openOrderNumber = null;
+        let openerButton = null;
+        let restoreFocusOnClose = true;
         const dialog = document.createElement("dialog");
         dialog.className = "app-mappe-dialog app-ristampa-dialog";
         dialog.setAttribute("aria-labelledby", "app-ristampa-titolo");
@@ -387,36 +389,140 @@ const orderCard = (() => {
             }
         });
         document.body.append(dialog);
+        const orderDialog = document.createElement("dialog");
+        orderDialog.className = "order-detail-dialog";
+        orderDialog.setAttribute("aria-labelledby", "order-detail-dialog-title");
+        orderDialog.innerHTML = `
+            <header class="order-detail-dialog__header">
+                <h2 id="order-detail-dialog-title"></h2>
+                <button class="order-detail-dialog__close" type="button" aria-label="Chiudi" autofocus>×</button>
+            </header>
+            <div class="order-detail-dialog__content"></div>
+            <footer class="order-detail-dialog__footer"></footer>
+        `;
+        const orderDialogTitle = orderDialog.querySelector("#order-detail-dialog-title");
+        const orderDialogContent = orderDialog.querySelector(".order-detail-dialog__content");
+        const orderDialogFooter = orderDialog.querySelector(".order-detail-dialog__footer");
+        function articleFor(number) {
+            return [...container.querySelectorAll(".order-card")]
+                .find(card => card.dataset.orderNumber === String(number)) || null;
+        }
+        function renderDetailParts(expanded) {
+            const detailCopy = expanded.cloneNode(true);
+            detailCopy.hidden = false;
+            detailCopy.removeAttribute("id");
+            orderDialogContent.replaceChildren(detailCopy);
+            orderDialogFooter.replaceChildren();
+            const deliveryStatus = detailCopy.querySelector(".order-card__delivery-detail-status");
+            const deliveryUndo = detailCopy.querySelector(".order-card__delivery-undo");
+            const actions = detailCopy.querySelector(".order-card__actions");
+            for (const action of [deliveryStatus, deliveryUndo, actions]) {
+                if (action) orderDialogFooter.append(action);
+            }
+        }
+        function focusSelector(element) {
+            const attributes = [
+                "data-stato-pagamento",
+                "data-stato-consegna",
+                "data-tavolo-chiuso",
+                "data-ristampa",
+                "data-elimina",
+                "data-modifica",
+                "data-indirizzo"
+            ];
+            for (const attribute of attributes) {
+                if (element.hasAttribute?.(attribute)) {
+                    return `[${attribute}="${CSS.escape(element.getAttribute(attribute))}"]`;
+                }
+            }
+            return null;
+        }
+        function restoreDialogFocus(selector) {
+            if (!selector) return;
+            const target = orderDialog.querySelector(selector);
+            target?.focus({ preventScroll: true });
+        }
+        function syncOpenOrder() {
+            if (openOrderNumber === null || !orderDialog.open) return;
+            const article = articleFor(openOrderNumber);
+            const expanded = article?.querySelector(".order-card__expanded");
+            if (!article || !expanded) {
+                restoreFocusOnClose = false;
+                orderDialog.close();
+                if (window.themeToast) window.themeToast(`L'ordine #${openOrderNumber} non e' piu' disponibile.`);
+                return;
+            }
+            const active = document.activeElement;
+            const focusWithinContent = orderDialogContent.contains(active)
+                || orderDialogFooter.contains(active);
+            const selector = focusWithinContent ? focusSelector(active) : null;
+            const scrollTop = orderDialogContent.scrollTop;
+            openerButton = article.querySelector(".order-card__toggle");
+            openerButton?.setAttribute("aria-expanded", "true");
+            orderDialogTitle.textContent = article.querySelector(".order-card__reference")?.textContent
+                || `Ordine #${openOrderNumber}`;
+            orderDialogTitle.textContent += ` · #${openOrderNumber}`;
+            renderDetailParts(expanded);
+            orderDialogContent.scrollTop = scrollTop;
+            restoreDialogFocus(selector);
+        }
+        orderDialog.querySelector(".order-detail-dialog__close").addEventListener("click", () => {
+            orderDialog.close();
+        });
+        orderDialog.addEventListener("click", event => {
+            if (event.target === orderDialog) orderDialog.close();
+        });
+        orderDialog.addEventListener("close", () => {
+            document.body.classList.remove("order-detail-open");
+            openerButton?.setAttribute("aria-expanded", "false");
+            const buttonToFocus = openerButton;
+            const restoreFocus = restoreFocusOnClose;
+            openerButton = null;
+            openOrderNumber = null;
+            restoreFocusOnClose = true;
+            if (restoreFocus && buttonToFocus?.isConnected) {
+                buttonToFocus.focus({ preventScroll: true });
+            }
+        });
+        document.body.append(orderDialog);
         container.addEventListener("click", event => {
             const button = event.target.closest(".order-card__toggle");
             if (!button || !container.contains(button)) return;
-            expansionState.toggle(button.dataset.orderNumber);
-            container.querySelectorAll(".order-card").forEach(card => {
-                const toggle = card.querySelector(".order-card__toggle");
-                const expanded = card.querySelector(".order-card__expanded");
-                const isOpen = expansionState.isOpen(card.dataset.orderNumber);
-                toggle.setAttribute("aria-expanded", String(isOpen));
-                expanded.hidden = !isOpen;
-                card.classList.toggle("order-card--expanded", isOpen);
-            });
+            const article = button.closest(".order-card");
+            const expanded = article?.querySelector(".order-card__expanded");
+            if (!expanded) return;
+            openOrderNumber = button.dataset.orderNumber;
+            openerButton = button;
+            openerButton.setAttribute("aria-expanded", "true");
+            const reference = article.querySelector(".order-card__reference")?.textContent || "Ordine";
+            orderDialogTitle.textContent = `${reference} · #${openOrderNumber}`;
+            renderDetailParts(expanded);
+            document.body.classList.add("order-detail-open");
+            orderDialog.showModal();
         });
-        container.addEventListener("click", event => {
+        document.body.addEventListener("click", event => {
             const button = event.target.closest("[data-ristampa]");
-            if (!button || !container.contains(button)) return;
+            if (!button || (!container.contains(button) && !orderDialog.contains(button))) return;
             triggerButton = button;
             status.className = "app-ristampa-stato";
             status.textContent = "";
             if (typeof dialog.showModal === "function") dialog.showModal();
             else dialog.setAttribute("open", "");
         });
+        return {
+            dialog: orderDialog,
+            isOpen(number) {
+                return openOrderNumber === String(number);
+            },
+            refresh: syncOpenOrder
+        };
     }
 
     function render(order, options = {}) {
         const type = normalizeType(order.tipo);
         const orderNumber = String(order.numero ?? "");
         const detailId = `order-detail-${escapeHtml(orderNumber)}`;
-        const expansionState = options.expansionState || expandedOrderState;
-        const expanded = expansionState.isOpen(order.numero);
+        const expanded = false;
         const deliveryMode = options.deliveryMode === true && type === "consegna";
         const name = orderName(order, type);
         const serviceTime = ["consegna", "ritiro"].includes(type)
@@ -451,9 +557,9 @@ const orderCard = (() => {
             : euro.format(Number(order.totale || 0));
         const closedTable = type === "tavolo" && order.tavoloChiuso === true;
         return `
-            <article class="order-card${expanded ? " order-card--expanded" : ""}${deliveryMode ? " order-card--delivery-mode" : ""}${closedTable ? " order-card--closed" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
+            <article class="order-card${deliveryMode ? " order-card--delivery-mode" : ""}${closedTable ? " order-card--closed" : ""}" data-order-type="${escapeHtml(type)}" data-order-number="${escapeHtml(orderNumber)}">
                 <div class="order-card__compact-row">
-                    <button class="order-card__toggle" type="button" data-order-number="${escapeHtml(orderNumber)}" aria-expanded="${String(expanded)}" aria-controls="${detailId}">
+                <button class="order-card__toggle" type="button" data-order-number="${escapeHtml(orderNumber)}" aria-expanded="${String(expanded)}" aria-haspopup="dialog" aria-controls="${detailId}">
                         ${renderServiceTile(order, type, serviceTime)}
                         <span class="order-card__compact-copy">
                             <span class="order-card__reference">${escapeHtml(name)}</span>
@@ -468,6 +574,7 @@ const orderCard = (() => {
                 <div class="order-card__expanded" id="${detailId}"${expanded ? "" : " hidden"}>
                     ${renderExpandedStatus(order, type, canEdit)}
                     ${renderFields(fieldsForOrder(order, type))}
+                    ${deliveryMode ? `<div class="order-card__delivery-detail-status">${renderDeliveryCompactStatus(order)}</div>` : ""}
                     ${renderDeliveryUndo(order, deliveryMode)}
                     <section class="order-card__details">
                         <ul class="order-card__products">${renderProducts(order.righe)}</ul>

@@ -254,17 +254,215 @@ test("identical product rows group by product, extras, exclusions and notes", ()
     assert.doesNotMatch(html, /ingredienti/i);
 });
 
-test("only one compact row is expanded and its state survives rerendering", () => {
+test("compact rows open details as dialogs instead of expanding in the list", () => {
     const expansionState = orderCard.createExpansionState();
     const first = { tipo: "tavolo", tavoloOCliente: "Tavolo 1" };
     const second = { tipo: "tavolo", tavoloOCliente: "Tavolo 2", numero: 9 };
 
     expansionState.toggle(8);
-    assert.match(render(first, { expansionState }), /aria-expanded="true"/);
+    const firstMarkup = render(first, { expansionState });
     expansionState.toggle(9);
-    assert.match(render(first, { expansionState }), /aria-expanded="false"/);
-    assert.match(render(second, { expansionState }), /aria-expanded="true"/);
-    assert.match(render(second, { expansionState }), /class="order-card__expanded"[^>]*>/);
+    const secondMarkup = render(second, { expansionState });
+
+    for (const html of [firstMarkup, secondMarkup]) {
+        assert.match(html, /class="order-card__toggle"[^>]*aria-expanded="false" aria-haspopup="dialog"/);
+        assert.match(html, /class="order-card__expanded"[^>]* hidden>/);
+        assert.doesNotMatch(html, /order-card--expanded/);
+    }
+});
+
+test("closing and reopening an order keeps the card detail intact and complete", () => {
+    class FakeElement {
+        constructor() {
+            this.listeners = new Map();
+            this.attributes = new Map();
+            this.children = [];
+            this.parentNode = null;
+            this.classList = {
+                add() {},
+                remove() {}
+            };
+        }
+
+        addEventListener(type, listener) {
+            this.listeners.set(type, listener);
+        }
+
+        dispatch(type, event = {}) {
+            this.listeners.get(type)?.({ target: this, ...event });
+        }
+
+        append(element) {
+            element.parentNode?.removeChild?.(element);
+            element.parentNode = this;
+            this.children.push(element);
+        }
+
+        replaceChildren(...elements) {
+            for (const child of this.children) child.parentNode = null;
+            this.children = [];
+            elements.forEach(element => this.append(element));
+        }
+
+        removeChild(element) {
+            this.children = this.children.filter(child => child !== element);
+            element.parentNode = null;
+        }
+
+        setAttribute(name, value) {
+            this.attributes.set(name, String(value));
+        }
+
+        getAttribute(name) {
+            return this.attributes.get(name) ?? null;
+        }
+
+        removeAttribute(name) {
+            this.attributes.delete(name);
+        }
+    }
+
+    class FakeExpanded extends FakeElement {
+        constructor(markup) {
+            super();
+            this.innerHTML = markup;
+            this.id = "order-detail-8";
+            this.actionButtons = new FakeElement();
+        }
+
+        cloneNode() {
+            const clone = new FakeExpanded(this.innerHTML);
+            clone.id = this.id;
+            return clone;
+        }
+
+        removeAttribute(name) {
+            super.removeAttribute(name);
+            if (name === "id") this.id = "";
+        }
+
+        querySelector(selector) {
+            if (selector === ".order-card__actions") return this.actionButtons;
+            return null;
+        }
+    }
+
+    class FakeDialog extends FakeElement {
+        set innerHTML(markup) {
+            this.markup = markup;
+            if (markup.includes("order-detail-dialog__content")) {
+                this.selectors = new Map([
+                    ["#order-detail-dialog-title", new FakeElement()],
+                    [".order-detail-dialog__content", new FakeElement()],
+                    [".order-detail-dialog__footer", new FakeElement()],
+                    [".order-detail-dialog__close", new FakeElement()]
+                ]);
+            } else {
+                this.selectors = new Map([[".app-ristampa-stato", new FakeElement()]]);
+            }
+        }
+
+        querySelector(selector) {
+            return this.selectors.get(selector) || null;
+        }
+
+        querySelectorAll() {
+            return [];
+        }
+
+        showModal() {
+            this.open = true;
+        }
+
+        close() {
+            this.open = false;
+            this.dispatch("close");
+        }
+    }
+
+    const sourceMarkup = render({
+        numero: 8,
+        righe: [{ prodotto: "Capricciosa", totale: 12 }]
+    });
+    const expanded = new FakeExpanded(sourceMarkup);
+    const article = new FakeElement();
+    article.dataset = { orderNumber: "8" };
+    const toggle = new FakeElement();
+    toggle.dataset = { orderNumber: "8" };
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.closest = selector => selector === ".order-card__toggle" ? toggle : selector === ".order-card" ? article : null;
+    toggle.focus = () => {};
+    toggle.isConnected = true;
+    article.querySelector = selector => {
+        if (selector === ".order-card__expanded") return expanded.parentNode === article ? expanded : null;
+        if (selector === ".order-card__toggle") return toggle;
+        if (selector === ".order-card__reference") return { textContent: "Tavolo 1" };
+        return null;
+    };
+    expanded.parentNode = article;
+
+    const container = new FakeElement();
+    container.querySelectorAll = () => [article];
+    container.contains = element => element === toggle;
+    const body = new FakeElement();
+    body.append = () => {};
+    const previousDocument = global.document;
+    const previousWindow = global.window;
+    global.document = {
+        body,
+        activeElement: null,
+        createElement: () => new FakeDialog()
+    };
+    global.window = {};
+
+    try {
+        const controller = orderCard.bindReprints(container);
+        const clickToggle = () => container.dispatch("click", {
+            target: { closest: selector => selector === ".order-card__toggle" ? toggle : null }
+        });
+        const detailDialog = controller.dialog;
+        const detailContent = detailDialog.querySelector(".order-detail-dialog__content");
+
+        clickToggle();
+        assert.equal(detailDialog.open, true);
+        assert.equal(article.querySelector(".order-card__expanded"), expanded);
+        assert.match(detailContent.children[0].innerHTML, /Capricciosa/);
+        assert.match(detailContent.children[0].innerHTML, /data-elimina="8"/);
+        assert.equal(detailContent.children[0].id, "");
+        detailDialog.querySelector(".order-detail-dialog__close").dispatch("click");
+
+        clickToggle();
+        assert.equal(detailDialog.open, true);
+        assert.equal(article.querySelector(".order-card__expanded"), expanded);
+        assert.match(detailContent.children[0].innerHTML, /Capricciosa/);
+        assert.match(detailContent.children[0].innerHTML, /data-elimina="8"/);
+    } finally {
+        if (previousDocument === undefined) delete global.document;
+        else global.document = previousDocument;
+        if (previousWindow === undefined) delete global.window;
+        else global.window = previousWindow;
+    }
+});
+
+test("the order detail dialog is modal, dismissible, responsive, and freezes page scrolling", () => {
+    const styles = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "theme.css"),
+        "utf8"
+    );
+    const source = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "order-card.js"),
+        "utf8"
+    );
+
+    assert.match(source, /order-detail-dialog__close" type="button" aria-label="Chiudi/);
+    assert.match(source, /orderDialog\.showModal\(\)/);
+    assert.match(source, /event\.target === orderDialog\) orderDialog\.close\(\)/);
+    assert.match(source, /aria-haspopup="dialog"/);
+    assert.match(source, /orderDialog\.addEventListener\("close"/);
+    assert.match(styles, /\.order-detail-open\s*\{\s*overflow:\s*hidden;/);
+    assert.match(styles, /\.order-detail-dialog\s*\{[^}]*width:\s*min\(560px/);
+    assert.match(styles, /@media \(max-width: 680px\)[\s\S]*?\.order-detail-dialog\s*\{[^}]*inset:\s*auto 0 0;[^}]*width:\s*100%;[^}]*max-height:\s*90vh;[^}]*max-height:\s*90dvh;[^}]*border-radius:\s*22px 22px 0 0;/);
+    assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.order-detail-dialog\[open\]\s*\{\s*animation:\s*none;/);
 });
 
 test("staff compact totals stay hidden only on pages that hide the daily total", () => {
