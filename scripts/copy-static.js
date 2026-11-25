@@ -4,7 +4,7 @@ const path = require("node:path");
 
 const source = path.join(__dirname, "..", "src", "main", "resources", "static");
 const destination = path.join(__dirname, "..", "public");
-const protectedPages = ["index.html", "ordini.html", "gestionale.html", "consegne.html", "ritiri.html", "banco.html", "tavoli.html", "menu.html"];
+const protectedPages = ["index.html", "ordini.html", "gestionale.html", "consegne.html", "ritiri.html", "banco.html", "tavoli.html", "menu.html", "storico.html"];
 const fontFiles = [
     "poppins-latin-400-normal.woff2",
     "poppins-latin-500-normal.woff2",
@@ -41,11 +41,13 @@ function serviceWorkerBuildData() {
     ));
     for (const file of fontSources) hash.update(fs.readFileSync(file));
 
+    const chartSource = path.join(__dirname, "..", "node_modules", "chart.js", "dist", "chart.umd.js");
+    hash.update(fs.readFileSync(chartSource));
     const assetPattern = /\.(?:css|js|woff2?|png|jpe?g|svg|ico|webp)$/i;
     const precacheUrls = files
         .filter(file => assetPattern.test(file) || path.basename(file) === "manifest.webmanifest")
         .map(file => `/${path.relative(source, file).split(path.sep).join("/")}`);
-    precacheUrls.push(...fontFiles.map(file => `/fonts/${file}`));
+    precacheUrls.push(...fontFiles.map(file => `/fonts/${file}`), "/vendor/chart.umd.js");
     return {
         version: hash.digest("hex").slice(0, 12),
         precacheUrls: [...new Set(precacheUrls)].sort()
@@ -73,6 +75,12 @@ for (const fontFile of fontFiles) {
         path.join(fontsDirectory, fontFile)
     );
 }
+const vendorDirectory = path.join(destination, "vendor");
+fs.mkdirSync(vendorDirectory, { recursive: true });
+fs.copyFileSync(
+    path.join(__dirname, "..", "node_modules", "chart.js", "dist", "chart.umd.js"),
+    path.join(vendorDirectory, "chart.umd.js")
+);
 
 const serviceWorkerPath = path.join(destination, "sw.js");
 let serviceWorker = fs.readFileSync(serviceWorkerPath, "utf8");

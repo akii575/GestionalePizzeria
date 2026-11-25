@@ -11,6 +11,7 @@ const routeModules = {
     "menu-admin": "../lib/handlers/menu-admin",
     "reset-numeri": "../lib/handlers/reset-numeri",
     "stato-serata": "../lib/handlers/stato-serata",
+    storico: "../lib/handlers/storico",
     "auth/logout": "../lib/handlers/auth/logout",
     "auth/session": "../lib/handlers/auth/session",
     "auth/verify": "../lib/handlers/auth/verify",
@@ -58,6 +59,7 @@ test("catch-all dispatches every existing route and preserves route parameters",
         ["menu-admin", "menu-admin", {}],
         ["reset-numeri", "reset-numeri", {}],
         ["stato-serata", "stato-serata", {}],
+        ["storico", "storico", {}],
         ["auth/logout", "auth/logout", {}],
         ["auth/session", "auth/session", {}],
         ["auth/verify", "auth/verify", {}],
@@ -92,7 +94,8 @@ test("Vercel rewrites every protected page and API path to the router", () => {
         ["/ritiri.html", "ritiri.html"],
         ["/banco.html", "banco.html"],
         ["/tavoli.html", "tavoli.html"],
-        ["/menu.html", "menu.html"]
+        ["/menu.html", "menu.html"],
+        ["/storico.html", "storico.html"]
     ];
 
     for (const [source, page] of pages) {

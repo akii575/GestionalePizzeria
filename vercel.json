@@ -12,6 +12,7 @@
     { "source": "/banco.html", "destination": "/api/router?percorso=pages/banco.html" },
     { "source": "/tavoli.html", "destination": "/api/router?percorso=pages/tavoli.html" },
     { "source": "/menu.html", "destination": "/api/router?percorso=pages/menu.html" },
+    { "source": "/storico.html", "destination": "/api/router?percorso=pages/storico.html" },
     { "source": "/api/:path*", "destination": "/api/router?percorso=:path*" }
   ],
   "headers": [

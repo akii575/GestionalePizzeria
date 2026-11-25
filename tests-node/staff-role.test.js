@@ -89,6 +89,9 @@ function createResetDatabase() {
     });
     const collection = name => ({
         doc: id => ref(name, id),
+        async get() {
+            return snapshot([...documents(name).entries()]);
+        },
         limit() {
             return { get: async () => snapshot([]) };
         },

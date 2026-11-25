@@ -16,7 +16,7 @@ test("menu editor page loads protected navigation, accessible editor and shared 
     assert.match(page, /role="tablist"/);
     assert.match(page, /role="dialog" aria-modal="true"/);
     assert.match(page, /src="\/html-utils\.js"[\s\S]*?src="\/menu-editor\.js"/);
-    assert.match(navigation, /if \(account\.admin === true\) links\.push\(\{ label: "Menu", href: "\/menu\.html"/);
+    assert.match(navigation, /if \(account\.admin === true\) \{\s*links\.push\(\{ label: "Storico", href: "\/storico\.html"[\s\S]*?links\.push\(\{ label: "Menu", href: "\/menu\.html"/);
     assert.match(editor, /escapeHtml\(/);
     assert.match(editor, /data-action="restore"/);
     assert.match(editor, /permanent \? "delete-permanently"/);
