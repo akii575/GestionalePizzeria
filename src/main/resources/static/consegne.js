@@ -1,6 +1,10 @@
+const CONSEGNE_INIZIO_SERA = "16:00";
+const { fasciaCorrente, totaliFascia, preparaSezioniFascia } = window.consegneUI;
 const stato = {
     ordini: [],
     menu: [],
+    aperturaFasce: new Map(),
+    dataAperturaFasce: "",
     timer: null,
     versioni: new Map(),
     ultimoCaricamentoCompleto: 0,
@@ -63,6 +67,16 @@ function ordiniFiltrati() {
 
 function render() {
     const ordini = ordiniFiltrati();
+    const dataCorrente = window.orderCard.currentServiceDate();
+    const dataSelezionata = document.getElementById("data").value || dataCorrente;
+    if (stato.dataAperturaFasce !== dataSelezionata) {
+        stato.dataAperturaFasce = dataSelezionata;
+        stato.aperturaFasce.clear();
+    } else {
+        lista.querySelectorAll("details.consegne-fascia").forEach(sezione => {
+            stato.aperturaFasce.set(sezione.dataset.fascia, sezione.open);
+        });
+    }
     document.getElementById("numero-consegne").textContent = ordini.length;
     document.getElementById("etichetta-consegne").textContent = ordini.length === 1 ? "consegna" : "consegne";
     document.getElementById("totale-consegne").textContent = euro.format(
@@ -80,10 +94,13 @@ function render() {
         return;
     }
 
-    const consegneAttive = ordini.filter(ordine => statoConsegna(ordine) !== "consegnata")
-        .sort(confrontaConsegneAttive);
-    const consegneCompletate = ordini.filter(ordine => statoConsegna(ordine) === "consegnata")
-        .sort(confrontaConsegneCompletate);
+    const totali = totaliFascia(ordini, CONSEGNE_INIZIO_SERA);
+    const sezioni = preparaSezioniFascia(ordini, stato.aperturaFasce, {
+        dataSelezionata,
+        dataCorrente,
+        fasciaCorrente: fasciaCorrente(new Date(), CONSEGNE_INIZIO_SERA),
+        inizioSera: CONSEGNE_INIZIO_SERA
+    });
     const isRider = window.currentAccount.delivery === true
         && window.currentAccount.admin !== true
         && window.currentAccount.staff !== true;
@@ -94,11 +111,40 @@ function render() {
             isRider,
             menu: stato.menu
         });
-    const activeMarkup = consegneAttive.map(cardMarkup).join("");
-    const deliveredMarkup = consegneCompletate.length
-        ? `<details class="consegne-completate"><summary>Consegnate (${consegneCompletate.length})</summary><div class="consegne-completate__lista">${consegneCompletate.map(cardMarkup).join("")}</div></details>`
-        : "";
-    lista.innerHTML = `${activeMarkup}${deliveredMarkup}`;
+    const sezioniMarkup = sezioni.map(sezione => {
+        const ordiniFascia = sezione.ordini;
+        const attive = ordiniFascia.filter(ordine => statoConsegna(ordine) !== "consegnata")
+            .sort(confrontaConsegneAttive);
+        const completate = ordiniFascia.filter(ordine => statoConsegna(ordine) === "consegnata")
+            .sort(confrontaConsegneCompletate);
+        const fasciaTotale = totali[sezione.fascia];
+        const pagamenti = [
+            ["POS", fasciaTotale.pos, ""],
+            ["Pagato", fasciaTotale.pagato, ""],
+            ["Non pagato · contanti", fasciaTotale.nonPagato, " consegne-fascia__totale--contanti"]
+        ];
+        if (fasciaTotale.daVerificare.consegne > 0) {
+            pagamenti.push(["Da verificare", fasciaTotale.daVerificare, ""]);
+        }
+        const pagamentiMarkup = pagamenti.map(([label, pagamento, classe]) => (
+            `<span class="consegne-fascia__totale${classe}"><span>${label}</span><strong>${euro.format(pagamento.totaleCentesimi / 100)}</strong><small>${pagamento.consegne} ${pagamento.consegne === 1 ? "consegna" : "consegne"}</small></span>`
+        )).join("");
+        const attiveMarkup = attive.length
+            ? `<div class="consegne-fascia__attive">${attive.map(cardMarkup).join("")}</div>`
+            : "";
+        const completateMarkup = completate.length
+            ? `<details class="consegne-completate"><summary>Consegnate (${completate.length})</summary><div class="consegne-completate__lista">${completate.map(cardMarkup).join("")}</div></details>`
+            : "";
+        const titolo = sezione.fascia === "mattina" ? "Mattina" : "Sera";
+        const totaleConsegne = fasciaTotale.consegne;
+        return `<details class="consegne-fascia" data-fascia="${sezione.fascia}"${sezione.open ? " open" : ""}><summary class="consegne-fascia__summary"><span class="consegne-fascia__titolo">${titolo}</span><span class="consegne-fascia__conteggio">${totaleConsegne} ${totaleConsegne === 1 ? "consegna" : "consegne"}</span><strong class="consegne-fascia__importo">${euro.format(fasciaTotale.totaleCentesimi / 100)}</strong><span class="consegne-fascia__pagamenti">${pagamentiMarkup}</span></summary>${attiveMarkup}${completateMarkup}</details>`;
+    }).join("");
+    lista.innerHTML = sezioniMarkup;
+    lista.querySelectorAll("details.consegne-fascia").forEach(sezione => {
+        sezione.addEventListener("toggle", () => {
+            stato.aperturaFasce.set(sezione.dataset.fascia, sezione.open);
+        });
+    });
 
     dettagliOrdine.refresh();
 }
@@ -244,7 +290,11 @@ document.body.addEventListener("click", event => {
         void eliminaConsegna(deleteButton.dataset.elimina);
     }
 });
-document.getElementById("data").addEventListener("change", caricaConsegne);
+document.getElementById("data").addEventListener("change", () => {
+    stato.aperturaFasce.clear();
+    stato.dataAperturaFasce = "";
+    void caricaConsegne();
+});
 document.addEventListener("civico7:online", () => {
     void caricaConsegne({ completa: true });
 });
