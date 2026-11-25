@@ -101,7 +101,9 @@ test("delivery page loads the local grouping utility and shows compact responsiv
     assert.match(script, /^const CONSEGNE_INIZIO_SERA = "16:00";/);
     assert.match(script, /stato\.aperturaFasce\.set\(sezione\.dataset\.fascia,\s*sezione\.open\)/);
     assert.match(script, /sezione\.addEventListener\("toggle", \(\) => \{\s*stato\.aperturaFasce\.set/);
-    assert.match(styles, /\.consegne-fascia__pagamenti\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+    assert.match(styles, /\.consegne-fascia__pagamenti\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(150px,\s*210px\)\)/);
+    assert.match(styles, /\.lista-consegne > \.consegne-fascia\s*\{[^}]*grid-column:\s*1 \/ -1/);
+    assert.match(styles, /\.consegne-fascia__attive,\s*\.consegne-completate__lista\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill/);
     assert.match(styles, /@media \(max-width: 767px\)[\s\S]*?\.consegne-fascia__pagamenti\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
     assert.match(styles, /\.consegne-fascia__totale--contanti/);
 });
