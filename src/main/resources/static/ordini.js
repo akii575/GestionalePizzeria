@@ -1,3 +1,4 @@
+const FORNO_PIZZE_PER_QUARTO = 12;
 const stato = { categoria: "pizze", menu: [], extra: [], righe: [], rigaAttiva: null, chiaveInvio: nuovaChiaveInvio() };
 // Una chiave per ogni bozza di comanda: se lo stesso invio arriva due volte
 // (doppio tocco o rete instabile) il server restituisce l'ordine gia' creato.
@@ -9,6 +10,8 @@ function nuovaChiaveInvio() {
 }
 const statoTavoliOccupati = {
     ordini: new Map(),
+    ordiniForno: [],
+    erroreForno: "",
     versione: null,
     data: "",
     caricato: false,
@@ -112,6 +115,10 @@ const clientiIndirizzoRisultati = document.getElementById("clienti-indirizzo-ris
 const clientiIndirizzoLista = document.getElementById("clienti-indirizzo-lista");
 const campoOrario = document.getElementById("campo-orario");
 const orario = document.getElementById("orario");
+const caricoFornoElement = document.getElementById("carico-forno");
+const caricoFornoFasce = document.getElementById("carico-forno-fasce");
+const caricoFornoComanda = document.getElementById("carico-forno-comanda");
+const caricoFornoMessaggio = document.getElementById("carico-forno-messaggio");
 const campoPagamentoRitiro = document.getElementById("campo-pagamento-ritiro");
 const campoPagamentoConsegna = document.getElementById("campo-pagamento-consegna");
 const pagamentoRitiro = document.getElementById("pagamento-ritiro");
@@ -166,6 +173,7 @@ const {
     nomeTavoloDaNumero,
     numeroTavoloDaNome,
     calcolaTavoliOccupati,
+    calcolaCaricoForno,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
     deveChiudereIntestazione,
@@ -669,12 +677,71 @@ function dataOdiernaRoma(adesso = new Date()) {
     const data = new Date(Date.UTC(parti.year, parti.month - 1, parti.day - (parti.hour < 5 ? 1 : 0)));
     return data.toISOString().slice(0, 10);
 }
+function aggiornaCaricoForno() {
+    caricoFornoElement.hidden = tipoOrdine.value === "tavolo";
+    if (caricoFornoElement.hidden) return;
+
+    caricoFornoFasce.replaceChildren();
+    caricoFornoComanda.hidden = true;
+    caricoFornoComanda.textContent = "";
+    caricoFornoMessaggio.classList.remove("is-errore");
+    if (statoTavoliOccupati.erroreForno) {
+        caricoFornoMessaggio.textContent = `Carico forno non disponibile. ${statoTavoliOccupati.erroreForno}`;
+        caricoFornoMessaggio.classList.add("is-errore");
+        return;
+    }
+    if (!statoTavoliOccupati.caricato) {
+        caricoFornoMessaggio.textContent = "Caricamento del carico forno...";
+        return;
+    }
+    if (!stato.menu.length) {
+        caricoFornoMessaggio.textContent = "Caricamento del menu...";
+        return;
+    }
+    if (!orario.value) {
+        caricoFornoMessaggio.textContent = "Seleziona un orario per vedere il carico del forno.";
+        return;
+    }
+
+    caricoFornoMessaggio.textContent = "";
+    const carico = calcolaCaricoForno({
+        ordini: statoTavoliOccupati.ordiniForno,
+        menu: stato.menu,
+        tipo: tipoOrdine.value,
+        orario: orario.value,
+        righeCorrenti: stato.righe,
+        numeroEscluso: numeroModifica,
+        soglia: FORNO_PIZZE_PER_QUARTO
+    });
+    carico.fasce.forEach(fascia => {
+        const elemento = document.createElement("span");
+        elemento.className = "carico-forno__fascia";
+        elemento.classList.toggle("is-selezionata", fascia.selezionata);
+        elemento.classList.toggle("is-pieno", fascia.pieno);
+        elemento.textContent = `${fascia.orario}  ${fascia.pizze} ${fascia.pizze === 1 ? "pizza" : "pizze"}${fascia.pieno ? " · forno pieno" : ""}`;
+        caricoFornoFasce.appendChild(elemento);
+    });
+    if (carico.pizzeComanda > 0) {
+        caricoFornoComanda.textContent = `+${carico.pizzeComanda} di questa comanda`;
+        caricoFornoComanda.hidden = false;
+    }
+}
 async function aggiornaTavoliOccupati() {
-    if (numeroModifica) return;
     const data = dataOdiernaRoma();
+    if (statoTavoliOccupati.data !== data) {
+        statoTavoliOccupati.caricato = false;
+        statoTavoliOccupati.versione = null;
+        statoTavoliOccupati.ordiniForno = [];
+        statoTavoliOccupati.erroreForno = "";
+        if (!numeroModifica) {
+            statoTavoliOccupati.ordini = new Map();
+            aggiornaSelettoreTavoli();
+        }
+        aggiornaCaricoForno();
+    }
     const completa = !statoTavoliOccupati.caricato || statoTavoliOccupati.data !== data;
     const richiesta = ++statoTavoliOccupati.richiesta;
-    const parametri = new URLSearchParams({ data, tipo: "tavolo" });
+    const parametri = new URLSearchParams({ data });
     if (!completa && Number.isSafeInteger(statoTavoliOccupati.versione)) {
         parametri.set("versione", String(statoTavoliOccupati.versione));
     }
@@ -683,29 +750,42 @@ async function aggiornaTavoliOccupati() {
         if (richiesta !== statoTavoliOccupati.richiesta) return;
         const risultato = await risposta.json();
         if (!risposta.ok) throw new Error(risultato.errore || "Impossibile verificare i tavoli occupati.");
-        if (risultato.invariato) return;
-        if (!Array.isArray(risultato.ordini)) {
-            throw new Error("La risposta degli ordini dei tavoli non e' valida.");
+        if (risultato.invariato) {
+            statoTavoliOccupati.erroreForno = "";
+            aggiornaCaricoForno();
+            return;
         }
-        statoTavoliOccupati.ordini = calcolaTavoliOccupati(risultato.ordini);
+        if (!Array.isArray(risultato.ordini)) {
+            throw new Error("La risposta degli ordini della giornata non e' valida.");
+        }
+        statoTavoliOccupati.ordiniForno = risultato.ordini;
+        statoTavoliOccupati.erroreForno = "";
+        if (!numeroModifica) {
+            statoTavoliOccupati.ordini = calcolaTavoliOccupati(risultato.ordini);
+            aggiornaSelettoreTavoli();
+            statoTavoliOccupatiElement.hidden = true;
+            statoTavoliOccupatiElement.classList.remove("errore");
+            statoTavoliOccupatiElement.textContent = "";
+        }
         statoTavoliOccupati.versione = risultato.versione;
         statoTavoliOccupati.data = data;
         statoTavoliOccupati.caricato = true;
-        aggiornaSelettoreTavoli();
-        statoTavoliOccupatiElement.hidden = true;
-        statoTavoliOccupatiElement.classList.remove("errore");
-        statoTavoliOccupatiElement.textContent = "";
+        aggiornaCaricoForno();
     } catch (errore) {
         if (richiesta !== statoTavoliOccupati.richiesta) return;
-        statoTavoliOccupatiElement.textContent = errore.message;
-        statoTavoliOccupatiElement.hidden = false;
-        statoTavoliOccupatiElement.classList.add("errore");
+        statoTavoliOccupati.erroreForno = errore.message;
+        if (!numeroModifica) {
+            statoTavoliOccupatiElement.textContent = errore.message;
+            statoTavoliOccupatiElement.hidden = false;
+            statoTavoliOccupatiElement.classList.add("errore");
+        }
+        aggiornaCaricoForno();
     }
 }
 function configuraAggiornamentoTavoliOccupati() {
     if (statoTavoliOccupati.timer) clearInterval(statoTavoliOccupati.timer);
     statoTavoliOccupati.timer = null;
-    if (!numeroModifica && document.visibilityState === "visible") {
+    if (document.visibilityState === "visible") {
         statoTavoliOccupati.timer = setInterval(() => void aggiornaTavoliOccupati(), 15000);
     }
 }
@@ -1485,6 +1565,7 @@ function renderRiepilogo() {
     inviaSheet.disabled = invia.disabled;
     inviaSheet.textContent = invia.textContent;
     aggiornaStatoCaricamentoModifica();
+    aggiornaCaricoForno();
 }
 function aggiornaStatoCaricamentoModifica() {
     if (!numeroModifica) return;
@@ -1940,6 +2021,7 @@ async function inviaOrdine() {
         pagamentoRitiro.value = "non_pagato";
         pagamentoConsegna.value = "non_pagato";
         renderRiepilogo();
+        void aggiornaTavoliOccupati();
     } catch (errore) {
         const senzaConnessione = navigator.onLine === false || errore instanceof TypeError;
         mostraMessaggio(
@@ -2184,6 +2266,8 @@ bottoneCostoConsegna.addEventListener("click", () => {
     renderRiepilogo();
 });
 orario.value = oraLocale();
+orario.addEventListener("input", aggiornaCaricoForno);
+orario.addEventListener("change", aggiornaCaricoForno);
 creaSelettoriOrdine();
 numeroPersone.min = "1";
 numeroPersone.max = "30";

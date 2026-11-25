@@ -1412,6 +1412,74 @@ button {
     font-size: 13px;
 }
 
+.carico-forno {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--theme-line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--theme-ink);
+    font-size: 13px;
+}
+
+.carico-forno[hidden] {
+    display: none;
+}
+
+.carico-forno__titolo {
+    color: var(--theme-muted);
+    font-weight: 700;
+}
+
+.carico-forno__fasce {
+    display: flex;
+    flex: 1 1 220px;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.carico-forno__fascia {
+    padding: 3px 7px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    white-space: nowrap;
+}
+
+.carico-forno__fascia.is-selezionata {
+    border-color: #9dc3e8;
+    background: #edf6ff;
+    color: #174f84;
+    font-weight: 700;
+}
+
+.carico-forno__fascia.is-pieno {
+    border-color: #e7a14b;
+    background: #fff2df;
+    color: #8a4600;
+}
+
+.carico-forno__fascia.is-selezionata {
+    border-width: 2px;
+}
+
+.carico-forno__comanda,
+.carico-forno__messaggio {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--theme-muted);
+    font-size: 12px;
+}
+
+.carico-forno__messaggio.is-errore {
+    color: var(--rosso);
+}
+
 .tavolo-occupato-dialog {
     position: fixed;
     inset: 0;

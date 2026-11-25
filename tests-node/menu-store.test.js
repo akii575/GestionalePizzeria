@@ -143,24 +143,29 @@ test("menu store orders active categories and products alphabetically and keeps 
     assert.deepEqual(menu.menu.map(product => product.nome), ["Esaurita", "Margherita", "Dolce"]);
     assert.equal(menu.menu[1].ammetteExtra, true);
     assert.equal(menu.menu[1].componibile, true);
+    assert.equal(menu.menu[1].contaForno, true);
     assert.equal(menu.menu[0].disponibile, false);
+    assert.equal(menu.menu[2].contaForno, false);
     assert.equal(menu.menu[2].componibile, false);
     assert.equal(menu.categories[0].stampaCucina, true);
     assert.equal(menu.categories[0].stampaVariazioni, true);
+    assert.equal(menu.categories[0].contaForno, true);
     assert.equal(menu.categories[1].stampaCucina, false);
     assert.equal(menu.categories[1].stampaVariazioni, false);
+    assert.equal(menu.categories[1].contaForno, false);
     assert.equal(menu.categories[2].stampaCucina, false);
     assert.equal(menu.categories[2].stampaVariazioni, true);
     assert.equal(menu.extras.length, 2);
     assert.equal(menu.extras[1].disponibile, false);
     assert.equal(menu.menu.some(product => product.nome === "Archiviata"), false);
+    assert.equal(menu.allProducts.find(product => product.id === "archived").contaForno, true);
     assert.equal(menu.extras.some(extra => extra.nome === "Extra archiviato"), false);
 });
 
 test("menu store sorts names naturally in Italian, breaks equivalent-name ties by id and keeps category order", async () => {
     const data = seed();
     data.menuCategorie = {
-        primaria: { nome: "Primaria", ordine: 0, ammetteExtra: false },
+        primaria: { nome: "Primaria", ordine: 0, ammetteExtra: true, contaForno: false },
         secondaria: { nome: "Secondaria", ordine: 1, ammetteExtra: false }
     };
     const product = (nome, categoriaId, ordine) => ({
@@ -192,6 +197,9 @@ test("menu store sorts names naturally in Italian, breaks equivalent-name ties b
     assert.deepEqual(menu.menu.map(item => item.id), [
         "acqua-05", "acqua-1", "accent-a", "accent-z", "zucchero", "aardvark"
     ]);
+    assert.equal(menu.categories[0].contaForno, false);
+    assert.equal(menu.menu[0].contaForno, false);
+    assert.equal(menu.menu[5].contaForno, false);
     assert.deepEqual(menu.allExtras.map(item => item.id), [
         "extra-05", "extra-1", "extra-accent-a", "extra-accent-z", "extra-archived"
     ]);

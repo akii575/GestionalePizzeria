@@ -177,6 +177,12 @@
                 <div id="campo-orario" hidden>
                     <label for="orario">Orario richiesto</label>
                     <input id="orario" type="time" required />
+                    <div id="carico-forno" class="carico-forno" role="status" aria-live="polite" hidden>
+                        <span class="carico-forno__titolo">Carico forno</span>
+                        <div id="carico-forno-fasce" class="carico-forno__fasce"></div>
+                        <p id="carico-forno-comanda" class="carico-forno__comanda" hidden></p>
+                        <p id="carico-forno-messaggio" class="carico-forno__messaggio"></p>
+                    </div>
                 </div>
                 <div id="campo-pagamento-ritiro" hidden>
                     <label for="pagamento-ritiro">Pagamento ritiro</label>
