@@ -15,6 +15,7 @@
     const state = {
         resource: "prodotti",
         menu: { categorie: [], prodotti: [], extra: [] },
+        contaFornoSegueExtra: false,
         id: null,
         focusReturn: null,
         saving: false,
@@ -132,7 +133,7 @@
                     product.categoriaId === category.id && product.archiviato !== true
                 )).length;
                 return `<div class="menu-row" data-id="${escapeHtml(category.id)}">
-                    ${rowMain(category.nome, `${productCount} prodotti · ${category.ammetteExtra ? "Ammette extra" : "Senza extra"}${category.stampaCucina === false ? " · Non in cucina" : ""}${(category.stampaVariazioni === undefined ? category.stampaCucina !== false : category.stampaVariazioni === true) ? "" : " · Non nelle variazioni"}`)}
+                    ${rowMain(category.nome, `${productCount} prodotti · ${category.ammetteExtra ? "Ammette extra" : "Senza extra"}${(category.contaForno === undefined ? category.ammetteExtra === true : category.contaForno === true) ? " · Conta nel forno" : ""}${category.stampaCucina === false ? " · Non in cucina" : ""}${(category.stampaVariazioni === undefined ? category.stampaCucina !== false : category.stampaVariazioni === true) ? "" : " · Non nelle variazioni"}`)}
                     <div class="menu-row-end">${editButton("categorie", category.id)}${archiveButton("categorie", category.id)}${deleteButton("categorie", category.id)}</div>
                     ${orderButtons(category.id, index, categories.length)}
                 </div>`;
@@ -238,6 +239,7 @@
         document.getElementById("menu-ingredients-field").hidden = resource !== "prodotti";
         document.getElementById("menu-composable-field").hidden = resource !== "prodotti";
         document.getElementById("menu-extra-allowed-field").hidden = resource !== "categorie";
+        document.getElementById("menu-oven-count-field").hidden = resource !== "categorie";
         document.getElementById("menu-kitchen-print-field").hidden = resource !== "categorie";
         document.getElementById("menu-variation-print-field").hidden = resource !== "categorie";
         document.getElementById("menu-available-field").hidden = resource === "categorie";
@@ -253,6 +255,7 @@
         state.id = item?.id || null;
         state.focusReturn = trigger;
         form.reset();
+        state.contaFornoSegueExtra = !item || item.contaForno === undefined;
         setFieldVisibility(resource);
         document.getElementById("menu-editor-title").textContent = item
             ? `Modifica ${resource === "prodotti" ? "prodotto" : resource === "categorie" ? "categoria" : "extra"}`
@@ -262,6 +265,9 @@
         document.getElementById("menu-ingredients").value = item?.ingredienti?.join(", ") || "";
         document.getElementById("menu-composable").checked = item?.componibile === true;
         document.getElementById("menu-extra-allowed").checked = item?.ammetteExtra === true;
+        document.getElementById("menu-oven-count").checked = state.contaFornoSegueExtra
+            ? item?.ammetteExtra === true
+            : item.contaForno === true;
         document.getElementById("menu-kitchen-print").checked = item?.stampaCucina !== false;
         document.getElementById("menu-variation-print").checked = item?.stampaVariazioni
             ?? (item?.stampaCucina !== false);
@@ -299,6 +305,7 @@
             payload.disponibile = document.getElementById("menu-available").checked;
         } else {
             payload.ammetteExtra = document.getElementById("menu-extra-allowed").checked;
+            payload.contaForno = document.getElementById("menu-oven-count").checked;
             payload.stampaCucina = document.getElementById("menu-kitchen-print").checked;
             payload.stampaVariazioni = document.getElementById("menu-variation-print").checked;
         }
@@ -393,6 +400,14 @@
     document.getElementById("menu-new").addEventListener("click", event => (
         openEditor(state.resource, null, event.currentTarget)
     ));
+    document.getElementById("menu-extra-allowed").addEventListener("change", event => {
+        if (state.contaFornoSegueExtra) {
+            document.getElementById("menu-oven-count").checked = event.currentTarget.checked;
+        }
+    });
+    document.getElementById("menu-oven-count").addEventListener("change", () => {
+        state.contaFornoSegueExtra = false;
+    });
     content.addEventListener("click", handleItemAction);
     archivedContent.addEventListener("click", handleItemAction);
     undoButton.addEventListener("click", async () => {

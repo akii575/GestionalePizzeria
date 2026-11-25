@@ -81,3 +81,27 @@ test("a matching cached version does not redraw the menu", async () => {
 
     assert.deepEqual(rendered, [{ menu: ["cached-menu"], extra: ["cached-extra"] }]);
 });
+
+test("a matching-version cache without oven flags is refreshed from the menu response", async () => {
+    const cachedProduct = { id: "pizza", nome: "Pizza", ammetteExtra: true };
+    const networkProduct = { ...cachedProduct, contaForno: false };
+    const storage = createStorage(JSON.stringify({
+        versione: 5,
+        menu: [cachedProduct],
+        extra: []
+    }));
+    const rendered = [];
+    const loading = caricaMenuConCache(
+        async () => ({ versione: 5, menu: [networkProduct], extra: [] }),
+        (menu, extra) => rendered.push({ menu, extra }),
+        storage
+    );
+
+    await loading.aggiornamento;
+
+    assert.deepEqual(rendered, [
+        { menu: [cachedProduct], extra: [] },
+        { menu: [networkProduct], extra: [] }
+    ]);
+    assert.deepEqual(storage.read().menu, [networkProduct]);
+});

@@ -312,12 +312,13 @@ test("menu admin API creates and updates records while incrementing the menu ver
     const db = useDatabase();
     const createdCategory = await invoke("POST", {
         token: "admin",
-        body: { risorsa: "categorie", nome: "Bevande", ammetteExtra: false, stampaCucina: false }
+        body: { risorsa: "categorie", nome: "Bevande", ammetteExtra: true, stampaCucina: false }
     });
     assert.equal(createdCategory.statusCode, 201);
     assert.equal(createdCategory.body.versione, 4);
     const categoryId = createdCategory.body.id;
     assert.equal(db.get("menuCategorie", categoryId).ordine, 3);
+    assert.equal(db.get("menuCategorie", categoryId).contaForno, true);
     assert.equal(db.get("menuCategorie", categoryId).stampaCucina, false);
     assert.equal(db.get("menuCategorie", categoryId).stampaVariazioni, false);
 
@@ -328,6 +329,7 @@ test("menu admin API creates and updates records while incrementing the menu ver
             id: "pizze",
             nome: "Pizze",
             ammetteExtra: true,
+            contaForno: false,
             stampaCucina: false,
             stampaVariazioni: true
         }
@@ -335,6 +337,20 @@ test("menu admin API creates and updates records while incrementing the menu ver
     assert.equal(updatedCategory.body.versione, 5);
     assert.equal(db.get("menuCategorie", "pizze").stampaCucina, false);
     assert.equal(db.get("menuCategorie", "pizze").stampaVariazioni, true);
+    assert.equal(db.get("menuCategorie", "pizze").contaForno, false);
+
+    const invalidOvenCount = await invoke("PUT", {
+        token: "admin",
+        body: {
+            risorsa: "categorie",
+            id: "pizze",
+            nome: "Pizze",
+            ammetteExtra: true,
+            contaForno: "si"
+        }
+    });
+    assert.equal(invalidOvenCount.statusCode, 400);
+    assert.equal(db.get("metadata", "menuVersion").versione, 5);
 
     const createdProduct = await invoke("POST", {
         token: "admin",

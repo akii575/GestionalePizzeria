@@ -55,7 +55,11 @@ const prodottiUI = (() => {
                 || (typeof dati.versione === "string" && dati.versione.trim() !== "");
             const versione = versioneRicevuta ? Number(dati.versione) : NaN;
             const versioneValida = Number.isSafeInteger(versione) && versione >= 0;
-            if (!cache || !versioneValida || versione !== cache.versione) {
+            const menuHaFlagForno = dati.menu.some(prodotto => typeof prodotto?.contaForno === "boolean");
+            const cacheHaFlagForno = cache?.menu.length > 0
+                && cache.menu.every(prodotto => typeof prodotto?.contaForno === "boolean");
+            if (!cache || !versioneValida || versione !== cache.versione
+                    || (menuHaFlagForno && !cacheHaFlagForno)) {
                 disegna(dati.menu, dati.extra);
             }
             if (versioneValida) {
@@ -551,6 +555,85 @@ const prodottiUI = (() => {
         return occupied;
     }
 
+    function calcolaCaricoForno({
+        ordini = [],
+        menu = [],
+        tipo,
+        orario,
+        righeCorrenti = [],
+        numeroEscluso = null,
+        soglia
+    }) {
+        const prodottoContaForno = new Map((Array.isArray(menu) ? menu : []).map(prodotto => [
+            prodotto.categoria,
+            prodotto.contaForno === undefined
+                ? prodotto.ammetteExtra === true
+                : prodotto.contaForno === true
+        ]));
+        const conteggioRighe = righe => (Array.isArray(righe) ? righe : []).reduce((totale, riga) => {
+            if (!riga || isCoperto({ nome: riga.prodotto }) || prodottoContaForno.get(riga.categoria) !== true) {
+                return totale;
+            }
+            const quantita = Number.isSafeInteger(riga.quantita) && riga.quantita > 0
+                ? riga.quantita
+                : 1;
+            return totale + quantita;
+        }, 0);
+        const slot = valore => {
+            if (typeof valore !== "string" || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(valore)) return null;
+            const [ora, minuto] = valore.split(":").map(Number);
+            return ora * 4 + Math.floor(minuto / 15);
+        };
+        const indiceSelezionato = slot(orario);
+        if (indiceSelezionato === null) return { fasce: [], pizzeComanda: 0 };
+
+        const conteggi = Array(96).fill(0);
+        const formatterOraRoma = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Europe/Rome",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23"
+        });
+        for (const ordine of Array.isArray(ordini) ? ordini : []) {
+            const tipoOrdine = ordine?.tipo === "sala" ? "tavolo" : ordine?.tipo;
+            if (!["tavolo", "ritiro", "consegna", "banco"].includes(tipoOrdine)
+                    || numeroEscluso !== null && Number(ordine.numero) === Number(numeroEscluso)) {
+                continue;
+            }
+            let oraOrdine = ordine.orario;
+            if (tipoOrdine === "tavolo") {
+                const dataOra = new Date(ordine.dataOra);
+                if (!Number.isFinite(dataOra.getTime())) continue;
+                const parti = Object.fromEntries(formatterOraRoma.formatToParts(dataOra)
+                    .filter(parte => parte.type !== "literal")
+                    .map(parte => [parte.type, parte.value]));
+                oraOrdine = `${parti.hour}:${parti.minute}`;
+            }
+            const indice = slot(oraOrdine);
+            if (indice === null) continue;
+            conteggi[indice] += conteggioRighe(ordine.righe);
+        }
+
+        const pizzeComanda = tipo !== "tavolo" ? conteggioRighe(righeCorrenti) : 0;
+        const fasce = [];
+        for (let distanza = 0; distanza < 3; distanza++) {
+            const indice = (indiceSelezionato + distanza) % conteggi.length;
+            const pizzeOrdini = conteggi[indice];
+            const pizzeCorrenti = distanza === 0 ? pizzeComanda : 0;
+            const pizze = pizzeOrdini + pizzeCorrenti;
+            const minuti = indice * 15;
+            fasce.push({
+                orario: `${String(Math.floor(minuti / 60)).padStart(2, "0")}:${String(minuti % 60).padStart(2, "0")}`,
+                pizze,
+                pizzeOrdini,
+                pizzeComanda: pizzeCorrenti,
+                selezionata: distanza === 0,
+                pieno: pizze >= soglia
+            });
+        }
+        return { fasce, pizzeComanda };
+    }
+
     function creaGestoreTavoli() {
         let tavolo = "";
         let numero = "";
@@ -769,6 +852,7 @@ const prodottiUI = (() => {
         nomeTavoloDaNumero,
         numeroTavoloDaNome,
         calcolaTavoliOccupati,
+        calcolaCaricoForno,
         creaGestoreTavoli,
         datiObbligatoriMancanti,
         datiOrdineCompleti,

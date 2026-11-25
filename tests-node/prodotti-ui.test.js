@@ -39,6 +39,7 @@ const {
     nomeTavoloDaNumero,
     numeroTavoloDaNome,
     calcolaTavoliOccupati,
+    calcolaCaricoForno,
     creaGestoreTavoli,
     datiObbligatoriMancanti,
     datiOrdineCompleti,
@@ -419,6 +420,136 @@ test("occupied tables omit closed orders and retain the most recent open order",
     assert.equal(occupied.has("5"), false);
 });
 
+function righeForno(quantita, categoria = "pizze", prodotto = "Margherita") {
+    return Array.from({ length: quantita }, () => ({ prodotto, categoria }));
+}
+
+test("oven load groups quarter-hour boundaries and rolls through the next hour and midnight", () => {
+    const menu = [{ categoria: "pizze", ammetteExtra: true }];
+    const orders = [
+        { tipo: "ritiro", orario: "20:14", righe: righeForno(1) },
+        { tipo: "banco", orario: "20:15", righe: righeForno(2) },
+        { tipo: "consegna", orario: "21:00", righe: righeForno(3) },
+        { tipo: "ritiro", orario: "23:59", righe: righeForno(4) },
+        { tipo: "banco", orario: "00:00", righe: righeForno(5) }
+    ];
+
+    const beforeBoundary = calcolaCaricoForno({
+        ordini: orders,
+        menu,
+        tipo: "ritiro",
+        orario: "20:14",
+        soglia: 12
+    });
+    assert.deepEqual(beforeBoundary.fasce.map(({ orario, pizze }) => [orario, pizze]), [
+        ["20:00", 1], ["20:15", 2], ["20:30", 0]
+    ]);
+
+    const crossingHour = calcolaCaricoForno({
+        ordini: orders,
+        menu,
+        tipo: "banco",
+        orario: "20:45",
+        soglia: 12
+    });
+    assert.deepEqual(crossingHour.fasce.map(({ orario, pizze }) => [orario, pizze]), [
+        ["20:45", 0], ["21:00", 3], ["21:15", 0]
+    ]);
+
+    const crossingMidnight = calcolaCaricoForno({
+        ordini: orders,
+        menu,
+        tipo: "consegna",
+        orario: "23:45",
+        soglia: 12
+    });
+    assert.deepEqual(crossingMidnight.fasce.map(({ orario, pizze }) => [orario, pizze]), [
+        ["23:45", 4], ["00:00", 5], ["00:15", 0]
+    ]);
+});
+
+test("oven load excludes covers and non-counting categories and defaults to ammetteExtra", () => {
+    const menu = [
+        { categoria: "pizze", ammetteExtra: true },
+        { categoria: "bibite", ammetteExtra: false, contaForno: false },
+        { categoria: "dolci", ammetteExtra: true, contaForno: false }
+    ];
+    const result = calcolaCaricoForno({
+        ordini: [{
+            tipo: "ritiro",
+            orario: "19:00",
+            righe: [
+                ...righeForno(1),
+                ...righeForno(1, "bibite", "Acqua"),
+                ...righeForno(1, "dolci", "Torta"),
+                ...righeForno(1, "pizze", "Coperto")
+            ]
+        }],
+        menu,
+        tipo: "ritiro",
+        orario: "19:00",
+        soglia: 12
+    });
+
+    assert.equal(result.fasce[0].pizze, 1);
+});
+
+test("oven load excludes the order being edited and adds current rows to its selected slot", () => {
+    const menu = [{ categoria: "pizze", ammetteExtra: true }];
+    const result = calcolaCaricoForno({
+        ordini: [
+            { numero: 10, tipo: "ritiro", orario: "20:00", righe: righeForno(8) },
+            { numero: 11, tipo: "consegna", orario: "20:00", righe: righeForno(3) }
+        ],
+        menu,
+        tipo: "banco",
+        orario: "20:00",
+        righeCorrenti: righeForno(1),
+        numeroEscluso: 10,
+        soglia: 12
+    });
+
+    assert.equal(result.fasce[0].pizzeOrdini, 3);
+    assert.equal(result.fasce[0].pizzeComanda, 1);
+    assert.equal(result.fasce[0].pizze, 4);
+});
+
+test("oven load uses Rome creation time for table orders and marks twelve pizzas as full", () => {
+    const menu = [{ categoria: "pizze", ammetteExtra: true }];
+    const tavoli = calcolaCaricoForno({
+        ordini: [
+            { tipo: "tavolo", dataOra: "2026-11-25T19:14:00.000Z", righe: righeForno(2) },
+            { tipo: "tavolo", dataOra: "2026-11-25T19:15:00.000Z", righe: righeForno(3) }
+        ],
+        menu,
+        tipo: "ritiro",
+        orario: "20:00",
+        soglia: 12
+    });
+    assert.deepEqual(tavoli.fasce.slice(0, 2).map(({ orario, pizze }) => [orario, pizze]), [
+        ["20:00", 2], ["20:15", 3]
+    ]);
+
+    const sottoSoglia = calcolaCaricoForno({
+        ordini: [{ tipo: "banco", orario: "20:30", righe: righeForno(11) }],
+        menu,
+        tipo: "banco",
+        orario: "20:30",
+        soglia: 12
+    });
+    const pieno = calcolaCaricoForno({
+        ordini: [{ tipo: "banco", orario: "20:30", righe: righeForno(11) }],
+        menu,
+        tipo: "banco",
+        orario: "20:30",
+        righeCorrenti: righeForno(1),
+        soglia: 12
+    });
+    assert.equal(sottoSoglia.fasce[0].pieno, false);
+    assert.equal(pieno.fasce[0].pizze, 12);
+    assert.equal(pieno.fasce[0].pieno, true);
+});
+
 test("invalid custom table numbers show the required validation message", () => {
     for (const valore of ["0", "100", "", "abc", "1.5"]) {
         const gestioneTavoli = creaGestoreTavoli();
@@ -482,6 +613,29 @@ test("order entry and edit mode use the same custom table number controls", () =
     assert.match(script, /numeroTavoloDaNome\(ordine\.tavoloOCliente\)/);
     assert.match(script, /nomeTavoloDaNumero\(numeroTavoloDaNome\(tavolo\.value\)\)/);
     assert.match(script, /gestioneTavoli\.impostaNumeroPersonalizzato\(numeroTavoloOrdine\)/);
+});
+
+test("oven preview sits under the time field and refreshes from versioned service-day orders", () => {
+    const directory = path.join(__dirname, "..", "src", "main", "resources", "static");
+    const script = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+    const html = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
+    const css = fs.readFileSync(path.join(directory, "ordini.css"), "utf8");
+    const updater = script.slice(
+        script.indexOf("async function aggiornaTavoliOccupati"),
+        script.indexOf("function configuraAggiornamentoTavoliOccupati")
+    );
+
+    assert.match(script, /const FORNO_PIZZE_PER_QUARTO = 12/);
+    assert.match(html, /id="orario" type="time"[\s\S]*?id="carico-forno"/);
+    assert.match(html, /id="carico-forno" class="carico-forno"[^>]*hidden/);
+    assert.match(script, /orario\.addEventListener\("input", aggiornaCaricoForno\)/);
+    assert.match(script, /renderRiepilogo\(\);[\s\S]*?aggiornaCaricoForno\(\);/);
+    assert.match(updater, /new URLSearchParams\(\{ data \}\)/);
+    assert.match(updater, /parametri\.set\("versione"/);
+    assert.match(updater, /statoTavoliOccupati\.ordiniForno = risultato\.ordini/);
+    assert.match(script, /setInterval\(\(\) => void aggiornaTavoliOccupati\(\), 15000\)/);
+    assert.match(css, /\.carico-forno__fascia\.is-selezionata/);
+    assert.match(css, /\.carico-forno__fascia\.is-pieno/);
 });
 
 test("quick notes append with a separator and preserve manually written text", () => {

@@ -25,8 +25,12 @@ test("menu editor page loads protected navigation, accessible editor and shared 
     assert.match(page, /aria-label="Nuovo"/);
     assert.match(page, /id="menu-undo-toast"/);
     assert.match(page, /id="menu-variation-print" name="stampaVariazioni" type="checkbox"/);
+    assert.match(page, /id="menu-oven-count" name="contaForno" type="checkbox"/);
+    assert.match(page, /Conta nel forno/);
     assert.match(page, /Stampa nelle variazioni \(modifiche ordine\)/);
     assert.match(editor, /menu-variation-print/);
+    assert.match(editor, /menu-oven-count-field/);
+    assert.match(editor, /payload\.contaForno = document\.getElementById\("menu-oven-count"\)\.checked/);
     assert.match(styles, /\.menu-delete-button \{(?=[^}]*color: #A32D2D)(?=[^}]*background: #FCEBEB)(?=[^}]*border-color: #F7C1C1)[^}]*\}/);
     assert.match(styles, /@media \(max-width: 359px\)[\s\S]*\.menu-new-label/);
     assert.match(styles, /\.menu-tabs\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*gap:\s*0;/);
