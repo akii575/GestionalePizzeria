@@ -1093,7 +1093,8 @@ function anteprimaTotaliOrdine() {
     const imponibileCentesimi = righeLordoCentesimi - scontiRigaCentesimi + copertoCentesimi;
     let scontoTotaleCentesimi = 0;
     let convenzioneCentesimi = 0;
-    let menuConvenzione = { menu: 0, importo: 0 };
+    // Calcolato sempre: serve anche per proporre il menu prima di attivarlo.
+    const menuConvenzione = orderDiscountRules.calculateMenuConvention(menuItems);
     if (scontoOrdine) {
         scontoTotaleCentesimi = scontoOrdine.tipo === "percentuale"
             ? orderDiscountRules.percentageDiscountCents(imponibileCentesimi, scontoOrdine.valore)
@@ -1104,7 +1105,6 @@ function anteprimaTotaliOrdine() {
             orderDiscountRules.CONVENZIONE_PERCENTUALE
         );
     } else if (convenzioneOrdine?.tipo === "menu") {
-        menuConvenzione = orderDiscountRules.calculateMenuConvention(menuItems);
         convenzioneCentesimi = menuConvenzione.importo;
     }
     return {
@@ -1141,7 +1141,8 @@ function markupRiepilogoFinanziario(preview, controlli = false) {
     const controls = controlli
         ? `<div class="riepilogo-sconti-controlli">
                 <button class="sconto-ordine-apri${scontoOrdine ? " is-active" : ""}" type="button" data-sconto-ordine>${scontoOrdine ? "Modifica sconto sul totale" : "Sconto sul totale"}</button>
-                <div class="convenzione-scelte" role="group" aria-label="Convenzione universitaria">
+                <p class="convenzione-titolo" id="convenzione-titolo">Convenzione universitaria</p>
+                <div class="convenzione-scelte" role="group" aria-labelledby="convenzione-titolo">
                     <button class="convenzione-scelta${conventionType === "percentuale" ? " is-active" : ""}" type="button" data-convenzione="percentuale" aria-pressed="${conventionType === "percentuale"}">10% sul totale</button>
                     <button class="convenzione-scelta${conventionType === "menu" ? " is-active" : ""}" type="button" data-convenzione="menu" aria-pressed="${conventionType === "menu"}">Menu 6 €</button>
                 </div>
