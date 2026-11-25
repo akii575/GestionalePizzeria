@@ -7,6 +7,7 @@ const vm = require("node:vm");
 const staticDirectory = path.join(__dirname, "../src/main/resources/static");
 const navigation = fs.readFileSync(path.join(staticDirectory, "nav.js"), "utf8");
 const navigationStyles = fs.readFileSync(path.join(staticDirectory, "nav.css"), "utf8");
+const managementStyles = fs.readFileSync(path.join(staticDirectory, "gestionale.css"), "utf8");
 const themeStyles = fs.readFileSync(path.join(staticDirectory, "theme.css"), "utf8");
 
 function createElement(tagName) {
@@ -219,6 +220,12 @@ test("mobile app headers and offline banners respect the iOS safe area", () => {
     assert.match(navigationStyles, /body\.app-shell \.app-page-header\s*\{[^}]*top:\s*0;[^}]*min-height:\s*calc\(60px \+ env\(safe-area-inset-top\)\);[^}]*padding:\s*env\(safe-area-inset-top\) 12px 8px;/);
     assert.match(navigationStyles, /\.civico7-network-banner\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;/);
     assert.match(navigationStyles, /\.civico7-network-banner\s*\{[^}]*padding-top:\s*calc\(10px \+ env\(safe-area-inset-top\)\);/);
+});
+
+test("mobile order pages reserve bottom navigation space and More spans the sheet", () => {
+    assert.match(managementStyles, /@media \(max-width: 767px\)[\s\S]*?html body\.app-shell main\.dashboard\s*\{[^}]*padding:\s*0 16px calc\(var\(--app-mobile-nav-height\) \+ 16px\);/);
+    assert.match(navigationStyles, /@media \(max-width: 767px\)[\s\S]*?body\.app-shell nav\.app-more-links\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*justify-content:\s*stretch;/);
+    assert.match(navigationStyles, /@media \(max-width: 767px\) and \(max-height: 560px\), \(max-width: 767px\) and \(orientation: landscape\)[\s\S]*?main\.dashboard:not\(\.menu-dashboard\):not\(\.storico-dashboard\)\s*\{[^}]*padding-bottom:\s*calc\(var\(--app-mobile-nav-height\) \+ 16px\);/);
 });
 
 test("compact tablet navigation keeps icon labels accessible through tooltips and aria labels", () => {
