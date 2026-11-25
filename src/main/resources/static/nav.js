@@ -127,7 +127,6 @@
         sidebar.append(sideNav);
 
         let setMoreOpen = () => {};
-        let sidebarMoreButton = null;
         const sidebarActions = document.createElement("div");
         sidebarActions.className = "app-sidebar-actions";
         if (resetButton) {
@@ -136,43 +135,12 @@
         }
         const sidebarEmail = createAccountEmail("app-sidebar-account-email", accountEmail);
         if (sidebarEmail) sidebarActions.append(sidebarEmail);
-        if (!isDelivery) {
-            sidebarMoreButton = createButtonLink("Altro", "more", () => setMoreOpen(true));
-            sidebarMoreButton.classList.add("app-sidebar-more");
-            sidebarMoreButton.hidden = true;
-            sidebarMoreButton.setAttribute("aria-expanded", "false");
-            sidebarActions.append(sidebarMoreButton);
-        }
         sidebarActions.append(logoutButton);
         sidebar.append(sidebarActions);
         document.body.prepend(sidebar);
-
-        const compactSidebarMedia = typeof window.matchMedia === "function"
-            ? window.matchMedia(
-                "(min-width: 800px) and (max-width: 1439px) and (orientation: landscape) and (max-height: 560px)"
-            )
-            : null;
-        const aggiornaSidebarCompatta = () => {
-            if (!sidebarMoreButton) return;
-            sidebar.classList.toggle("has-overflow-menu", false);
-            sidebarMoreButton.hidden = true;
-            if (!compactSidebarMedia?.matches) return;
-            const necessitaAltro = sidebar.scrollHeight > sidebar.clientHeight
-                || sideNav.scrollHeight > sideNav.clientHeight;
-            sidebar.classList.toggle("has-overflow-menu", necessitaAltro);
-            sidebarMoreButton.hidden = !necessitaAltro;
-        };
-        if (sidebarMoreButton) {
-            window.addEventListener("resize", aggiornaSidebarCompatta);
-            if (window.ResizeObserver) {
-                new window.ResizeObserver(aggiornaSidebarCompatta).observe(sidebar);
-            }
-            if (resetButton) {
-                new MutationObserver(aggiornaSidebarCompatta).observe(resetButton, {
-                    attributes: true,
-                    attributeFilter: ["hidden"]
-                });
-            }
+        const activeSidebarLink = sideNav.querySelector(".is-active");
+        if (activeSidebarLink && typeof activeSidebarLink.scrollIntoView === "function") {
+            activeSidebarLink.scrollIntoView({ block: "nearest" });
         }
 
         const bottomNav = document.createElement("nav");
@@ -249,15 +217,10 @@
             setMoreOpen = open => {
                 backdrop.hidden = !open;
                 moreToggle.setAttribute("aria-expanded", String(open));
-                sidebarMoreButton?.setAttribute("aria-expanded", String(open));
                 document.body.classList.toggle("app-more-open", open);
                 if (open) closeButton.focus();
-                else if (sidebarMoreButton && !sidebarMoreButton.hidden) sidebarMoreButton.focus();
                 else moreToggle.focus();
             };
-            const inizializzaSidebarCompatta = () => aggiornaSidebarCompatta();
-            if (window.requestAnimationFrame) window.requestAnimationFrame(inizializzaSidebarCompatta);
-            else inizializzaSidebarCompatta();
         }
     }
 

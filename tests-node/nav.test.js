@@ -238,14 +238,26 @@ test("sidebar icons have bounded dimensions and desktop email remains readable",
     assert.match(navigation, /label\.setAttribute\("aria-label", `Indirizzo email: \$\{email\}`\)/);
 });
 
-test("short landscape tablet sidebars move overflow actions into an Altro popover", () => {
-    assert.match(navigation, /sidebarMoreButton = createButtonLink\("Altro", "more", \(\) => setMoreOpen\(true\)\)/);
-    assert.match(navigation, /sideNav\.scrollHeight > sideNav\.clientHeight/);
+test("desktop sidebars keep actions fixed and scroll a compact navigation list", () => {
+    assert.match(navigationStyles, /body\.app-shell \.app-sidebar\s*\{[^}]*height:\s*100dvh;[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
+    assert.match(navigationStyles, /body\.app-shell nav\.app-sidebar-links\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*align-content:\s*start;[^}]*grid-auto-rows:\s*auto;[^}]*overflow-y:\s*auto;/);
+    assert.match(navigationStyles, /body\.app-shell nav\.app-sidebar-links > \.app-nav-item\s*\{[^}]*box-sizing:\s*border-box;/);
+    assert.match(navigationStyles, /\.app-sidebar-actions\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin-top:\s*auto;/);
+    assert.match(navigationStyles, /@media \(min-width: 768px\)[\s\S]*?\.app-sidebar-account-email\s*\{[^}]*display:\s*grid;/);
+    assert.match(navigation, /const activeSidebarLink = sideNav\.querySelector\("\.is-active"\);[\s\S]*activeSidebarLink\.scrollIntoView\(\{ block: "nearest" \}\)/);
+    assert.match(navigationStyles, /@media \(min-width: 1025px\) and \(max-height: 820px\)[\s\S]*?\.app-sidebar \.app-brand\s*\{[^}]*width:\s*64px;[^}]*height:\s*64px;/);
+    assert.match(navigationStyles, /@media \(min-width: 1025px\) and \(max-height: 820px\)[\s\S]*?nav\.app-sidebar-links > \.app-nav-item\s*\{[^}]*min-height:\s*44px;[^}]*height:\s*44px;[^}]*font-size:\s*14px;/);
+    assert.match(navigationStyles, /@media \(min-width: 1025px\) and \(max-height: 640px\)[\s\S]*?\.app-sidebar \.app-brand\s*\{[^}]*width:\s*40px;[^}]*height:\s*40px;/);
+    assert.match(navigationStyles, /@media \(min-width: 1025px\) and \(max-height: 640px\)[\s\S]*?nav\.app-sidebar-links > \.app-nav-item\s*\{[^}]*min-height:\s*38px;[^}]*height:\s*38px;/);
+    assert.match(navigationStyles, /@media \(min-width: 1025px\) and \(max-height: 640px\)[\s\S]*?\.app-sidebar-account-email-value\s*\{[^}]*display:\s*none;/);
+});
+
+test("short landscape tablet sidebars retain scroll access to every navigation item", () => {
     assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?\.app-sidebar \.app-brand\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;/);
     assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?nav\.app-sidebar-links > \.app-nav-item\s*\{[^}]*min-height:\s*38px;[^}]*height:\s*38px;/);
-    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?nav\.app-sidebar-links::-webkit-scrollbar\s*\{[^}]*display:\s*none;/);
-    assert.match(navigationStyles, /has-overflow-menu \.app-sidebar-links > \.app-nav-item\[data-icon="printer"\]/);
-    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?\.app-more-sheet\s*\{[^}]*position:\s*absolute;[^}]*left:\s*76px;/);
+    assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?body\.app-shell nav\.app-sidebar-links\s*\{[^}]*overflow-y:\s*auto;/);
+    assert.doesNotMatch(navigationStyles, /has-overflow-menu \.app-sidebar-links/);
+    assert.doesNotMatch(navigation, /sidebarMoreButton|aggiornaSidebarCompatta/);
 });
 
 test("compact list pages preserve accessible search labels and fit the first result row", () => {
