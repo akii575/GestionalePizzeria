@@ -757,6 +757,35 @@ html body.app-shell main.dashboard .order-card__actions button[data-elimina] {
     outline-offset: 2px;
 }
 
+.order-card__whatsapp-action {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 9px;
+    margin: 12px;
+    padding: 9px 14px;
+    border: 1px solid var(--theme-green, var(--verde));
+    border-radius: 10px;
+    background: var(--theme-green, var(--verde));
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.order-card__whatsapp-action svg {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+}
+
+.order-card__whatsapp-action:focus-visible {
+    outline: 3px solid rgba(228, 176, 52, .5);
+    outline-offset: 2px;
+}
+
 html body.app-shell main.dashboard .order-card__actions a[data-modifica],
 html body.app-shell main.dashboard .order-card__actions button[data-ristampa] {
     border-color: var(--theme-green);

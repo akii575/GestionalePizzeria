@@ -13,6 +13,16 @@ test("HTML escaping protects text and quoted attributes", () => {
     );
 });
 
+test("WhatsApp numbers normalize Italian mobiles, landlines, and international prefixes", () => {
+    assert.equal(htmlUtils.numeroWhatsApp("3331234567"), "393331234567");
+    assert.equal(htmlUtils.numeroWhatsApp("+39 333 123 4567"), "393331234567");
+    assert.equal(htmlUtils.numeroWhatsApp("0039 333 123 4567"), "393331234567");
+    assert.equal(htmlUtils.numeroWhatsApp("06 12345678"), "390612345678");
+    assert.equal(htmlUtils.numeroWhatsApp("393331234567"), "393331234567");
+    assert.equal(htmlUtils.numeroWhatsApp("1234567"), null);
+    assert.equal(htmlUtils.numeroWhatsApp(""), null);
+});
+
 test("order templates escape names and the legacy edit page only redirects", () => {
     const orderScript = fs.readFileSync(path.join(staticDirectory, "ordini.js"), "utf8");
     const orderPage = fs.readFileSync(path.join(staticDirectory, "ordini.html"), "utf8");
