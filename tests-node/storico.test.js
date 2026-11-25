@@ -234,6 +234,21 @@ test("history dashboard prevents grid children from widening the page", () => {
     assert.match(styles, /\.storico-panel\s*\{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/);
 });
 
+test("mobile history controls use compact preset labels and full-width filters", () => {
+    const staticDirectory = path.join(__dirname, "../src/main/resources/static");
+    const markup = fs.readFileSync(path.join(staticDirectory, "storico.html"), "utf8");
+    const styles = fs.readFileSync(path.join(staticDirectory, "storico.css"), "utf8");
+
+    assert.equal((markup.match(/<span class="storico-preset-prefisso">Ultimi <\/span>/g) || []).length, 3);
+    assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.storico-preset-prefisso\s*\{\s*display:\s*none;/);
+    assert.match(styles, /\.storico-presets\s*\{[^}]*display:\s*grid;[^}]*align-items:\s*stretch;/);
+    assert.match(styles, /\.storico-presets button\s*\{[^}]*height:\s*44px;[^}]*min-height:\s*44px;[^}]*font-size:\s*14px;[^}]*white-space:\s*nowrap;/);
+    assert.match(styles, /\.storico-filters\s*\{[^}]*display:\s*grid;/);
+    assert.match(styles, /\.storico-date-range\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/);
+    assert.match(styles, /\.storico-date-range label,\s*\.storico-date-range input\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/);
+    assert.match(styles, /\.storico-metrica\s*\{[^}]*align-content:\s*start;/);
+});
+
 test("reset stores per-service-day summaries before deleting orders", async t => {
     mockAdmin(t);
     t.mock.method(auth, "requireSameOrigin", () => {});

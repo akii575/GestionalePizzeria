@@ -192,6 +192,7 @@
             sheet.setAttribute("role", "dialog");
             sheet.setAttribute("aria-modal", "true");
             sheet.setAttribute("aria-label", "Altre pagine");
+            sheet.setAttribute("tabindex", "-1");
             const sheetHandle = document.createElement("span");
             sheetHandle.className = "app-sheet-handle";
             sheetHandle.setAttribute("aria-hidden", "true");
@@ -230,7 +231,7 @@
                 backdrop.hidden = !open;
                 moreToggle.setAttribute("aria-expanded", String(open));
                 document.body.classList.toggle("app-more-open", open);
-                if (open) closeButton.focus();
+                if (open) sheet.focus();
                 else moreToggle.focus();
             };
         }
