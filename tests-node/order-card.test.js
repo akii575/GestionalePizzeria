@@ -382,6 +382,9 @@ test("closing and reopening an order keeps the card detail intact and complete",
 
     const sourceMarkup = render({
         numero: 8,
+        tipo: "consegna",
+        telefonoConsegna: "3331234567",
+        indirizzoConsegna: "Via Roma 12",
         righe: [{ prodotto: "Capricciosa", totale: 12 }]
     });
     const expanded = new FakeExpanded(sourceMarkup);
@@ -427,6 +430,7 @@ test("closing and reopening an order keeps the card detail intact and complete",
         assert.equal(detailDialog.open, true);
         assert.equal(article.querySelector(".order-card__expanded"), expanded);
         assert.match(detailContent.children[0].innerHTML, /Capricciosa/);
+        assert.match(detailContent.children[0].innerHTML, /Avvisa: rider partito/);
         assert.match(detailContent.children[0].innerHTML, /data-elimina="8"/);
         assert.equal(detailContent.children[0].id, "");
         detailDialog.querySelector(".order-detail-dialog__close").dispatch("click");
@@ -463,6 +467,20 @@ test("the order detail dialog is modal, dismissible, responsive, and freezes pag
     assert.match(styles, /\.order-detail-dialog\s*\{[^}]*width:\s*min\(560px/);
     assert.match(styles, /@media \(max-width: 680px\)[\s\S]*?\.order-detail-dialog\s*\{[^}]*inset:\s*auto 0 0;[^}]*width:\s*100%;[^}]*max-height:\s*90vh;[^}]*max-height:\s*90dvh;[^}]*border-radius:\s*22px 22px 0 0;/);
     assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.order-detail-dialog\[open\]\s*\{\s*animation:\s*none;/);
+});
+
+test("all order list pages load the WhatsApp number utility before the shared order card", () => {
+    for (const page of ["gestionale.html", "ritiri.html", "consegne.html", "banco.html", "tavoli.html"]) {
+        const html = fs.readFileSync(
+            path.join(__dirname, "..", "src", "main", "resources", "static", page),
+            "utf8"
+        );
+        assert.ok(
+            html.indexOf('<script src="/html-utils.js"></script>') < html.indexOf('<script src="/order-card.js"></script>')
+                && html.includes('<script src="/html-utils.js"></script>'),
+            `${page} must load html-utils.js before order-card.js`
+        );
+    }
 });
 
 test("staff compact totals stay hidden only on pages that hide the daily total", () => {
@@ -600,6 +618,48 @@ test("only deliveries render the two icon-led contact rows", () => {
     assert.doesNotMatch(pickup, /order-card__contacts|order-card__delivery-contact/);
     assert.doesNotMatch(counter, /order-card__contacts|stato-pagamento/);
     assert.doesNotMatch(table, /order-card__contacts|stato-pagamento/);
+});
+
+test("pickup and delivery details include an encoded WhatsApp message only for valid phone numbers", () => {
+    const pickup = render({
+        numero: 12,
+        tipo: "ritiro",
+        telefonoRitiro: "+39 333 123 4567"
+    });
+    const delivery = render({
+        numero: 34,
+        tipo: "consegna",
+        telefonoConsegna: "3331234567",
+        indirizzoConsegna: "Via Roma 12"
+    }, { deliveryMode: true, isRider: true });
+    const link = markup => markup.match(
+        /<a class="order-card__whatsapp-action" href="([^"]+)" target="_blank" rel="noopener noreferrer">/
+    );
+
+    const pickupLink = link(pickup);
+    assert.ok(pickupLink);
+    assert.ok(pickupLink[1].startsWith("https://wa.me/393331234567?text="));
+    assert.ok(pickupLink[1].includes(encodeURIComponent(
+        "Ciao! Il tuo ordine n. 12 da CIVICO7 è pronto, ti aspettiamo."
+    )));
+    assert.match(pickup, /Avvisa: ordine pronto/);
+    assert.equal(
+        decodeURIComponent(pickupLink[1].split("?text=")[1]),
+        "Ciao! Il tuo ordine n. 12 da CIVICO7 è pronto, ti aspettiamo."
+    );
+    assert.match(pickup, /<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">/);
+
+    const deliveryLink = link(delivery);
+    assert.ok(deliveryLink);
+    assert.match(delivery, /Avvisa: rider partito/);
+    assert.equal(
+        decodeURIComponent(deliveryLink[1].split("?text=")[1]),
+        "Ciao! Il tuo ordine n. 34 da CIVICO7 è in arrivo, il rider è appena partito."
+    );
+    assert.doesNotMatch(render({ tipo: "ritiro", telefonoRitiro: "1234567" }), /order-card__whatsapp-action/);
+    assert.doesNotMatch(render({ tipo: "consegna" }), /order-card__whatsapp-action/);
+    assert.doesNotMatch(render({ tipo: "banco", telefonoConsegna: "3331234567" }), /order-card__whatsapp-action/);
+    assert.doesNotMatch(render({ tipo: "tavolo", telefonoRitiro: "3331234567" }), /order-card__whatsapp-action/);
 });
 
 test("expanded status shows only a pending print status and requested time", () => {

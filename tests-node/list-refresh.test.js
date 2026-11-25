@@ -287,9 +287,14 @@ test("delivery accounts do not request the staff-only menu API", async () => {
         admin: false,
         staff: false,
         delivery: true
-    });
+    }, [{
+        numero: 15,
+        tipo: "consegna",
+        telefonoConsegna: "3331234567"
+    }]);
     await flushPagePromises();
 
     assert.equal(state.requests.filter(url => url === "/api/menu").length, 0);
     assert.equal(state.requests.filter(url => url.startsWith("/api/consegne")).length, 1);
+    assert.ok(state.renderedOptions.some(options => options.deliveryMode && options.isRider));
 });

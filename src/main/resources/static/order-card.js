@@ -1,4 +1,7 @@
 const orderCard = (() => {
+    const numeroWhatsApp = typeof module !== "undefined" && module.exports
+        ? require("./html-utils").numeroWhatsApp
+        : window.htmlUtils.numeroWhatsApp;
     const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 
     function createExpansionState() {
@@ -159,6 +162,22 @@ const orderCard = (() => {
     function renderFields(fields) {
         if (!fields.length) return "";
         return `<div class="order-card__contacts">${fields.map(renderFieldValue).join("")}</div>`;
+    }
+
+    function renderWhatsAppAction(order, type) {
+        const telefono = type === "ritiro"
+            ? order.telefonoRitiro
+            : type === "consegna" ? order.telefonoConsegna : "";
+        const numero = numeroWhatsApp(telefono);
+        if (!numero) return "";
+
+        const ritiro = type === "ritiro";
+        const message = ritiro
+            ? `Ciao! Il tuo ordine n. ${order.numero} da CIVICO7 è pronto, ti aspettiamo.`
+            : `Ciao! Il tuo ordine n. ${order.numero} da CIVICO7 è in arrivo, il rider è appena partito.`;
+        const label = ritiro ? "Avvisa: ordine pronto" : "Avvisa: rider partito";
+        const href = `https://wa.me/${numero}?text=${encodeURIComponent(message)}`;
+        return `<a class="order-card__whatsapp-action" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.2 11.5a8.2 8.2 0 0 1-12.1 7.2L3.5 20l1.3-4.3a8.2 8.2 0 1 1 15.4-4.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="11.5" r=".8" fill="currentColor"/><circle cx="12" cy="11.5" r=".8" fill="currentColor"/><circle cx="15.5" cy="11.5" r=".8" fill="currentColor"/></svg><span>${label}</span></a>`;
     }
 
     function extraIdentity(row) {
@@ -574,6 +593,7 @@ const orderCard = (() => {
                 <div class="order-card__expanded" id="${detailId}"${expanded ? "" : " hidden"}>
                     ${renderExpandedStatus(order, type, canEdit)}
                     ${renderFields(fieldsForOrder(order, type))}
+                    ${renderWhatsAppAction(order, type)}
                     ${deliveryMode ? `<div class="order-card__delivery-detail-status">${renderDeliveryCompactStatus(order)}</div>` : ""}
                     ${renderDeliveryUndo(order, deliveryMode)}
                     <section class="order-card__details">
