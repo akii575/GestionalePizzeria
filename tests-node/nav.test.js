@@ -70,7 +70,9 @@ function createElement(tagName) {
         click() {
             return listeners.click && listeners.click({ target: element });
         },
-        focus() {},
+        focus() {
+            element.focused = true;
+        },
         remove() {
             if (element.parentElement) {
                 element.parentElement.children = element.parentElement.children.filter(item => item !== element);
@@ -178,17 +180,26 @@ async function runNavigationWithLogout() {
     await new Promise(resolve => setImmediate(resolve));
 
     const moreButton = findElement(body, element => element.className.split(/\s+/).includes("app-bottom-more"));
+    const moreSheet = findElement(body, element => element.className.split(/\s+/).includes("app-more-sheet"));
+    const closeButton = findElement(body, element => element.className.split(/\s+/).includes("app-sheet-close"));
     const moreMenuLogout = findElement(body, element =>
         element.tagName === "BUTTON"
         && element.className === "app-nav-item"
         && element.textContent === "Esci"
     );
     assert.ok(moreButton);
+    assert.ok(moreSheet);
+    assert.ok(closeButton);
     assert.ok(moreMenuLogout);
     await moreButton.click();
+    const panelFocusState = {
+        tabindex: moreSheet.attributes.tabindex,
+        panelFocused: moreSheet.focused === true,
+        closeButtonFocused: closeButton.focused === true
+    };
     await moreMenuLogout.click();
 
-    return { deletedCaches, localStorage, location, sessionStorage };
+    return { deletedCaches, localStorage, location, sessionStorage, panelFocusState };
 }
 
 test("account email appears only in the More sheet and desktop sidebar", () => {
@@ -196,7 +207,7 @@ test("account email appears only in the More sheet and desktop sidebar", () => {
     assert.match(navigation, /createAccountEmail\("app-more-account-email", accountEmail\)/);
     assert.match(navigation, /const accountEmail = typeof account\.email === "string" \? account\.email\.trim\(\) : "";/);
     assert.match(navigationStyles, /\.app-sidebar-account-email\s*\{[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
-    assert.match(navigationStyles, /\.app-more-account-email\s*\{[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
+    assert.match(navigationStyles, /\.app-more-account-email \.app-sidebar-account-email-value\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/);
     assert.doesNotMatch(themeStyles, /\.account-toolbar/);
 });
 
@@ -204,7 +215,7 @@ test("the history navigation link is only added for admins", () => {
     assert.match(navigation, /if \(account\.admin === true\) \{\s*links\.push\(\{ label: "Storico", href: "\/storico\.html", icon: "history" \}\);/);
 });
 
-test("the More menu logout clears account and offline caches", async () => {
+test("the More menu focuses its panel and logout clears account and offline caches", async () => {
     assert.match(navigation, /sheetLinks\.append\(createButtonLink\("Esci", "logout", \(\) => logoutButton\.click\(\)\)\);/);
     assert.match(navigation, /window\.civico7ClearOfflineCaches = async \(\) => \{[\s\S]*?window\.caches\.keys\(\)[\s\S]*?window\.caches\.delete\(name\)/);
 
@@ -213,6 +224,19 @@ test("the More menu logout clears account and offline caches", async () => {
     assert.equal(result.sessionStorage.has("civico7-account-role-reload"), false);
     assert.deepEqual(result.deletedCaches, ["civico7-menu-v1"]);
     assert.equal(result.location.replacedTo, "/login.html");
+    assert.deepEqual(result.panelFocusState, {
+        tabindex: "-1",
+        panelFocused: true,
+        closeButtonFocused: false
+    });
+});
+
+test("mobile More sheet has self-contained navigation and focus styles", () => {
+    assert.match(navigationStyles, /@media \(max-width: 767px\)[\s\S]*?\.app-more-sheet,\s*\.app-more-sheet \*\s*\{\s*box-sizing:\s*border-box;/);
+    assert.match(navigationStyles, /body\.app-shell nav\.app-more-links\s*\{[^}]*display:\s*grid;[^}]*gap:\s*2px;[^}]*margin:\s*4px 0 12px;[^}]*padding:\s*0;/);
+    assert.match(navigationStyles, /body\.app-shell nav\.app-more-links > \.app-nav-item\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*gap:\s*14px;[^}]*min-height:\s*52px;[^}]*padding:\s*12px 14px;[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;[^}]*font-size:\s*17px;/);
+    assert.match(navigationStyles, /\.app-more-account-email\s*\{[^}]*display:\s*flex;[^}]*gap:\s*14px;[^}]*margin-top:\s*8px;[^}]*padding:\s*12px 14px 4px;[^}]*border-top:\s*1px solid var\(--theme-line\);[^}]*font-size:\s*14px;/);
+    assert.match(navigationStyles, /\.app-sheet-close:focus:not\(:focus-visible\)\s*\{\s*outline:\s*none;\s*box-shadow:\s*none;/);
 });
 
 test("mobile app headers and offline banners respect the iOS safe area", () => {
