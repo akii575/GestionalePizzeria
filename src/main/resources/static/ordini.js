@@ -713,8 +713,7 @@ function aggiornaCaricoForno() {
         numeroEscluso: numeroModifica,
         soglia: FORNO_PIZZE_PER_QUARTO
     });
-    carico.fasce.forEach((fascia, indice) => {
-        if (indice > 0) caricoFornoFasce.appendChild(document.createTextNode(" · "));
+    carico.fasce.forEach(fascia => {
         const elemento = document.createElement("span");
         elemento.className = "carico-forno__fascia";
         elemento.classList.toggle("is-selezionata", fascia.selezionata);

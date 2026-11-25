@@ -1464,6 +1464,10 @@ button {
     color: #8a4600;
 }
 
+.carico-forno__fascia.is-selezionata {
+    border-width: 2px;
+}
+
 .carico-forno__comanda,
 .carico-forno__messaggio {
     flex-basis: 100%;
