@@ -45,7 +45,10 @@
             resetHeaderButton.className = "app-reset-header";
             resetHeaderButton.setAttribute("aria-label", "Reset ordini");
             resetHeaderButton.title = "Reset ordini";
-            resetHeaderButton.append(createIcon("reset"));
+            const resetHeaderLabel = document.createElement("span");
+            resetHeaderLabel.className = "app-reset-header-label";
+            resetHeaderLabel.textContent = "Reset ordini";
+            resetHeaderButton.append(createIcon("reset"), resetHeaderLabel);
             resetHeaderButton.hidden = resetButton.hidden || account.admin !== true;
             resetHeaderButton.addEventListener("click", () => resetButton.click());
             actions.append(resetHeaderButton);
@@ -124,15 +127,14 @@
             sideNav.append(divider);
             for (const link of secondaryLinks) sideNav.append(createLink(link, currentHref));
         }
-        sidebar.append(sideNav);
+        const sidebarNavigation = document.createElement("div");
+        sidebarNavigation.className = "app-sidebar-navigation";
+        sidebarNavigation.append(sideNav);
+        sidebar.append(sidebarNavigation);
 
         let setMoreOpen = () => {};
         const sidebarActions = document.createElement("div");
         sidebarActions.className = "app-sidebar-actions";
-        if (resetButton) {
-            resetButton.classList.add("app-reset");
-            sidebarActions.append(resetButton);
-        }
         const sidebarEmail = createAccountEmail("app-sidebar-account-email", accountEmail);
         if (sidebarEmail) sidebarActions.append(sidebarEmail);
         sidebarActions.append(logoutButton);
@@ -142,6 +144,16 @@
         if (activeSidebarLink && typeof activeSidebarLink.scrollIntoView === "function") {
             activeSidebarLink.scrollIntoView({ block: "nearest" });
         }
+        const updateSidebarScrollState = () => {
+            const hasMoreBelow = sideNav.scrollHeight > sideNav.clientHeight
+                && sideNav.scrollTop + sideNav.clientHeight < sideNav.scrollHeight - 1;
+            sidebarNavigation.classList.toggle("has-more-below", hasMoreBelow);
+        };
+        sideNav.addEventListener("scroll", updateSidebarScrollState, { passive: true });
+        window.addEventListener("resize", updateSidebarScrollState);
+        if (window.ResizeObserver) new window.ResizeObserver(updateSidebarScrollState).observe(sideNav);
+        if (window.requestAnimationFrame) window.requestAnimationFrame(updateSidebarScrollState);
+        else updateSidebarScrollState();
 
         const bottomNav = document.createElement("nav");
         bottomNav.className = "app-bottom-nav";

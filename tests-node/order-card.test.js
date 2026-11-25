@@ -827,7 +827,8 @@ test("all order-list pages use the same source header and navigation shell", () 
     assert.match(navigation, /header\.classList\.add\("app-page-header"\)/);
     assert.match(navigation, /actions\.append\(refreshButton\)/);
     assert.match(navigation, /header\.append\(actions\)/);
-    assert.match(navigation, /sidebarActions\.append\(resetButton\)/);
+    assert.doesNotMatch(navigation, /sidebarActions\.append\(resetButton\)/);
+    assert.match(navigation, /sheetLinks\.append\(resetCopy\)/);
 });
 
 test("wide desktop layouts use the space beside the sidebar", () => {

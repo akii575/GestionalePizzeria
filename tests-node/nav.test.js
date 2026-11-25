@@ -257,6 +257,18 @@ test("desktop sidebars keep actions fixed and scroll a compact navigation list",
     assert.match(navigationStyles, /@media \(min-width: 1025px\) and \(max-height: 640px\)[\s\S]*?\.app-sidebar-account-email-value\s*\{[^}]*display:\s*none;/);
 });
 
+test("desktop reset stays in the header and the sidebar marks continued navigation", () => {
+    assert.doesNotMatch(navigation, /sidebarActions\.append\(resetButton\)/);
+    assert.match(navigation, /resetHeaderButton\.append\(createIcon\("reset"\), resetHeaderLabel\)/);
+    assert.match(navigation, /resetHeaderLabel\.textContent = "Reset ordini"/);
+    assert.match(navigation, /if \(resetButton && window\.location\.pathname === "\/gestionale\.html"\)/);
+    assert.match(navigationStyles, /@media \(min-width: 768px\)[\s\S]*?\.app-header-actions \.app-reset-header\s*\{[^}]*display:\s*inline-flex;[^}]*border-color:\s*var\(--theme-red\);[^}]*background:\s*#fff;[^}]*color:\s*var\(--theme-red\);/);
+    assert.match(navigationStyles, /body\.app-shell nav\.app-sidebar-links\s*\{[^}]*margin-bottom:\s*8px;[^}]*padding-bottom:\s*8px;[^}]*border-bottom:\s*1px solid rgba\(255, 255, 255, \.18\);/);
+    assert.match(navigationStyles, /\.app-sidebar-navigation::after\s*\{[^}]*background:\s*linear-gradient\(to bottom, transparent, var\(--theme-green-dark\)\);[^}]*opacity:\s*0;/);
+    assert.match(navigationStyles, /\.app-sidebar-navigation\.has-more-below::after\s*\{[^}]*opacity:\s*1;/);
+    assert.match(navigation, /const hasMoreBelow = sideNav\.scrollHeight > sideNav\.clientHeight[\s\S]*?sidebarNavigation\.classList\.toggle\("has-more-below", hasMoreBelow\)/);
+});
+
 test("short landscape tablet sidebars retain scroll access to every navigation item", () => {
     assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?\.app-sidebar \.app-brand\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;/);
     assert.match(navigationStyles, /@media \(min-width: 800px\) and \(max-width: 1439px\) and \(orientation: landscape\) and \(max-height: 560px\)[\s\S]*?nav\.app-sidebar-links > \.app-nav-item\s*\{[^}]*min-height:\s*38px;[^}]*height:\s*38px;/);
