@@ -1,4 +1,7 @@
 const prodottiUI = (() => {
+    const compareMenuItemsByName = typeof module !== "undefined" && module.exports
+        ? require("./html-utils").compareMenuItemsByName
+        : window.htmlUtils.compareMenuItemsByName;
     const LIMITE_RIGHE_ORDINE = 100;
     const NOTE_RIGA = Object.freeze([
         "Ben cotta",
@@ -113,7 +116,7 @@ const prodottiUI = (() => {
             .sort(
                 (a, b) =>
                     Number(b.nome.startsWith(query)) - Number(a.nome.startsWith(query)) ||
-                    a.prodotto.nome.localeCompare(b.prodotto.nome, "it")
+                    compareMenuItemsByName(a.prodotto, b.prodotto)
             )
             .map(voce => voce.prodotto);
     }
@@ -136,11 +139,7 @@ const prodottiUI = (() => {
                 const nome = normalizza(elemento?.nome);
                 return parole.every(parola => nome.includes(parola));
             })
-            .sort((a, b) => String(a?.nome || "").localeCompare(
-                String(b?.nome || ""),
-                "it-IT",
-                { sensitivity: "base" }
-            ));
+            .sort(compareMenuItemsByName);
     }
 
     function trovaComponibileSenzaIngredienti(righe) {

@@ -1,5 +1,5 @@
 (() => {
-    const { escapeHtml } = window.htmlUtils;
+    const { escapeHtml, compareMenuItemsByName } = window.htmlUtils;
     const content = document.getElementById("menu-content");
     const archivedContent = document.getElementById("menu-archived-content");
     const search = document.getElementById("menu-search");
@@ -25,6 +25,10 @@
     function sortByOrder(items) {
         return [...items].sort((first, second) => Number(first.ordine || 0) - Number(second.ordine || 0)
             || first.id.localeCompare(second.id));
+    }
+
+    function sortByName(items) {
+        return [...items].sort(compareMenuItemsByName);
     }
 
     function setStatus(message, isError = false) {
@@ -65,10 +69,9 @@
         return `<div class="menu-row-main"><span class="menu-row-title">${escapeHtml(name)}</span>${meta ? `<span class="menu-row-meta">${escapeHtml(meta)}</span>` : ""}</div>`;
     }
 
-    function orderButtons(id, index, length, resource, categoryId = "") {
+    function orderButtons(id, index, length) {
         const escapedId = escapeHtml(id);
-        const escapedCategoryId = escapeHtml(categoryId);
-        return `<div class="menu-row-actions"><button class="menu-order-button" type="button" data-action="up" data-resource="${resource}" data-id="${escapedId}" data-category="${escapedCategoryId}" aria-label="Sposta su" ${index === 0 ? "disabled" : ""}>↑</button><button class="menu-order-button" type="button" data-action="down" data-resource="${resource}" data-id="${escapedId}" data-category="${escapedCategoryId}" aria-label="Sposta giù" ${index === length - 1 ? "disabled" : ""}>↓</button></div>`;
+        return `<div class="menu-row-actions"><button class="menu-order-button" type="button" data-action="up" data-resource="categorie" data-id="${escapedId}" aria-label="Sposta su" ${index === 0 ? "disabled" : ""}>↑</button><button class="menu-order-button" type="button" data-action="down" data-resource="categorie" data-id="${escapedId}" aria-label="Sposta giù" ${index === length - 1 ? "disabled" : ""}>↓</button></div>`;
     }
 
     function editButton(resource, id) {
@@ -85,8 +88,7 @@
         return `<button class="menu-delete-button" type="button" data-action="${action}" data-resource="${resource}" data-id="${escapeHtml(id)}">${label}</button>`;
     }
 
-    function renderProductRow(product, products) {
-        const index = products.findIndex(item => item.id === product.id);
+    function renderProductRow(product) {
         const ingredientText = Array.isArray(product.ingredienti) ? product.ingredienti.join(", ") : "";
         const meta = [
             euro.format(Number(product.prezzo)),
@@ -96,7 +98,6 @@
         return `<div class="menu-row" data-id="${escapeHtml(product.id)}">
             ${rowMain(product.nome, meta)}
             <div class="menu-row-end"><button class="menu-availability${available ? "" : " is-unavailable"}" type="button" data-action="availability" data-resource="prodotti" data-id="${escapeHtml(product.id)}" aria-pressed="${available}">${available ? "Disponibile" : "Esaurito"}</button>${editButton("prodotti", product.id)}${deleteButton("prodotti", product.id)}</div>
-            ${orderButtons(product.id, index, products.length, "prodotti", product.categoriaId)}
         </div>`;
     }
 
@@ -104,7 +105,7 @@
         const categories = activeCategories();
         const sections = [];
         for (const category of categories) {
-            const products = sortByOrder(state.menu.prodotti.filter(product => (
+            const products = sortByName(state.menu.prodotti.filter(product => (
                 product.categoriaId === category.id && product.archiviato !== true
             )));
             const visible = products.filter(product => matchesSearch(
@@ -115,7 +116,7 @@
             if (!visible.length) continue;
             sections.push(`<section class="menu-section">
                 <header class="menu-section-header"><h2>${escapeHtml(category.nome)}</h2><span>${visible.length} prodotti</span></header>
-                ${visible.map(product => renderProductRow(product, products)).join("")}
+                ${visible.map(renderProductRow).join("")}
             </section>`);
         }
         content.innerHTML = sections.join("") || `<div class="menu-empty">Nessun prodotto trovato.</div>`;
@@ -133,14 +134,14 @@
                 return `<div class="menu-row" data-id="${escapeHtml(category.id)}">
                     ${rowMain(category.nome, `${productCount} prodotti · ${category.ammetteExtra ? "Ammette extra" : "Senza extra"}${category.stampaCucina === false ? " · Non in cucina" : ""}${(category.stampaVariazioni === undefined ? category.stampaCucina !== false : category.stampaVariazioni === true) ? "" : " · Non nelle variazioni"}`)}
                     <div class="menu-row-end">${editButton("categorie", category.id)}${archiveButton("categorie", category.id)}${deleteButton("categorie", category.id)}</div>
-                    ${orderButtons(category.id, index, categories.length, "categorie")}
+                    ${orderButtons(category.id, index, categories.length)}
                 </div>`;
             }).join("")}
         </section>` : `<div class="menu-empty">Nessuna categoria trovata.</div>`;
     }
 
     function renderExtras() {
-        const extras = sortByOrder(state.menu.extra.filter(extra => extra.archiviato !== true));
+        const extras = sortByName(state.menu.extra.filter(extra => extra.archiviato !== true));
         const visible = extras.filter(extra => matchesSearch(extra.nome));
         content.innerHTML = visible.length ? `<section class="menu-section">
             ${visible.map(extra => {
@@ -163,7 +164,7 @@
     function renderArchived() {
         const sections = [];
         if (state.resource === "categorie") {
-            const archived = state.menu.categorie.filter(item => item.archiviata === true && matchesSearch(item.nome));
+            const archived = sortByOrder(state.menu.categorie.filter(item => item.archiviata === true && matchesSearch(item.nome)));
             sections.push(...archived.map(item => renderArchivedRow("categorie", item, item.ammetteExtra ? "Ammette extra" : "Senza extra")));
         } else if (state.resource === "prodotti") {
             const archivedCategories = new Set(
@@ -172,6 +173,9 @@
             const archived = state.menu.prodotti.filter(item => (
                 (item.archiviato === true || archivedCategories.has(item.categoriaId))
                 && matchesSearch(item.nome, categoryFor(item)?.nome, ...(item.ingredienti || []))
+            )).sort((first, second) => (
+                Number(categoryFor(first)?.ordine || 0) - Number(categoryFor(second)?.ordine || 0)
+                || compareMenuItemsByName(first, second)
             ));
             sections.push(...archived.map(item => {
                 const categoryArchived = archivedCategories.has(item.categoriaId);
@@ -183,7 +187,7 @@
                 return renderArchivedRow("prodotti", item, meta, !categoryArchived);
             }));
         } else {
-            const archived = state.menu.extra.filter(item => item.archiviato === true && matchesSearch(item.nome));
+            const archived = sortByName(state.menu.extra.filter(item => item.archiviato === true && matchesSearch(item.nome)));
             sections.push(...archived.map(item => renderArchivedRow("extra", item, euro.format(Number(item.prezzo)))));
         }
         archivedContent.innerHTML = sections.join("") || `<p class="menu-empty">Nessun elemento archiviato.</p>`;
@@ -312,13 +316,7 @@
     }
 
     async function moveItem(button) {
-        const resource = button.dataset.resource;
-        const categoryId = button.dataset.category;
-        const list = resource === "categorie"
-            ? activeCategories()
-            : sortByOrder(state.menu.prodotti.filter(item => (
-                item.categoriaId === categoryId && item.archiviato !== true
-            )));
+        const list = activeCategories();
         const index = list.findIndex(item => item.id === button.dataset.id);
         const direction = button.dataset.action === "up" ? -1 : 1;
         const target = index + direction;
@@ -327,9 +325,8 @@
         await request("/api/menu-admin", {
             method: "PUT",
             body: JSON.stringify({
-                risorsa: resource,
+                risorsa: "categorie",
                 azione: "ordine",
-                categoriaId: categoryId,
                 ids: list.map(item => item.id)
             })
         });

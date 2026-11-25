@@ -133,17 +133,17 @@ function seed() {
     };
 }
 
-test("menu store orders active categories and products and keeps unavailable entries", async () => {
+test("menu store orders active categories and products alphabetically and keeps unavailable entries", async () => {
     const db = createDatabase(seed());
     const store = createMenuStore(db);
 
     const menu = await store.getMenuData();
 
     assert.deepEqual(menu.categories.map(category => category.id), ["pizze", "dolci", "primi"]);
-    assert.deepEqual(menu.menu.map(product => product.nome), ["Margherita", "Esaurita", "Dolce"]);
-    assert.equal(menu.menu[0].ammetteExtra, true);
-    assert.equal(menu.menu[0].componibile, true);
-    assert.equal(menu.menu[1].disponibile, false);
+    assert.deepEqual(menu.menu.map(product => product.nome), ["Esaurita", "Margherita", "Dolce"]);
+    assert.equal(menu.menu[1].ammetteExtra, true);
+    assert.equal(menu.menu[1].componibile, true);
+    assert.equal(menu.menu[0].disponibile, false);
     assert.equal(menu.menu[2].componibile, false);
     assert.equal(menu.categories[0].stampaCucina, true);
     assert.equal(menu.categories[0].stampaVariazioni, true);
@@ -155,6 +155,49 @@ test("menu store orders active categories and products and keeps unavailable ent
     assert.equal(menu.extras[1].disponibile, false);
     assert.equal(menu.menu.some(product => product.nome === "Archiviata"), false);
     assert.equal(menu.extras.some(extra => extra.nome === "Extra archiviato"), false);
+});
+
+test("menu store sorts names naturally in Italian, breaks equivalent-name ties by id and keeps category order", async () => {
+    const data = seed();
+    data.menuCategorie = {
+        primaria: { nome: "Primaria", ordine: 0, ammetteExtra: false },
+        secondaria: { nome: "Secondaria", ordine: 1, ammetteExtra: false }
+    };
+    const product = (nome, categoriaId, ordine) => ({
+        nome,
+        categoriaId,
+        prezzo: 1,
+        ingredienti: [],
+        ordine,
+        disponibile: true
+    });
+    data.menuProdotti = {
+        "acqua-1": product("Acqua 1L", "primaria", 0),
+        "acqua-05": product("Acqua 0,5", "primaria", 9),
+        "accent-z": product("Éclair", "primaria", 1),
+        "accent-a": product("ECLAIR", "primaria", 2),
+        zucchero: product("Zucchero", "primaria", 0),
+        aardvark: product("Aardvark", "secondaria", 0)
+    };
+    data.menuExtra = {
+        "extra-1": { nome: "Acqua 1L", prezzo: 1, ordine: 0 },
+        "extra-05": { nome: "Acqua 0,5", prezzo: 1, ordine: 9 },
+        "extra-accent-z": { nome: "Éclair", prezzo: 1, ordine: 1 },
+        "extra-accent-a": { nome: "ECLAIR", prezzo: 1, ordine: 2 },
+        "extra-archived": { nome: "Zenzero", prezzo: 1, ordine: 0, archiviato: true }
+    };
+
+    const menu = await createMenuStore(createDatabase(data)).getMenuData();
+
+    assert.deepEqual(menu.menu.map(item => item.id), [
+        "acqua-05", "acqua-1", "accent-a", "accent-z", "zucchero", "aardvark"
+    ]);
+    assert.deepEqual(menu.allExtras.map(item => item.id), [
+        "extra-05", "extra-1", "extra-accent-a", "extra-accent-z", "extra-archived"
+    ]);
+    assert.deepEqual(menu.extras.map(item => item.id), [
+        "extra-05", "extra-1", "extra-accent-a", "extra-accent-z"
+    ]);
 });
 
 test("menu store checks versions at most every 30 seconds and reloads collections only on change", async () => {

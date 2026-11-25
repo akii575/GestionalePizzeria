@@ -7,6 +7,14 @@ const htmlUtils = Object.freeze({
             "\"": "&quot;",
             "'": "&#39;"
         })[character]);
+    },
+    compareMenuItemsByName(first, second) {
+        const nameComparison = String(first?.nome ?? "").localeCompare(
+            String(second?.nome ?? ""),
+            "it",
+            { sensitivity: "base", numeric: true }
+        );
+        return nameComparison || String(first?.id ?? "").localeCompare(String(second?.id ?? ""));
     }
 });
 

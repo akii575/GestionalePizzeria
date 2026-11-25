@@ -45,6 +45,35 @@ test("product row metadata omits the repeated category name", () => {
     assert.doesNotMatch(productRow, /category\?\.nome/);
 });
 
+test("menu editor sorts products and extras by name and only renders manual ordering for categories", () => {
+    const editor = readStatic("menu-editor.js");
+    const orderPage = readStatic("ordini.html");
+    const orderScript = readStatic("ordini.js");
+    const productUi = readStatic("prodotti-ui.js");
+    const productRow = editor.slice(
+        editor.indexOf("function renderProductRow"),
+        editor.indexOf("function renderProducts")
+    );
+    const categoryRenderer = editor.slice(
+        editor.indexOf("function renderCategories"),
+        editor.indexOf("function renderExtras")
+    );
+    const extrasRenderer = editor.slice(
+        editor.indexOf("function renderExtras"),
+        editor.indexOf("function renderArchivedRow")
+    );
+
+    assert.match(editor, /sortByName\(state\.menu\.prodotti\.filter/);
+    assert.match(editor, /sortByName\(state\.menu\.extra\.filter/);
+    assert.doesNotMatch(productRow, /orderButtons|data-action="up"|data-action="down"/);
+    assert.doesNotMatch(extrasRenderer, /orderButtons|data-action="up"|data-action="down"/);
+    assert.match(categoryRenderer, /orderButtons\(category\.id/);
+    assert.match(orderPage, /src="\/html-utils\.js"[\s\S]*?src="\/ordini\.js"/);
+    assert.match(orderScript, /\.sort\(window\.htmlUtils\.compareMenuItemsByName\)/);
+    assert.match(productUi, /compareMenuItemsByName\(a\.prodotto, b\.prodotto\)/);
+    assert.match(productUi, /\.sort\(compareMenuItemsByName\)/);
+});
+
 test("menu page is protected by the server rewrite and included in protected-page generation", () => {
     const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, "../vercel.json"), "utf8"));
     const copyScript = fs.readFileSync(path.join(__dirname, "../scripts/copy-static.js"), "utf8");

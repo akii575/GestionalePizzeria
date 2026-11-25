@@ -1180,7 +1180,7 @@ function renderProdotti() {
     prodotti.scrollLeft = 0;
     const disponibili = stato.menu
         .filter(prodotto => !isCoperto(prodotto) && prodotto.categoria === stato.categoria)
-        .sort((a, b) => a.ordine - b.ordine || a.nome.localeCompare(b.nome, "it"));
+        .sort(window.htmlUtils.compareMenuItemsByName);
     renderPagineProdotti(prodotti, disponibili, (bottone, prodotto) => {
         bottone.addEventListener("click", () => aggiungiProdotto(prodotto, "griglia"));
     });
