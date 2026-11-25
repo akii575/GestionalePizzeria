@@ -67,8 +67,10 @@ async function updatePageCache(request, response) {
     }
     if (response.status !== 200 || response.redirected) return;
 
+    // Copia subito: il browser legge la risposta mentre la cache si apre.
+    const copy = response.clone();
     const cache = await caches.open(CACHE_NAME);
-    await cache.put(request, response.clone());
+    await cache.put(request, copy);
 }
 
 function handlePageRequest(event) {

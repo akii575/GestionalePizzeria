@@ -21,7 +21,8 @@ function createServiceWorker({
     setTimer,
     clearTimer,
     cachePut,
-    onWaitUntil
+    onWaitUntil,
+    beforeCacheOpen
 } = {}) {
     const listeners = new Map();
     const waitUntilPromises = [];
@@ -64,7 +65,10 @@ function createServiceWorker({
         URL,
         Response,
         caches: {
-            open: async () => cache,
+            open: async () => {
+                if (beforeCacheOpen) await beforeCacheOpen();
+                return cache;
+            },
             keys: async () => [],
             delete: async () => true
         },
@@ -195,6 +199,30 @@ test("network responses replace cached pages and refresh the cache", async () =>
     assert.equal(worker.cacheOperations[0].type, "put");
     assert.equal(worker.cacheOperations[0].request, request);
     assert.equal(worker.cacheValue.body, "refreshed");
+});
+
+test("network pages are copied before the browser reads their body", async () => {
+    let bodyUsed = false;
+    const networkResponse = {
+        body: "network",
+        status: 200,
+        redirected: false,
+        url: "https://civico7.example/storico.html",
+        clone() {
+            if (bodyUsed) throw new TypeError("Response body is already used");
+            return pageResponse("network");
+        }
+    };
+    const worker = createServiceWorker({
+        beforeCacheOpen: () => new Promise(resolve => setImmediate(resolve))
+    });
+    const request = { method: "GET", url: "https://civico7.example/storico.html", mode: "navigate" };
+    const responsePromise = worker.dispatchFetch(request, Promise.resolve(networkResponse));
+
+    assert.equal(await responsePromise, networkResponse);
+    bodyUsed = true;
+    await Promise.all(worker.waitUntilPromises);
+    assert.equal(worker.cacheValue.body, "network");
 });
 
 test("uncached navigation uses preload or a bare fetch and cache writes do not delay its response", async () => {
