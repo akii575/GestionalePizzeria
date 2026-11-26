@@ -421,6 +421,19 @@ button {
 .prodotti-wrapper {
     margin-bottom: 14px;
 }
+.menu-convenzione-avviso-prodotti {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--theme-line);
+    border-radius: 8px;
+    background: #f5f8f6;
+    color: var(--theme-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+.menu-convenzione-avviso-prodotti[hidden] {
+    display: none;
+}
 .griglia-prodotti {
     display: flex;
     align-items: start;
@@ -3599,6 +3612,11 @@ body {
     border-color: var(--theme-blue);
     background: #eaf3ff;
     color: var(--theme-blue);
+}
+
+.convenzione-scelta:disabled {
+    cursor: not-allowed;
+    opacity: .58;
 }
 
 .convenzione-anteprima {

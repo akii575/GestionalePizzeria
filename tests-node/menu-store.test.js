@@ -208,7 +208,7 @@ test("menu store sorts names naturally in Italian, breaks equivalent-name ties b
     ]);
 });
 
-test("menu store defaults convention eligibility by exact case-insensitive product name", async () => {
+test("menu store normalizes default convention names and honors explicit product values", async () => {
     const data = seed();
     data.menuCategorie = {
         food: { nome: "Menu", ordine: 0, ammetteExtra: true }
@@ -222,7 +222,16 @@ test("menu store defaults convention eligibility by exact case-insensitive produ
         "Acqua 0,5L",
         "Margherita fritta",
         "Birra",
-        "Altro senza eleggibilita'"
+        "Altro senza eleggibilita'",
+        "Pizza bianca",
+        "Bianca",
+        "Pizza rossa",
+        "Rossa",
+        "Coca-Cola Zero 33 cl",
+        "COCA  COLA-ZERO 33 cl lattina",
+        "Coca Zero 33cl",
+        "Pizza bianca fritta",
+        "Coca-Cola Zero 33cl"
     ];
     data.menuProdotti = Object.fromEntries(names.map((nome, index) => [
         `product-${index}`,
@@ -236,6 +245,7 @@ test("menu store defaults convention eligibility by exact case-insensitive produ
     ]));
     data.menuProdotti["product-8"].convenzione = "pizza";
     data.menuProdotti["product-7"].convenzione = "";
+    data.menuProdotti["product-9"].convenzione = "";
 
     const menu = await createMenuStore(createDatabase(data)).getMenuData();
     const values = Object.fromEntries(menu.allProducts.map(product => [product.id, product.convenzione]));
@@ -249,7 +259,16 @@ test("menu store defaults convention eligibility by exact case-insensitive produ
         "product-5": "bibita",
         "product-6": "",
         "product-7": "",
-        "product-8": "pizza"
+        "product-8": "pizza",
+        "product-9": "",
+        "product-10": "pizza",
+        "product-11": "pizza",
+        "product-12": "pizza",
+        "product-13": "bibita",
+        "product-14": "bibita",
+        "product-15": "bibita",
+        "product-16": "",
+        "product-17": "bibita"
     });
 });
 

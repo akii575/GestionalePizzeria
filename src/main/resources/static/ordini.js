@@ -62,6 +62,7 @@ const messaggio = document.getElementById("messaggio");
 const riprovaModifica = document.getElementById("riprova-modifica");
 const invia = document.getElementById("btn-invia");
 const sezioneExtra = document.getElementById("extra-section");
+const menuConvenzioneAvvisoProdotti = document.getElementById("menu-convenzione-avviso-prodotti");
 const extraLista = document.getElementById("extra-lista");
 const extraListaContenitore = document.getElementById("extra-lista-contenitore");
 const extraPaginazione = document.getElementById("extra-paginazione");
@@ -177,6 +178,7 @@ const {
     impostaRigaAttiva,
     raggruppaRigheConMenu,
     rimuoviProdotto,
+    statoRigheMenuConvenzione,
     toggleExtra,
     toggleSenza,
     toggleNotaRiga,
@@ -1166,7 +1168,8 @@ function aggiornaMenuConvenzioneGuidato() {
 }
 let menuConvenzioneTrigger = null;
 function apriMenuConvenzione(trigger) {
-    if (convenzioneOrdine?.tipo === "percentuale") return;
+    if (convenzioneOrdine?.tipo === "percentuale"
+            || statoRigheMenuConvenzione(stato.righe).haProdottiNormali) return;
     if (riepilogoSheetAperto) chiudiRiepilogoSheet(false);
     menuConvenzioneTrigger = trigger;
     menuConvenzionePasso = 1;
@@ -1197,6 +1200,10 @@ function chiudiMenuConvenzione(ripristinaFocus = true) {
 }
 function aggiungiMenuConvenzioneSelezionato() {
     if (!menuConvenzionePizzaSelezionata || !menuConvenzioneBibitaSelezionata) return;
+    if (statoRigheMenuConvenzione(stato.righe).haProdottiNormali) {
+        chiudiMenuConvenzione();
+        return;
+    }
     const limite = controllaLimiteRighe(stato.righe.length, 2);
     if (!limite.consentito) {
         mostraMessaggio("Non puoi aggiungere altre righe a questa comanda.", "errore");
@@ -1306,18 +1313,23 @@ function rigaRiepilogoFinanziario(label, cents, negativa = false) {
 function markupRiepilogoFinanziario(preview, controlli = false) {
     const conventionType = convenzioneOrdine?.tipo || "";
     const availableMenus = preview.menuConvenzione.menu;
+    const righeMenu = statoRigheMenuConvenzione(stato.righe);
     const menuDescription = availableMenus
         ? `${availableMenus} ${availableMenus === 1 ? "menu" : "menu"} · risparmio ${euro.format(preview.menuConvenzione.importo / 100)}`
         : "Scegli una pizza e una bibita per aggiungere un menu.";
-    const menuAttivo = availableMenus > 0;
+    const menuAttivo = righeMenu.haMenu || availableMenus > 0;
     const percentLabel = menuAttivo ? "Togli i menu per usare il 10%" : "10% sul totale";
-    const menuLabel = conventionType === "percentuale" ? "Togli il 10% per usare i menu" : "Menu 6 €";
+    const menuLabel = conventionType === "percentuale"
+        ? "Togli il 10% per usare i menu"
+        : righeMenu.haProdottiNormali
+            ? "Il menu convenzione va in un ordine separato"
+            : "Menu 6 €";
     const controls = controlli
         ? `<div class="riepilogo-sconti-controlli">
                 <p class="convenzione-titolo" id="convenzione-titolo">Convenzione universitaria</p>
                 <div class="convenzione-scelte" role="group" aria-labelledby="convenzione-titolo">
                     <button class="convenzione-scelta${conventionType === "percentuale" ? " is-active" : ""}" type="button" data-convenzione="percentuale" aria-pressed="${conventionType === "percentuale"}"${menuAttivo ? " disabled" : ""}>${percentLabel}</button>
-                    <button class="convenzione-scelta${menuAttivo ? " is-active" : ""}" type="button" data-convenzione="menu" aria-haspopup="dialog"${conventionType === "percentuale" ? " disabled" : ""}>${menuLabel}</button>
+                    <button class="convenzione-scelta${righeMenu.haMenu || availableMenus > 0 ? " is-active" : ""}" type="button" data-convenzione="menu" aria-haspopup="dialog"${conventionType === "percentuale" || righeMenu.haProdottiNormali ? " disabled" : ""}>${menuLabel}</button>
                 </div>
                 <p class="convenzione-anteprima">${escapeHtml(menuDescription)}</p>
             </div>`
@@ -1402,8 +1414,11 @@ function spostaPaginaExtra(delta) {
 function renderGrigliaExtra() {
     const paginaCorrente = paginaExtraCorrente();
     const rigaAttiva = stato.righe[stato.rigaAttiva];
-    const ingredienti = Array.isArray(rigaAttiva?.ingredienti) ? rigaAttiva.ingredienti : [];
-    const supportaNoteRiga = ingredienti.length > 0 || rigaAttiva?.ammetteExtra === true;
+    const rigaMenuConvenzione = typeof rigaAttiva?.menuConvenzione === "string";
+    const ingredienti = !rigaMenuConvenzione && Array.isArray(rigaAttiva?.ingredienti)
+        ? rigaAttiva.ingredienti
+        : [];
+    const supportaNoteRiga = rigaMenuConvenzione || ingredienti.length > 0 || rigaAttiva?.ammetteExtra === true;
     sezioneExtra.hidden = !stato.extra.length && !ingredienti.length && !supportaNoteRiga;
     const nomeProdotto = rigaAttiva?.prodotto || "Seleziona un prodotto";
     const nomeComponibile = nomeProdotto.replace(/\s+da comporre$/i, "");
@@ -1414,23 +1429,24 @@ function renderGrigliaExtra() {
     const conteggioExtra = Array.isArray(rigaAttiva?.extra) ? rigaAttiva.extra.length : 0;
     const conteggioNote = Array.isArray(rigaAttiva?.note) ? rigaAttiva.note.length : 0;
     extraSenzaConteggio.textContent = `Senza (${conteggioSenza})`;
-    extraSenzaConteggio.hidden = rigaAttiva?.componibile === true;
+    extraSenzaConteggio.hidden = rigaMenuConvenzione || rigaAttiva?.componibile === true;
     extraConteggio.textContent = `Extra (${conteggioExtra})`;
+    extraConteggio.hidden = rigaMenuConvenzione;
     noteRigaConteggio.textContent = `Note (${conteggioNote})`;
     extraFreccia.textContent = extraAperto ? "▴" : "▾";
     extraIntestazione.setAttribute(
         "aria-label",
-        `${extraProdotto.textContent}${rigaAttiva?.componibile ? "" : ` · Senza (${conteggioSenza})`} · Extra (${conteggioExtra}) · Note (${conteggioNote})`
+        `${extraProdotto.textContent}${rigaMenuConvenzione ? "" : `${rigaAttiva?.componibile ? "" : ` · Senza (${conteggioSenza})`} · Extra (${conteggioExtra})`} · Note (${conteggioNote})`
     );
     extraDettagliProdotto.textContent = extraProdotto.textContent;
     extraIntestazione.setAttribute("aria-expanded", String(extraAperto));
     sezioneExtra.classList.toggle("extra-aperto", extraAperto);
     extraDettagli.hidden = !extraAperto || sezioneExtra.hidden;
     aggiornaPosizionePannelloExtra();
-    extraRicerca.hidden = !stato.extra.length;
+    extraRicerca.hidden = rigaMenuConvenzione || !stato.extra.length;
     extraLista.replaceChildren();
-    const extraVisibili = filtraExtra(stato.extra, extraRicerca.value);
-    extraRicercaVuota.hidden = !extraRicerca.value.trim() || extraVisibili.length > 0;
+    const extraVisibili = rigaMenuConvenzione ? [] : filtraExtra(stato.extra, extraRicerca.value);
+    extraRicercaVuota.hidden = rigaMenuConvenzione || !extraRicerca.value.trim() || extraVisibili.length > 0;
     extraLista.hidden = !extraVisibili.length;
     const desktop = mediaPannelloExtra.matches;
     extraPaginazione.hidden = !desktop || !extraVisibili.length;
@@ -1454,7 +1470,7 @@ function renderGrigliaExtra() {
             bottone.type = "button";
             bottone.className = "extra-card";
             bottone.classList.toggle("selezionato", extraSelezionato(extra, rigaAttiva));
-            bottone.disabled = !rigaAttiva || rigaAttiva.ammetteExtra !== true || extra.disponibile === false;
+            bottone.disabled = rigaMenuConvenzione || !rigaAttiva || rigaAttiva.ammetteExtra !== true || extra.disponibile === false;
             bottone.setAttribute("aria-pressed", String(extraSelezionato(extra, rigaAttiva)));
             bottone.innerHTML = `<strong>${escapeHtml(extra.nome)}</strong><span>${escapeHtml(euro.format(Number(extra.prezzo)))}</span>${extra.disponibile === false ? '<small>Esaurito</small>' : ""}`;
             bottone.addEventListener("click", () => {
@@ -1543,7 +1559,19 @@ function renderProdotti() {
     renderPagineProdotti(prodotti, disponibili, (bottone, prodotto) => {
         bottone.addEventListener("click", () => aggiungiProdotto(prodotto, "griglia"));
     });
+    aggiornaRestrizioniProdottiMenu();
     aggiornaIndicatoreProdotti(prodotti, prodottiWrapper, prodottiIndicatore);
+}
+function aggiornaRestrizioniProdottiMenu() {
+    const { haMenu } = statoRigheMenuConvenzione(stato.righe);
+    menuConvenzioneAvvisoProdotti.hidden = !haMenu;
+    menuConvenzioneAvvisoProdotti.textContent = haMenu
+        ? "Ordine con menu convenzione: puoi aggiungere solo altri menu"
+        : "";
+    bottoneRicerca.disabled = haMenu;
+    for (const bottone of [...prodotti.querySelectorAll(".prodotto-btn"), ...ricercaRisultati.querySelectorAll(".prodotto-btn")]) {
+        bottone.disabled = haMenu || bottone.dataset.disponibile === "false";
+    }
 }
 function renderPagineProdotti(griglia, elenco, configuraBottone) {
     creaPagineProdotti(elenco).forEach(prodottiPagina => {
@@ -1621,6 +1649,7 @@ function creaBottoneProdotto(prodotto) {
     bottone.className = "prodotto-btn";
     bottone.type = "button";
     bottone.dataset.prodotto = prodotto.nome;
+    bottone.dataset.disponibile = String(prodotto.disponibile !== false);
     bottone.disabled = prodotto.disponibile === false;
     bottone.classList.toggle("esaurito", prodotto.disponibile === false);
 
@@ -1720,6 +1749,7 @@ aggiornaToggleIngredienti(false);
 // Unico punto di aggiunta al conto: usato dalle tab delle categorie e dalla ricerca.
 function aggiungiProdotto(prodotto, origine = "ricerca") {
     if (prodotto.disponibile === false) return false;
+    if (statoRigheMenuConvenzione(stato.righe).haMenu) return false;
     const limite = controllaLimiteRighe(stato.righe.length, 1);
     if (!limite.consentito) {
         mostraMessaggio(`Massimo 100 prodotti per comanda: puoi aggiungerne ancora ${limite.disponibili}`, "errore");
@@ -1742,10 +1772,15 @@ function aggiornaDisplayMoltiplicatore() {
 }
 function renderRisultatiRicerca() {
     const testo = ricercaInput.value;
-    const trovati = filtraProdotti(stato.menu.filter(prodotto => !isCoperto(prodotto)), testo);
     ricercaRisultati.replaceChildren();
     ricercaRisultati.scrollLeft = 0;
     ricercaMessaggio.textContent = "";
+    if (statoRigheMenuConvenzione(stato.righe).haMenu) {
+        ricercaMessaggio.textContent = "Ordine con menu convenzione: puoi aggiungere solo altri menu";
+        aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
+        return;
+    }
+    const trovati = filtraProdotti(stato.menu.filter(prodotto => !isCoperto(prodotto)), testo);
     if (!testo.trim()) {
         aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
         return;
@@ -1785,6 +1820,7 @@ function renderRisultatiRicerca() {
                 : `Aggiunto: ${prodotto.nome}`;
             mostraMessaggio(descrizioneAggiunta, "successo");
         });
+        aggiornaRestrizioniProdottiMenu();
     });
     aggiornaIndicatoreProdotti(ricercaRisultati, ricercaWrapper, ricercaPagine);
 }
@@ -1800,6 +1836,7 @@ function azzeraMoltiplicatore() {
     aggiornaDisplayMoltiplicatore();
 }
 function apriRicerca() {
+    if (statoRigheMenuConvenzione(stato.righe).haMenu) return;
     ricercaInput.value = "";
     azzeraMoltiplicatore();
     ricercaMessaggio.textContent = "";
@@ -1824,7 +1861,9 @@ function renderRiepilogo() {
     renderRigheRiepilogo(riepilogo);
     renderRigheRiepilogo(riepilogoSheetLista);
     aggiornaBadgeQuantitaProdotti();
+    aggiornaRestrizioniProdottiMenu();
     renderGrigliaExtra();
+    if (!ricercaModale.hidden) renderRisultatiRicerca();
     const testoTotale = `Totale: ${euro.format(totaleOrdine())}`;
     document.getElementById("riepilogo-totale").textContent = testoTotale;
     barraTotale.textContent = testoTotale;
@@ -1872,9 +1911,11 @@ function renderRigheRiepilogo(contenitore) {
             const pizza = menu.pizzaGroup.riga;
             const bibita = menu.bibitaGroup.riga;
             const pizzaIndex = menu.pizzaGroup.indici[0];
+            const bibitaIndex = menu.bibitaGroup.indici[0];
             const voce = document.createElement("div");
             voce.className = "riepilogo-item riepilogo-item--menu";
-            voce.classList.toggle("riga-attiva", menu.pizzaGroup.indici.includes(stato.rigaAttiva));
+            voce.classList.toggle("riga-attiva", menu.pizzaGroup.indici.includes(stato.rigaAttiva)
+                || menu.bibitaGroup.indici.includes(stato.rigaAttiva));
             voce.dataset.rigaAttiva = pizzaIndex;
             const delPrice = menu.totalMenuCents < menu.totalFullCents
                 ? `<del>${euro.format(menu.totalFullCents / 100)}</del>`
@@ -1894,7 +1935,10 @@ function renderRigheRiepilogo(contenitore) {
             const bibitaDetails = bibita.extra?.length
                 ? `<small class="riepilogo-extra">+ ${escapeHtml(nomiExtra(bibita.extra).join(", "))}</small>`
                 : "";
-            voce.innerHTML = `<div class="riepilogo-menu-contenuto"><div class="riepilogo-menu-titolo"><strong>Menu convenzione · ${euro.format(menu.totalMenuCents / 100)}</strong>${delPrice}</div><div class="riepilogo-item__descrizione"><button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(pizzaIndex)}">${escapeHtml(pizza.prodotto)}</button>${pizzaNotAvailable}${pizzaSenza}${pizzaExtra}${pizzaNote}<small class="riepilogo-menu-prodotto">${escapeHtml(bibita.prodotto)}${bibitaDetails ? ` · ${bibitaDetails}` : ""}</small></div></div><button class="rimuovi" type="button" data-indice="${escapeHtml(pizzaIndex)}" aria-label="Rimuovi menu convenzione">−</button>`;
+            const bibitaNote = bibita.note?.length
+                ? `<small class="riepilogo-note-riga">${escapeHtml(bibita.note.map(value => value.toLocaleLowerCase("it-IT")).join(", "))}</small>`
+                : "";
+            voce.innerHTML = `<div class="riepilogo-menu-contenuto"><div class="riepilogo-menu-titolo"><strong>Menu convenzione · ${euro.format(menu.totalMenuCents / 100)}</strong>${delPrice}</div><div class="riepilogo-item__descrizione"><button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(pizzaIndex)}">${escapeHtml(pizza.prodotto)}</button>${pizzaNotAvailable}${pizzaSenza}${pizzaExtra}${pizzaNote}<button class="seleziona-riga riepilogo-menu-prodotto" type="button" data-riga-attiva="${escapeHtml(bibitaIndex)}">${escapeHtml(bibita.prodotto)}</button>${bibitaDetails}${bibitaNote}</div></div><button class="rimuovi" type="button" data-indice="${escapeHtml(pizzaIndex)}" aria-label="Rimuovi menu convenzione">−</button>`;
             contenitore.appendChild(voce);
             return;
         }
@@ -1966,9 +2010,11 @@ function rimuoviRigaRiepilogo(evento) {
         if (menuId) mostraMessaggio("Menu convenzione rimosso.", "");
         return;
     }
+    const selezioneRiga = evento.target.closest(".seleziona-riga[data-riga-attiva]");
     const riga = evento.target.closest(".riepilogo-item[data-riga-attiva]");
     if (!riga || !evento.currentTarget.contains(riga)) return;
-    const risultato = impostaRigaAttiva(stato.righe, Number(riga.dataset.rigaAttiva));
+    const indiceRiga = selezioneRiga?.dataset.rigaAttiva ?? riga.dataset.rigaAttiva;
+    const risultato = impostaRigaAttiva(stato.righe, Number(indiceRiga));
     stato.rigaAttiva = risultato.rigaAttiva;
     extraRicerca.value = "";
     extraAperto = true;
