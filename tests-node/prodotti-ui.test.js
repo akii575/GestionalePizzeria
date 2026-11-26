@@ -152,7 +152,7 @@ test("editing an order preserves its rows, extras, exclusions, and one-row-per-p
     });
 });
 
-test("editing serializes row and order discounts without trusting computed amounts", () => {
+test("editing removes legacy row and order discounts but preserves convention", () => {
     const rows = preparaRigheModifica([{
         prodotto: "Margherita",
         prezzoBase: 5,
@@ -180,21 +180,13 @@ test("editing serializes row and order discounts without trusting computed amoun
         numeroPersone: 1,
         note: "",
         sconto: { tipo: "percentuale", valore: 10, motivo: "Cliente abituale", importo: 0.4 },
-        convenzione: null
+        convenzione: { tipo: "menu" }
     }, rows);
 
-    assert.deepEqual(payload.righe[0].sconto, {
-        tipo: "importo",
-        valore: 1,
-        motivo: "Promozione"
-    });
-    assert.deepEqual(payload.sconto, {
-        tipo: "percentuale",
-        valore: 10,
-        motivo: "Cliente abituale"
-    });
-    assert.equal(Object.hasOwn(payload.righe[0], "totale"), false);
-    assert.equal(Object.hasOwn(payload, "totale"), false);
+    assert.equal(rows[0].sconto, undefined);
+    assert.equal(Object.hasOwn(payload.righe[0], "sconto"), false);
+    assert.equal(Object.hasOwn(payload, "sconto"), false);
+    assert.deepEqual(payload.convenzione, { tipo: "menu" });
 });
 
 test("editing preserves an unavailable product so the waiter can remove it", () => {
@@ -1168,6 +1160,12 @@ test("university menu convention is counted before it is selected", () => {
     const menuCount = preview.indexOf("const menuConvenzione = orderDiscountRules.calculateMenuConvention(menuItems);");
 
     assert.ok(start >= 0 && menuCount > 0);
-    assert.ok(menuCount < preview.indexOf("if (scontoOrdine)"));
+    assert.ok(menuCount < preview.indexOf("if (convenzioneOrdine?.tipo === \"percentuale\")"));
     assert.match(script, /<p class="convenzione-titolo" id="convenzione-titolo">Convenzione universitaria<\/p>/);
+    const page = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.html"),
+        "utf8"
+    );
+    assert.doesNotMatch(page, /Sconto\/omaggio|Sconto sul totale/);
+    assert.doesNotMatch(script, /Sconto\/omaggio|Sconto sul totale/);
 });

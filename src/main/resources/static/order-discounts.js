@@ -16,21 +16,11 @@
         return Math.round(baseCents * percentage / 100);
     }
 
-    function rowDiscountCents(discount, grossCents) {
-        if (!discount || typeof discount !== "object") return 0;
-        if (discount.tipo === "omaggio") return grossCents;
-        if (discount.tipo === "percentuale") {
-            return percentageDiscountCents(grossCents, Number(discount.valore));
-        }
-        if (discount.tipo === "importo") return toCents(discount.valore);
-        return 0;
-    }
-
     function calculateMenuConvention(items) {
         const pizzas = [];
         const drinks = [];
         (Array.isArray(items) ? items : []).forEach((item, index) => {
-            if (!item || item.scontata) return;
+            if (!item) return;
             const candidate = { ...item, index };
             if (item.tipo === "pizza") pizzas.push(candidate);
             if (item.tipo === "bibita") drinks.push(candidate);
@@ -55,7 +45,6 @@
         CONVENZIONE_PREZZO_MENU_CENTESIMI,
         calculateMenuConvention,
         percentageDiscountCents,
-        rowDiscountCents,
         toCents
     });
 }));

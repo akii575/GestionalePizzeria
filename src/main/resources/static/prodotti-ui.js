@@ -215,7 +215,6 @@ const prodottiUI = (() => {
                 return {
                     prodotto: riga.prodotto,
                     prezzo: Number(prodotto?.prezzo ?? riga.prezzoBase ?? riga.prezzo ?? 0),
-                    ...(riga.sconto ? { sconto: { ...riga.sconto } } : {}),
                     categoria: prodotto?.categoria || riga.categoria || "",
                     ingredienti,
                     ammetteExtra: prodotto?.ammetteExtra === true,
@@ -252,22 +251,8 @@ const prodottiUI = (() => {
                 prodotto: riga.prodotto,
                 extra: Array.isArray(riga.extra) ? riga.extra : [],
                 senza: Array.isArray(riga.senza) ? riga.senza : [],
-                note: Array.isArray(riga.note) ? [...riga.note] : [],
-                ...(riga.sconto ? {
-                    sconto: {
-                        tipo: riga.sconto.tipo,
-                        valore: riga.sconto.valore,
-                        motivo: riga.sconto.motivo
-                    }
-                } : {})
+                note: Array.isArray(riga.note) ? [...riga.note] : []
             })),
-            ...(dati.sconto ? {
-                sconto: {
-                    tipo: dati.sconto.tipo,
-                    valore: dati.sconto.valore,
-                    motivo: dati.sconto.motivo
-                }
-            } : {}),
             ...(dati.convenzione ? { convenzione: { tipo: dati.convenzione.tipo } } : {})
         };
     }
@@ -347,7 +332,7 @@ const prodottiUI = (() => {
             const note = normalizzaNoteRiga(riga.note).sort((first, second) =>
                 first.localeCompare(second, "it-IT")
             );
-            const chiave = JSON.stringify([riga.prodotto, extra, senza, note, riga.sconto || null]);
+            const chiave = JSON.stringify([riga.prodotto, extra, senza, note]);
             const gruppo = gruppi.get(chiave);
             if (gruppo) {
                 gruppo.quantita++;

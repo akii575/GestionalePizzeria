@@ -404,38 +404,6 @@
             </div>
         </div>
         <div
-            id="sconto-modale"
-            class="conferma-modale sconto-modale"
-            hidden
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="sconto-titolo"
-        >
-            <form id="sconto-form" class="conferma-contenuto sconto-contenuto">
-                <h2 id="sconto-titolo">Sconto</h2>
-                <label for="sconto-tipo">Tipo di sconto</label>
-                <select id="sconto-tipo" required></select>
-                <label id="sconto-valore-field" for="sconto-valore">Valore
-                    <input id="sconto-valore" type="number" min="0.01" step="0.01" inputmode="decimal" />
-                </label>
-                <label for="sconto-motivo">Motivo
-                    <input id="sconto-motivo" type="text" list="sconto-motivi" minlength="2" maxlength="80" required />
-                </label>
-                <datalist id="sconto-motivi">
-                    <option value="Omaggio"></option>
-                    <option value="Cliente abituale"></option>
-                    <option value="Ritardo o errore"></option>
-                    <option value="Promozione"></option>
-                </datalist>
-                <p id="sconto-errore" class="sconto-errore" role="alert"></p>
-                <div class="conferma-azioni">
-                    <button id="sconto-applica" type="submit" class="btn-invia">Applica</button>
-                    <button id="sconto-rimuovi" type="button" class="btn-annulla" hidden>Rimuovi sconto</button>
-                    <button id="sconto-annulla" type="button" class="btn-annulla">Annulla</button>
-                </div>
-            </form>
-        </div>
-        <div
             id="ricerca-modale"
             class="ricerca-modale"
             hidden

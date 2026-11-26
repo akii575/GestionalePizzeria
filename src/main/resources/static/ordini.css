@@ -3553,29 +3553,9 @@ body {
     gap: 2px;
 }
 
-.riepilogo-prezzo del,
-.conferma-riga del {
-    color: var(--theme-muted);
-    font-size: 12px;
-    font-weight: 400;
-}
-
-.riepilogo-sconto-dettaglio,
 .riepilogo-finanziario__riga {
     color: var(--theme-muted);
     font-size: 12px;
-}
-
-.riepilogo-item__descrizione .riepilogo-sconto-apri {
-    justify-self: start;
-    min-height: 32px;
-    padding: 4px 8px;
-    border: 1px solid var(--theme-line);
-    border-radius: 8px;
-    background: #fff;
-    color: var(--theme-blue);
-    font-size: 12px;
-    font-weight: 600;
 }
 
 .riepilogo-sconti {
@@ -3590,7 +3570,6 @@ body {
     gap: 8px;
 }
 
-.sconto-ordine-apri,
 .convenzione-scelta {
     min-height: 42px;
     padding: 8px 10px;
@@ -3616,7 +3595,6 @@ body {
     gap: 8px;
 }
 
-.sconto-ordine-apri.is-active,
 .convenzione-scelta.is-active {
     border-color: var(--theme-blue);
     background: #eaf3ff;
@@ -3659,66 +3637,12 @@ body {
     padding: 10px 0;
 }
 
-.conferma-sconto-riga {
-    color: var(--theme-red);
-}
-
-.sconto-contenuto {
-    display: grid;
-    gap: 10px;
-}
-
-.sconto-contenuto h2,
-.sconto-contenuto p {
-    margin: 0;
-}
-
-.sconto-contenuto label {
-    display: grid;
-    gap: 5px;
-    color: var(--theme-muted);
-    font-size: 14px;
-}
-
-.sconto-contenuto input,
-.sconto-contenuto select {
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 44px;
-    padding: 8px 10px;
-    border: 1px solid var(--theme-line);
-    border-radius: 10px;
-    background: #fff;
-    color: var(--theme-ink);
-    font: inherit;
-}
-
-.sconto-contenuto .conferma-azioni {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.sconto-errore {
-    color: var(--theme-red);
-    font-size: 13px;
-}
-
 @media (max-width: 767px) {
     .riepilogo-sconti {
         gap: 8px;
     }
 
-    .riepilogo-item__descrizione .riepilogo-sconto-apri {
-        min-height: 36px;
-    }
-
     .conferma-sconti .riepilogo-finanziario__riga {
         font-size: 13px;
-    }
-
-    .sconto-modale .conferma-contenuto {
-        width: min(100% - 24px, 440px);
-        padding: 20px;
     }
 }

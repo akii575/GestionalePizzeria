@@ -594,89 +594,38 @@ test("rejects missing order details and products outside the menu", () => {
     assert.throws(() => prepareOrder({ tipo: "asporto", tavoloOCliente: "Anna", righe: [{ prodotto: "Margherita" }] }), /Tipo ordine/);
 });
 
-test("row discounts are server-calculated, rounded to cents and require a valid reason", () => {
-    const discounted = prepareOrder({
+test("server rejects row and total discounts but still exposes legacy discount fields", () => {
+    const errorMessage = "Sono disponibili solo le convenzioni universitarie.";
+    assert.throws(() => prepareOrder({
         tipo: "banco",
         cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita", sconto: null }]
+    }), error => error.statusCode === 400 && error.message === errorMessage);
+    assert.throws(() => prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita" }],
+        sconto: null
+    }), error => error.statusCode === 400 && error.message === errorMessage);
+
+    const legacy = publicOrder({
+        numero: 5,
+        tipo: "banco",
+        dataOra: "2026-03-10T12:00:00.000Z",
         righe: [{
             prodotto: "Margherita",
-            sconto: { tipo: "percentuale", valore: 33.3, motivo: " Cliente abituale " }
-        }]
+            totaleLordo: 5,
+            totale: 4,
+            sconto: { tipo: "importo", valore: 1, motivo: "Promozione", importo: 1 }
+        }],
+        sconto: { tipo: "percentuale", valore: 10, motivo: "Cliente abituale", importo: 0.4 },
+        totaleLordo: 5,
+        totale: 3.6
     });
-
-    assert.equal(discounted.righe[0].totaleLordo, 5);
-    assert.deepEqual(discounted.righe[0].sconto, {
-        tipo: "percentuale",
-        valore: 33.3,
-        motivo: "Cliente abituale",
-        importo: 1.67
-    });
-    assert.equal(discounted.righe[0].totale, 3.33);
-    assert.equal(discounted.totale, 3.33);
-    assert.equal(discounted.totaleLordo, 5);
-
-    const gift = prepareOrder({
-        tipo: "banco",
-        cognomeBanco: "Rossi",
-        righe: [{ prodotto: "Margherita", sconto: { tipo: "omaggio", motivo: "Promozione" } }]
-    });
-    assert.equal(gift.righe[0].sconto.importo, 5);
-    assert.equal(gift.righe[0].totale, 0);
-    assert.equal(publicOrder(gift).righe[0].sconto.motivo, "Promozione");
-
-    for (const sconto of [
-        { tipo: "percentuale", valore: 0, motivo: "Promo" },
-        { tipo: "percentuale", valore: 101, motivo: "Promo" },
-        { tipo: "importo", valore: 5.01, motivo: "Promo" },
-        { tipo: "importo", valore: 0, motivo: "Promo" },
-        { tipo: "importo", valore: 1, motivo: " " },
-        { tipo: "omaggio", motivo: "x" }
-    ]) {
-        assert.throws(() => prepareOrder({
-            tipo: "banco",
-            cognomeBanco: "Rossi",
-            righe: [{ prodotto: "Margherita", sconto }]
-        }), error => error.statusCode === 400);
-    }
-});
-
-test("order discounts apply after row discounts and cover but never to delivery fees", () => {
-    const delivery = prepareOrder({
-        tipo: "consegna",
-        indirizzoConsegna: "Via Roma 12",
-        telefonoConsegna: "3331234567",
-        costoConsegna: 2,
-        sconto: { tipo: "importo", valore: 5, motivo: "Ritardo o errore" },
-        righe: [{ prodotto: "Margherita" }]
-    });
-    assert.equal(delivery.sconto.importo, 5);
-    assert.equal(delivery.totaleLordo, 7);
-    assert.equal(delivery.totale, 2);
-
-    const table = prepareOrder({
-        tipo: "tavolo",
-        tavoloOCliente: "Tavolo 1",
-        numeroPersone: 1,
-        sconto: { tipo: "percentuale", valore: 50, motivo: "Cliente abituale" },
-        righe: [{ prodotto: "Margherita", sconto: { tipo: "importo", valore: 1, motivo: "Promozione" } }]
-    }, catalogWithCoperto({ nome: "Coperto", prezzo: 2, disponibile: true }));
-    assert.equal(table.righe[0].totale, 4);
-    assert.equal(table.sconto.importo, 3);
-    assert.equal(table.totaleLordo, 7);
-    assert.equal(table.totale, 3);
-
-    for (const sconto of [
-        { tipo: "percentuale", valore: 101, motivo: "Promo" },
-        { tipo: "importo", valore: 5.01, motivo: "Promo" },
-        { tipo: "importo", valore: 1, motivo: "" }
-    ]) {
-        assert.throws(() => prepareOrder({
-            tipo: "banco",
-            cognomeBanco: "Rossi",
-            sconto,
-            righe: [{ prodotto: "Margherita" }]
-        }), error => error.statusCode === 400);
-    }
+    assert.equal(legacy.righe[0].sconto.motivo, "Promozione");
+    assert.equal(legacy.sconto.motivo, "Cliente abituale");
+    assert.equal(legacy.totaleLordo, 5);
+    assert.equal(legacy.totale, 3.6);
 });
 
 test("ten-percent university convention discounts rows and cover without discounting delivery", () => {
@@ -750,15 +699,7 @@ test("menu convention pairs the most expensive eligible pizza and drink, with ex
     assert.equal(order.totale, 18);
 });
 
-test("menu convention excludes discounted lines and does not increase low-priced pairs", () => {
-    const discountedLine = prepareOrder(bancoInput([
-        { prodotto: "Margherita", sconto: { tipo: "importo", valore: 1, motivo: "Promozione" } },
-        { prodotto: "Napoletana" },
-        { prodotto: "Acqua 0,5L" }
-    ], { convenzione: { tipo: "menu" } }), testCatalog);
-    assert.deepEqual(discountedLine.convenzione, { tipo: "menu", importo: 0, menu: 1 });
-    assert.equal(discountedLine.totale, discountedLine.totaleLordo - 1);
-
+test("menu convention does not increase low-priced pairs", () => {
     const lowPriceCatalog = conventionCatalog([
         { nome: "Napoletana", prezzo: 4, disponibile: true },
         { nome: "Acqua 0,5L", prezzo: 1, disponibile: true }
@@ -785,18 +726,19 @@ test("menu convention rejects ineligible fried products and drinks", () => {
     ));
 });
 
-test("university convention cannot be combined with a total discount and recalculates on edits", () => {
-    assert.throws(() => prepareOrder(bancoInput(
-        [{ prodotto: "Margherita" }],
-        {
-            sconto: { tipo: "percentuale", valore: 10, motivo: "Promozione" },
-            convenzione: { tipo: "percentuale" }
-        }
-    )), error => (
-        error.statusCode === 400
-        && error.message === "La convenzione non si somma ad altri sconti sul totale."
-    ));
-
+test("university convention is exclusive and recalculates on edits", () => {
+    for (const payload of [
+        { sconto: { tipo: "percentuale", valore: 10, motivo: "Promozione" } },
+        { righe: [{ prodotto: "Margherita", sconto: { tipo: "omaggio", motivo: "Promo" } }] }
+    ]) {
+        assert.throws(() => prepareOrder(bancoInput(
+            payload.righe || [{ prodotto: "Margherita" }],
+            { ...payload, convenzione: { tipo: "percentuale" } }
+        )), error => (
+            error.statusCode === 400
+            && error.message === "Sono disponibili solo le convenzioni universitarie."
+        ));
+    }
     const catalog = conventionCatalog([
         { nome: "Margherita", prezzo: 8, convenzione: "pizza" },
         { nome: "Coca Cola 33cl", prezzo: 2, convenzione: "bibita" }
