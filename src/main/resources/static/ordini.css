@@ -419,17 +419,29 @@ button {
     background: #fff;
 }
 .prodotti-wrapper {
+    position: relative;
     margin-bottom: 14px;
 }
+/* Fascetta sopra la griglia disattivata: non occupa righe del layout della pagina. */
 .menu-convenzione-avviso-prodotti {
-    margin: 0 0 8px;
-    padding: 8px 10px;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    z-index: 2;
+    width: max-content;
+    max-width: calc(100% - 24px);
+    margin: 0;
+    padding: 8px 14px;
     border: 1px solid var(--theme-line);
-    border-radius: 8px;
-    background: #f5f8f6;
-    color: var(--theme-muted);
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(15, 35, 70, .12);
+    color: var(--theme-ink);
     font-size: 13px;
     font-weight: 600;
+    text-align: center;
+    pointer-events: none;
+    transform: translateX(-50%);
 }
 .menu-convenzione-avviso-prodotti[hidden] {
     display: none;
