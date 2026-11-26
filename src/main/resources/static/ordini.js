@@ -142,6 +142,8 @@ const menuConvenzionePizze = document.getElementById("menu-convenzione-pizze");
 const menuConvenzioneBibitaStep = document.getElementById("menu-convenzione-bibita-step");
 const menuConvenzioneBibite = document.getElementById("menu-convenzione-bibite");
 const menuConvenzioneRiepilogo = document.getElementById("menu-convenzione-riepilogo");
+const menuConvenzioneRiepilogoTesto = document.getElementById("menu-convenzione-riepilogo-testo");
+const menuConvenzioneRiepilogoPrezzoPieno = document.getElementById("menu-convenzione-riepilogo-prezzo-pieno");
 const menuConvenzioneIndietro = document.getElementById("menu-convenzione-indietro");
 const menuConvenzioneAggiungi = document.getElementById("menu-convenzione-aggiungi");
 const menuConvenzioneAnnulla = document.getElementById("menu-convenzione-annulla");
@@ -1154,16 +1156,17 @@ function aggiornaMenuConvenzioneGuidato() {
     if (menuConvenzionePizzaSelezionata && menuConvenzioneBibitaSelezionata) {
         const fullPriceCents = orderDiscountRules.toCents(menuConvenzionePizzaSelezionata.prezzo)
             + orderDiscountRules.toCents(menuConvenzioneBibitaSelezionata.prezzo);
-        const menuPriceCents = Math.min(
-            orderDiscountRules.CONVENZIONE_PREZZO_MENU_CENTESIMI,
-            fullPriceCents
-        );
         const names = `${menuConvenzionePizzaSelezionata.nome} + ${menuConvenzioneBibitaSelezionata.nome}`;
-        menuConvenzioneRiepilogo.textContent = menuPriceCents < fullPriceCents
-            ? `${names} · ${euro.format(menuPriceCents / 100)} invece di ${euro.format(fullPriceCents / 100)}`
-            : `${names} · ${euro.format(fullPriceCents / 100)}`;
+        menuConvenzioneRiepilogoTesto.textContent = `${names} · ${euro.format(orderDiscountRules.CONVENZIONE_PREZZO_MENU)}`;
+        menuConvenzioneRiepilogoPrezzoPieno.replaceChildren(document.createTextNode("prezzo pieno "));
+        const prezzoPieno = document.createElement(
+            fullPriceCents > orderDiscountRules.CONVENZIONE_PREZZO_MENU_CENTESIMI ? "del" : "span"
+        );
+        prezzoPieno.textContent = euro.format(fullPriceCents / 100);
+        menuConvenzioneRiepilogoPrezzoPieno.appendChild(prezzoPieno);
     } else {
-        menuConvenzioneRiepilogo.textContent = "";
+        menuConvenzioneRiepilogoTesto.textContent = "";
+        menuConvenzioneRiepilogoPrezzoPieno.replaceChildren();
     }
 }
 let menuConvenzioneTrigger = null;
@@ -1242,10 +1245,7 @@ function datiRigaMenuConvenzione(menuGroup) {
                 - orderDiscountRules.toCents(group.riga.prezzo)
         ) * group.quantita
     ), 0);
-    const menuPriceCents = Math.min(
-        orderDiscountRules.CONVENZIONE_PREZZO_MENU_CENTESIMI,
-        fullPriceCents
-    );
+    const menuPriceCents = orderDiscountRules.CONVENZIONE_PREZZO_MENU_CENTESIMI;
     return {
         pizzaGroup,
         bibitaGroup,
@@ -1308,14 +1308,15 @@ function totaleOrdine() {
     return anteprimaTotaliOrdine().totaleCentesimi / 100;
 }
 function rigaRiepilogoFinanziario(label, cents, negativa = false) {
-    return `<div class="riepilogo-finanziario__riga"><span>${label}</span><strong>${negativa ? "−" : ""}${euro.format(Math.abs(cents) / 100)}</strong></div>`;
+    const sign = negativa ? (cents < 0 ? "+" : "−") : "";
+    return `<div class="riepilogo-finanziario__riga"><span>${label}</span><strong>${sign}${euro.format(Math.abs(cents) / 100)}</strong></div>`;
 }
 function markupRiepilogoFinanziario(preview, controlli = false) {
     const conventionType = convenzioneOrdine?.tipo || "";
     const availableMenus = preview.menuConvenzione.menu;
     const righeMenu = statoRigheMenuConvenzione(stato.righe);
     const menuDescription = availableMenus
-        ? `${availableMenus} ${availableMenus === 1 ? "menu" : "menu"} · risparmio ${euro.format(preview.menuConvenzione.importo / 100)}`
+        ? `${availableMenus} menu · ${euro.format(orderDiscountRules.CONVENZIONE_PREZZO_MENU * availableMenus)}`
         : "Scegli una pizza e una bibita per aggiungere un menu.";
     const menuAttivo = righeMenu.haMenu || availableMenus > 0;
     const percentLabel = menuAttivo ? "Togli i menu per usare il 10%" : "10% sul totale";
@@ -1342,7 +1343,7 @@ function markupRiepilogoFinanziario(preview, controlli = false) {
         ...(convenzioneOrdine ? [
             rigaRiepilogoFinanziario(
                 convenzioneOrdine.tipo === "menu"
-                    ? `Convenzione · ${preview.menuConvenzione.menu} menu`
+                    ? `Menu convenzione ${preview.menuConvenzione.menu} x ${orderDiscountRules.CONVENZIONE_PREZZO_MENU.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : "Convenzione universitaria · 10%",
                 preview.convenzioneCentesimi,
                 true
@@ -1938,7 +1939,7 @@ function renderRigheRiepilogo(contenitore) {
             const bibitaNote = bibita.note?.length
                 ? `<small class="riepilogo-note-riga">${escapeHtml(bibita.note.map(value => value.toLocaleLowerCase("it-IT")).join(", "))}</small>`
                 : "";
-            voce.innerHTML = `<div class="riepilogo-menu-contenuto"><div class="riepilogo-menu-titolo"><strong>Menu convenzione · ${euro.format(menu.totalMenuCents / 100)}</strong>${delPrice}</div><div class="riepilogo-item__descrizione"><button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(pizzaIndex)}">${escapeHtml(pizza.prodotto)}</button>${pizzaNotAvailable}${pizzaSenza}${pizzaExtra}${pizzaNote}<button class="seleziona-riga riepilogo-menu-prodotto" type="button" data-riga-attiva="${escapeHtml(bibitaIndex)}">${escapeHtml(bibita.prodotto)}</button>${bibitaDetails}${bibitaNote}</div></div><button class="rimuovi" type="button" data-indice="${escapeHtml(pizzaIndex)}" aria-label="Rimuovi menu convenzione">−</button>`;
+            voce.innerHTML = `<div class="riepilogo-menu-contenuto"><div class="riepilogo-menu-titolo"><strong>Menu convenzione · ${euro.format(menu.menuPriceCents / 100)}</strong>${delPrice}</div><div class="riepilogo-item__descrizione"><button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(pizzaIndex)}">${escapeHtml(pizza.prodotto)}</button>${pizzaNotAvailable}${pizzaSenza}${pizzaExtra}${pizzaNote}<button class="seleziona-riga riepilogo-menu-prodotto" type="button" data-riga-attiva="${escapeHtml(bibitaIndex)}">${escapeHtml(bibita.prodotto)}</button>${bibitaDetails}${bibitaNote}</div></div><button class="rimuovi" type="button" data-indice="${escapeHtml(pizzaIndex)}" aria-label="Rimuovi menu convenzione">−</button>`;
             contenitore.appendChild(voce);
             return;
         }

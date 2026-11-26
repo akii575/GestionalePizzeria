@@ -3764,12 +3764,20 @@ body {
 }
 
 .menu-convenzione-riepilogo {
+    display: grid;
+    gap: 4px;
     margin: 0;
     padding: 12px;
     border-radius: 10px;
     background: #f3f8f1;
     color: var(--theme-ink);
     font-weight: 700;
+}
+
+.menu-convenzione-riepilogo small {
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 500;
 }
 
 .menu-convenzione-disponibilita {

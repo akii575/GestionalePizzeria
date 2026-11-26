@@ -231,7 +231,9 @@ test("menu store normalizes default convention names and honors explicit product
         "COCA  COLA-ZERO 33 cl lattina",
         "Coca Zero 33cl",
         "Pizza bianca fritta",
-        "Coca-Cola Zero 33cl"
+        "Coca-Cola Zero 33cl",
+        "Solo pomodoro",
+        "Solo pomodoro"
     ];
     data.menuProdotti = Object.fromEntries(names.map((nome, index) => [
         `product-${index}`,
@@ -246,6 +248,7 @@ test("menu store normalizes default convention names and honors explicit product
     data.menuProdotti["product-8"].convenzione = "pizza";
     data.menuProdotti["product-7"].convenzione = "";
     data.menuProdotti["product-9"].convenzione = "";
+    data.menuProdotti["product-19"].convenzione = "";
 
     const menu = await createMenuStore(createDatabase(data)).getMenuData();
     const values = Object.fromEntries(menu.allProducts.map(product => [product.id, product.convenzione]));
@@ -268,7 +271,9 @@ test("menu store normalizes default convention names and honors explicit product
         "product-14": "bibita",
         "product-15": "bibita",
         "product-16": "",
-        "product-17": "bibita"
+        "product-17": "bibita",
+        "product-18": "pizza",
+        "product-19": ""
     });
 });
 

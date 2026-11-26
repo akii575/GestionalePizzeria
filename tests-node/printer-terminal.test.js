@@ -5,12 +5,12 @@ const { createServer } = require("../scripts/printer-terminal");
 const allowedOrigin = "https://gestionale-pizzeria-six.vercel.app";
 
 function receiptLineFits(line, doubleWidth) {
-    const marker = /^@@(TITLE|SECTION|BIG|ITEM|SMALL|BOLD):(.*)@@$/.exec(line);
+    const marker = /^@@(TITLE|SECTION|BIG|NOTEBIG|ITEM|SMALL|BOLD):(.*)@@$/.exec(line);
     if (!marker) return Array.from(line).length <= doubleWidth;
     if (marker[1] === "TITLE" || marker[1] === "SECTION") return true;
     const width = marker[1] === "SMALL"
         ? doubleWidth * 2
-        : marker[1] === "BIG" ? Math.floor(doubleWidth * 2 / 3) : doubleWidth;
+        : marker[1] === "BIG" || marker[1] === "NOTEBIG" ? Math.floor(doubleWidth * 2 / 3) : doubleWidth;
     return Array.from(marker[2]).length <= width;
 }
 
@@ -235,6 +235,92 @@ test("sala prints row and order discounts plus convention, while cucina omits di
     assert.doesNotMatch(cucina, /SCONTO|OMAGGIO|CONVENZIONE|EUR/);
 });
 
+test("sala aligns fixed-price convention summaries within the 24-column receipt width", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const percentageLines = formatReceipt({
+        numero: 45,
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{ prodotto: "Prodotti", prezzoBase: 16, totaleLordo: 16, totale: 16 }],
+        totaleLordo: 16,
+        convenzione: { tipo: "percentuale", importo: 1.6 },
+        totale: 14.4
+    }, 80).split(/\r?\n/);
+    const percentageSubtotal = percentageLines.findIndex(line => line.includes("SUBTOTALE"));
+    const percentageConvention = percentageLines.findIndex(line => line.startsWith("CONVENZ. 10%"));
+    const percentageTotal = percentageLines.findIndex(line => line.startsWith("TOTALE"));
+
+    assert.ok(percentageSubtotal >= 0);
+    assert.ok(percentageSubtotal < percentageConvention);
+    assert.ok(percentageConvention < percentageTotal);
+    assert.match(percentageLines[percentageSubtotal], /SUBTOTALE\s+EUR 16,00/);
+    assert.equal(percentageLines[percentageConvention], "CONVENZ. 10%   EUR -1,60");
+    assert.match(percentageLines[percentageTotal], /EUR 14,40/);
+
+    const menuOrder = {
+        numero: 46,
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [],
+        totaleLordo: 19.5,
+        convenzione: {
+            tipo: "menu",
+            menu: 3,
+            importo: 1.5,
+            prezzoMenu: 6,
+            totaleMenu: 18
+        },
+        totale: 18
+    };
+    const menuLines = formatReceipt(menuOrder, 80).split(/\r?\n/);
+    const menuSubtotal = menuLines.findIndex(line => line.includes("SUBTOTALE"));
+    const menuSummary = menuLines.findIndex(line => line.startsWith("3 MENU X 6,00"));
+    const menuTotal = menuLines.findIndex(line => line.startsWith("TOTALE"));
+
+    assert.ok(menuSubtotal >= 0);
+    assert.ok(menuSubtotal < menuSummary);
+    assert.ok(menuSummary < menuTotal);
+    assert.match(menuLines[menuSubtotal], /SUBTOTALE\s+EUR 19,50/);
+    assert.equal(menuLines[menuSummary], "3 MENU X 6,00  EUR 18,00");
+    assert.match(menuLines[menuTotal], /EUR 18,00/);
+    for (const lines of [percentageLines, menuLines]) {
+        for (const index of [
+            lines.findIndex(line => line.includes("SUBTOTALE")),
+            lines.findIndex(line => line.startsWith("CONVENZ. 10%") || line.startsWith("3 MENU X 6,00")),
+            lines.findIndex(line => line.startsWith("TOTALE"))
+        ]) {
+            assert.ok(lines[index].length <= 24);
+        }
+    }
+
+    assert.equal(
+        formatReceipt(menuOrder, 80, { profile: "cucina" }),
+        formatReceipt({ ...menuOrder, convenzione: undefined }, 80, { profile: "cucina" })
+    );
+});
+
+test("orders without a convention keep the exact standard sala receipt bytes", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        numero: 99,
+        tipo: "banco",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [],
+        totale: 0
+    }, 80);
+
+    assert.equal(receipt, [
+        "@@BIG:#99@@",
+        "@@TITLE:BANCO@@",
+        "------------------------",
+        "DATA: 14/10/2026",
+        "------------------------",
+        "------------------------",
+        "TOTALE          EUR 0,00",
+        "------------------------"
+    ].join("\r\n"));
+});
+
 test("receipt number is first and requested time is the final large line", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const lines = formatReceipt({
@@ -440,7 +526,7 @@ test("receipt prints removed ingredients for kitchen and sala without grouping t
     assert.match(sala, /\x20{2}- senza basilico/);
 });
 
-test("receipt keeps a pizza with a note separate and prints note lines for kitchen and sala", () => {
+test("receipt keeps a pizza with a note separate and prints its notes in the NOTE section", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const plain = {
         prodotto: "Margherita",
@@ -464,16 +550,21 @@ test("receipt keeps a pizza with a note separate and prints note lines for kitch
     };
     const cucina = formatReceipt(order, 80, { ...options, profile: "cucina" });
     const sala = formatReceipt(order, 80, { ...options, profile: "sala" });
-    const righeCucina = cucina.split(/\r?\n/);
-    const senza = righeCucina.findIndex(linea => linea.includes("- SENZA BASILICO"));
-    const nota = righeCucina.findIndex(linea => linea.includes("! BEN COTTA"));
-    const extra = righeCucina.findIndex(linea => linea.includes("+ BUFALA"));
+    for (const receipt of [cucina, sala]) {
+        const lines = receipt.split(/\r?\n/);
+        const noteHeader = lines.indexOf("NOTE:");
+        const section = lines.indexOf("@@SECTION:PIZZE@@");
+        const note = lines.indexOf("@@NOTEBIG:! BEN COTTA@@");
 
-    assert.equal((cucina.match(/@@ITEM:1X MARGHERITA@@/g) || []).length, 2);
-    assert.ok(senza >= 0 && senza < nota && nota < extra);
-    assert.match(righeCucina[nota], /^@@ITEM: {2}! BEN COTTA@@$/);
-    assert.equal((sala.match(/@@ITEM:1X MARGHERITA/g) || []).length, 2);
-    assert.match(sala, /^ {2}\* ben cotta$/m);
+        assert.ok(noteHeader >= 0 && noteHeader < note && note < section);
+        assert.equal(lines[noteHeader + 1], "@@ITEM:1X MARGHERITA@@");
+        assert.equal(lines.filter(line => line.includes("BEN COTTA")).length, 1);
+        assert.equal(lines.filter(line => line === "@@ITEM:  > VEDI NOTE@@").length, 1);
+    }
+    assert.equal((cucina.match(/@@ITEM:1X MARGHERITA@@/g) || []).length, 3);
+    assert.match(cucina, /@@ITEM: {2}- SENZA BASILICO@@/);
+    assert.match(cucina, /@@ITEM: {2}\+ BUFALA@@/);
+    assert.equal((sala.match(/@@ITEM:1X MARGHERITA\s+EUR/g) || []).length, 2);
 });
 
 test("receipt groups products in Firestore category order using prices stored in order rows", () => {
@@ -673,7 +764,7 @@ test("receipt wraps long product, destination and note text to the configured ro
     assert.ok(lines.every(line => receiptLineFits(line, 24)));
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("CLIENTE CON UN NOMINATIVO MOLTO LUNGO"));
     assert.ok(receipt.includes("NOTE:"));
-    assert.ok(receipt.replace(/\r?\n/g, " ").includes("DETTAGLI IMPORTANTI"));
+    assert.ok(receipt.replace(/@@NOTEBIG:(.*)@@/g, "$1").replace(/\r?\n/g, " ").includes("DETTAGLI IMPORTANTI"));
     assert.ok(receipt.indexOf("NOTE:") < receipt.indexOf("@@SECTION:"));
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("  + EXTRA CON NOME"));
 });
@@ -693,4 +784,61 @@ test("receipt fills the configured 58 mm and 80 mm roll widths", () => {
     assert.equal(wideReceipt.split(/\r?\n/)[2], "-".repeat(24));
     assert.ok(narrowReceipt.split(/\r?\n/).every(line => receiptLineFits(line, 16)));
     assert.ok(wideReceipt.split(/\r?\n/).every(line => receiptLineFits(line, 24)));
+});
+
+test("sala prints cover charge after the convention line and keeps long menu counts on one line", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const lines = formatReceipt({
+        numero: 47,
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [],
+        coperto: { persone: 2, totale: 4 },
+        totaleLordo: 17,
+        convenzione: { tipo: "menu", menu: 2, importo: 1, prezzoMenu: 6, totaleMenu: 12 },
+        totale: 16
+    }, 80).split(/\r?\n/);
+    const subtotal = lines.findIndex(line => line.startsWith("SUBTOTALE"));
+    const menu = lines.findIndex(line => line.startsWith("2 MENU X 6,00"));
+    const cover = lines.findIndex(line => line.startsWith("COPERTO 2X"));
+    const total = lines.findIndex(line => line.startsWith("TOTALE"));
+
+    assert.match(lines[subtotal], /EUR 13,00$/);
+    assert.ok(subtotal < menu && menu < cover && cover < total);
+    assert.match(lines[total], /EUR 16,00$/);
+
+    const tenMenus = formatReceipt({
+        numero: 48,
+        tipo: "ritiro",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [],
+        totaleLordo: 70,
+        convenzione: { tipo: "menu", menu: 10, importo: 10, prezzoMenu: 6, totaleMenu: 60 },
+        totale: 60
+    }, 80).split(/\r?\n/);
+    assert.ok(tenMenus.includes("10 MENU X 6,00 EUR 60,00"));
+});
+
+test("sala keeps long removed ingredients on indented continuation lines", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const lines = formatReceipt({
+        numero: 49,
+        tipo: "tavolo",
+        tavoloOCliente: "1",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{
+            prodotto: "Capricciosa",
+            categoria: "pizze",
+            prezzoBase: 7,
+            totale: 7,
+            senza: ["olive taggiasche", "carciofini sott'olio"]
+        }],
+        totale: 7
+    }, 80).split(/\r?\n/);
+
+    assert.equal(lines.filter(line => line.startsWith("  - senza ")).length, 2);
+    assert.ok(lines.includes("  - senza olive"));
+    assert.ok(lines.includes("          taggiasche"));
+    assert.ok(lines.includes("  - senza carciofini"));
+    assert.ok(lines.includes("          sott'olio"));
 });

@@ -232,7 +232,7 @@ const orderCard = (() => {
         return [...groups.values()];
     }
 
-    function renderProducts(rows) {
+    function renderProducts(rows, convention) {
         const products = groupProducts(rows)
             .filter(group => !group.row.menuConvenzione)
             .map(({ row, extras, senza, notes, quantity, total, grossTotal, position }) => {
@@ -268,7 +268,13 @@ const orderCard = (() => {
             const baseCents = [pizza, bibita].reduce((sum, row) => (
                 sum + Math.round(Number(row.prezzoBase ?? row.totaleLordo ?? row.totale ?? 0) * 100)
             ), 0);
-            const netCents = grossCents - Math.max(0, baseCents - 600);
+            const fixedMenuPriceCents = typeof convention?.prezzoMenu === "number"
+                    && Number.isFinite(convention.prezzoMenu)
+                ? Math.round(Number(convention.prezzoMenu) * 100)
+                : null;
+            const netCents = fixedMenuPriceCents === null
+                ? grossCents - Math.max(0, baseCents - 600)
+                : grossCents - baseCents + fixedMenuPriceCents;
             const fullPrice = euro.format(grossCents / 100);
             const netPrice = euro.format(netCents / 100);
             const discount = grossCents > netCents ? `<del>${fullPrice}</del>` : "";
@@ -292,11 +298,16 @@ const orderCard = (() => {
         const orderDiscount = Number(order.sconto?.importo) > 0
             ? `<p class="order-card__discount-summary"><span>Sconto sul totale · ${escapeHtml(order.sconto.motivo || "")}</span><strong>−${euro.format(Number(order.sconto.importo))}</strong></p>`
             : "";
-        const convention = Number(order.convenzione?.importo) >= 0
-                && order.convenzione
-            ? `<p class="order-card__discount-summary"><span>${order.convenzione.tipo === "menu"
-                ? `Convenzione universitaria · ${Number(order.convenzione.menu) || 0} menu 6 euro`
-                : "Convenzione universitaria · 10%"}</span><strong>−${euro.format(Number(order.convenzione.importo) || 0)}</strong></p>`
+        const conventionAmount = Number(order.convenzione?.importo);
+        const hasConvention = order.convenzione && Number.isFinite(conventionAmount);
+        const fixedMenuPrice = order.convenzione?.prezzoMenu;
+        const conventionLabel = order.convenzione?.tipo === "menu"
+            ? typeof fixedMenuPrice === "number" && Number.isFinite(fixedMenuPrice)
+                ? `Menu convenzione ${Number(order.convenzione.menu) || 0} x ${fixedMenuPrice.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : `Convenzione universitaria · ${Number(order.convenzione.menu) || 0} menu 6 euro`
+            : "Convenzione universitaria · 10%";
+        const convention = hasConvention
+            ? `<p class="order-card__discount-summary"><span>${escapeHtml(conventionLabel)}</span><strong>${conventionAmount < 0 ? "+" : "−"}${euro.format(Math.abs(conventionAmount))}</strong></p>`
             : "";
         return `${orderDiscount}${convention}<p class="order-card__net-total"><span>Totale netto</span><strong>${euro.format(Number(order.totale || 0))}</strong></p>`;
     }
@@ -662,7 +673,7 @@ const orderCard = (() => {
                     ${deliveryMode ? `<div class="order-card__delivery-detail-status">${renderDeliveryCompactStatus(order)}</div>` : ""}
                     ${renderDeliveryUndo(order, deliveryMode)}
                     <section class="order-card__details">
-                        <ul class="order-card__products">${renderProducts(order.righe)}</ul>
+                        <ul class="order-card__products">${renderProducts(order.righe, order.convenzione)}</ul>
                         ${coverCharge}
                         ${deliveryFee}
                         ${renderDiscountSummary(order)}

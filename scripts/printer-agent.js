@@ -113,6 +113,11 @@ function receiptAmount(price) {
     return `EUR ${rounded.toFixed(2).replace(".", ",")}`;
 }
 
+function receiptNumber(price) {
+    const rounded = Math.round(Number(price) * 100) / 100;
+    return rounded.toFixed(2).replace(".", ",");
+}
+
 function formatDiscountLine(label, amount, width, indent = "") {
     const formattedAmount = receiptAmount(amount).replace(/^EUR\s+/, "");
     const value = `${label}  -${formattedAmount}`;
@@ -255,6 +260,7 @@ function formatKitchenRows(rows, options, receiptWidth) {
     for (const { row, rowExtras, notes, quantity } of groupReceiptRows(rows)) {
         lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, receiptWidth)
             .map(line => `@@ITEM:${line}@@`));
+        if (notes.length) lines.push(`@@ITEM:${NOTE_REFERENCE}@@`);
         const ingredients = options.productIngredients?.[row.prodotto];
         const senza = (Array.isArray(row.senza) ? row.senza : [])
             .filter(ingredient => typeof ingredient === "string" && ingredient.trim());
@@ -274,16 +280,31 @@ function formatKitchenRows(rows, options, receiptWidth) {
             lines.push(...wrapReceiptPrefix("  - SENZA ", ingredient.toLocaleUpperCase("it-IT"), receiptWidth)
                 .map(line => `@@ITEM:${line}@@`));
         }
-        for (const note of notes) {
-            lines.push(...wrapReceiptPrefix("  ! ", note.toLocaleUpperCase("it-IT"), receiptWidth)
-                .map(line => `@@ITEM:${line}@@`));
-        }
         for (const extra of rowExtras) {
             lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth)
                 .map(line => `@@ITEM:${line}@@`));
         }
     }
     return lines;
+}
+
+const NOTE_REFERENCE = "  > VEDI NOTE";
+
+// Sezione NOTE in cima: note rapide di ogni pizza e nota scritta dell'ordine, in grande.
+function formatNotesSection(order, rows, width, bigWidth, divider) {
+    const lines = [];
+    if (typeof order.note === "string" && order.note.trim()) {
+        lines.push(...wrapReceiptText(order.note, bigWidth).map(line => `@@NOTEBIG:${line}@@`));
+    }
+    for (const { row, notes, quantity } of groupReceiptRows(rows)) {
+        if (!notes.length) continue;
+        lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, width).map(line => `@@ITEM:${line}@@`));
+        for (const note of notes) {
+            lines.push(...wrapReceiptPrefix("! ", note.toLocaleUpperCase("it-IT"), bigWidth)
+                .map(line => `@@NOTEBIG:${line}@@`));
+        }
+    }
+    return lines.length ? ["NOTE:", ...lines, divider] : [];
 }
 
 function formatVariationChange(change, quantity, width) {
@@ -417,12 +438,10 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         lines.push(...wrapReceiptText(`COGNOME: ${order.cognomeBanco}`, receiptWidth));
     }
     lines.push(divider);
-    if (typeof order.note === "string" && order.note.trim()) {
-        lines.push("NOTE:", ...wrapReceiptText(order.note, receiptWidth), divider);
-    }
     const rowsByCategory = new Map();
     const receiptOptions = { ...options, profile: options.profile === "cucina" ? "cucina" : "sala" };
     const receiptRows = receiptRowsForProfile(order, receiptOptions);
+    lines.push(...formatNotesSection(order, receiptRows, receiptWidth, bigWidth, divider));
     const productCategories = options.productCategories || {};
     for (const row of receiptRows) {
         const category = row.categoria || productCategories[row.prodotto] || "altro";
@@ -449,20 +468,15 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             const itemParts = wrapReceiptItemParts(`${quantity}x ${row.prodotto}`, baseTotal, receiptWidth);
             lines.push(...itemParts.nameLines.map(line => `@@ITEM:${line}@@`));
             if (itemParts.amountLine) lines.push(itemParts.amountLine);
+            if (notes.length) lines.push(`@@ITEM:${NOTE_REFERENCE}@@`);
             for (const ingredient of (Array.isArray(row.senza) ? row.senza : [])
                 .filter(value => typeof value === "string" && value.trim())) {
-                const prefix = "  - senza ";
-                lines.push(...wrapReceiptText(
-                    ingredient.toLocaleLowerCase("it-IT"),
-                    Math.max(1, receiptWidth - Array.from(prefix).length)
-                ).map(line => `${prefix}${line.toLocaleLowerCase("it-IT")}`));
-            }
-            for (const note of notes) {
-                const prefix = "  * ";
-                lines.push(...wrapReceiptText(
-                    note.toLocaleLowerCase("it-IT"),
-                    Math.max(1, receiptWidth - Array.from(prefix).length)
-                ).map(line => `${prefix}${line.toLocaleLowerCase("it-IT")}`));
+                // Le righe successive restano rientrate: non sono altri ingredienti.
+                lines.push(...wrapReceiptPrefix(
+                    "  - senza ",
+                    ingredient,
+                    receiptWidth
+                ).map(line => line.toLocaleLowerCase("it-IT")));
             }
             for (const extra of rowExtras) {
                 const extraTotal = Math.round(extra.price * quantity * 100) / 100;
@@ -489,11 +503,48 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         lines.push(...wrapReceiptItem("TOTALE AGGIUNTA", totalAdded, receiptWidth));
         lines.push(...wrapReceiptItem("NUOVO TOTALE", Number(order.totale || 0), receiptWidth));
     } else if (receiptOptions.profile === "sala") {
+        const extraLines = [];
         if (Number(order.coperto?.totale) > 0) {
-            lines.push(...wrapReceiptItem(`COPERTO ${Number(order.coperto.persone) || 0}X`, Number(order.coperto.totale), receiptWidth));
+            extraLines.push(...wrapReceiptItem(`COPERTO ${Number(order.coperto.persone) || 0}X`, Number(order.coperto.totale), receiptWidth));
         }
         if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
-            lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
+            extraLines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
+        }
+        // Con la convenzione: SUBTOTALE prodotti, convenzione, poi coperto/consegna e TOTALE.
+        const conventionLayout = order.convenzione?.tipo === "percentuale"
+            || (order.convenzione?.tipo === "menu"
+                && Number.isFinite(order.convenzione.prezzoMenu)
+                && Number.isFinite(order.convenzione.totaleMenu));
+        if (!conventionLayout) lines.push(...extraLines);
+        if (options.tipoStampa !== "aggiunta" && order.convenzione?.tipo === "percentuale") {
+            const copertoCents = Math.round(Number(order.coperto?.totale || 0) * 100);
+            const deliveryCents = Math.round(Number(order.costoConsegna || 0) * 100);
+            const grossCents = Number.isFinite(Number(order.totaleLordo))
+                ? Math.round(Number(order.totaleLordo) * 100)
+                : Math.round(receiptRows.reduce((sum, row) => sum + receiptUnitPrice(row), 0) * 100)
+                    + copertoCents + deliveryCents;
+            const subtotalCents = grossCents - copertoCents - deliveryCents;
+            lines.push(...wrapReceiptItem("SUBTOTALE", subtotalCents / 100, receiptWidth));
+        } else if (options.tipoStampa !== "aggiunta"
+                && order.convenzione?.tipo === "menu"
+                && typeof order.convenzione.prezzoMenu === "number"
+                && Number.isFinite(order.convenzione.prezzoMenu)
+                && typeof order.convenzione.totaleMenu === "number"
+                && Number.isFinite(order.convenzione.totaleMenu)) {
+            const copertoCents = Math.round(Number(order.coperto?.totale || 0) * 100);
+            const deliveryCents = Math.round(Number(order.costoConsegna || 0) * 100);
+            const grossCents = Number.isFinite(Number(order.totaleLordo))
+                ? Math.round(Number(order.totaleLordo) * 100)
+                : Math.round(receiptRows.reduce((sum, row) => sum + receiptUnitPrice(row), 0) * 100)
+                    + copertoCents + deliveryCents;
+            const subtotalCents = grossCents - copertoCents - deliveryCents;
+            const menuCount = Number(order.convenzione.menu) || 0;
+            lines.push(...wrapReceiptItem("SUBTOTALE", subtotalCents / 100, receiptWidth));
+            lines.push(...wrapReceiptItem(
+                `${menuCount} MENU X ${receiptNumber(order.convenzione.prezzoMenu)}`,
+                Number(order.convenzione.totaleMenu),
+                receiptWidth
+            ));
         }
         if (options.tipoStampa !== "aggiunta" && Number(order.sconto?.importo) > 0) {
             lines.push(...formatDiscountLine(
@@ -503,15 +554,26 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             ));
         }
         if (options.tipoStampa !== "aggiunta" && order.convenzione) {
-            const conventionLabel = order.convenzione.tipo === "menu"
-                ? `CONVENZIONE UNIV. ${Number(order.convenzione.menu) || 0} MENU 6 EURO`
-                : "CONVENZIONE UNIV. 10%";
-            lines.push(...formatDiscountLine(
-                conventionLabel,
-                Number(order.convenzione.importo) || 0,
-                receiptWidth
-            ));
+            if (order.convenzione.tipo === "percentuale") {
+                lines.push(...wrapReceiptItem(
+                    "CONVENZ. 10%",
+                    -Number(order.convenzione.importo || 0),
+                    receiptWidth
+                ));
+            } else if (order.convenzione.tipo === "menu"
+                    && !(typeof order.convenzione.prezzoMenu === "number"
+                        && Number.isFinite(order.convenzione.prezzoMenu)
+                        && typeof order.convenzione.totaleMenu === "number"
+                        && Number.isFinite(order.convenzione.totaleMenu))) {
+                const conventionLabel = `CONVENZIONE UNIV. ${Number(order.convenzione.menu) || 0} MENU 6 EURO`;
+                lines.push(...formatDiscountLine(
+                    conventionLabel,
+                    Number(order.convenzione.importo) || 0,
+                    receiptWidth
+                ));
+            }
         }
+        if (conventionLayout) lines.push(...extraLines);
     }
     if (receiptOptions.profile === "sala" && options.tipoStampa !== "aggiunta") {
         const amount = receiptAmount(Number(order.totale || 0));

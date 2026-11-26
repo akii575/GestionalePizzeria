@@ -195,6 +195,41 @@ test("order details group explicit university menu pairs and show their net tota
     assert.doesNotMatch(html, /<strong>Margherita<\/strong>/);
 });
 
+test("order details show the fixed menu price and signed surcharge for a low-priced pair", () => {
+    const html = render({
+        righe: [
+            {
+                prodotto: "Napoletana",
+                prezzoBase: 4,
+                totaleLordo: 4,
+                totale: 4,
+                menuConvenzione: "menu-low"
+            },
+            {
+                prodotto: "Acqua 0,5L",
+                prezzoBase: 1,
+                totaleLordo: 1,
+                totale: 1,
+                menuConvenzione: "menu-low"
+            }
+        ],
+        convenzione: {
+            tipo: "menu",
+            menu: 1,
+            importo: -1,
+            prezzoMenu: 6,
+            totaleMenu: 6
+        },
+        totaleLordo: 5,
+        totale: 6
+    });
+
+    assert.match(html, /Menu convenzione/);
+    assert.match(html, /<strong>6,00\s*€<\/strong>/);
+    assert.match(html, /Menu convenzione 1 x 6,00/);
+    assert.match(html, /\+1,00\s*€/);
+});
+
 test("table cards use singular and plural people labels", () => {
     assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2", numeroPersone: 1 }), /Tavolo 2 · 1 persona/);
     assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2", numeroPersone: 2 }), /Tavolo 2 · 2 persone/);
