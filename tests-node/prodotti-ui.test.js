@@ -18,10 +18,12 @@ const {
     creaPayloadComanda,
     puoSalvareModifica,
     aggiungiProdotti,
+    aggiungiMenuConvenzione,
     quantitaProdotto,
     preparaRipetizione,
     impostaRigaAttiva,
     raggruppaRigheConferma,
+    raggruppaRigheConMenu,
     rimuoviProdotto,
     toggleExtra,
     toggleSenza,
@@ -1002,6 +1004,33 @@ test("removing one from an identical-row group removes only its last row", () =>
     assert.equal(result.rigaAttiva, null);
 });
 
+test("guided menu rows retain their shared identifier, group together, and remove as a pair", () => {
+    const pizza = { nome: "Margherita", categoria: "pizze", prezzo: 7, ammetteExtra: true };
+    const bibita = { nome: "Coca Cola 33cl", categoria: "bibite", prezzo: 2, ammetteExtra: false };
+    const added = aggiungiMenuConvenzione([], pizza, bibita, "menu_123");
+    const [menu] = raggruppaRigheConMenu(added.righe);
+    assert.equal(menu.tipo, "menu");
+    assert.equal(menu.righe.length, 2);
+    assert.deepEqual(added.righe.map(row => row.menuConvenzione), ["menu_123", "menu_123"]);
+
+    const removed = rimuoviProdotto(added.righe, added.rigaAttiva, 0);
+    assert.deepEqual(removed.righe, []);
+
+    const modifiedRows = preparaRigheModifica(added.righe.map(row => ({
+        ...row,
+        totaleLordo: row.prezzo,
+        totale: row.prezzo
+    })), [pizza, bibita], []);
+    assert.deepEqual(modifiedRows.map(row => row.menuConvenzione), ["menu_123", "menu_123"]);
+    const payload = creaPayloadComanda({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        convenzione: { tipo: "menu" }
+    }, modifiedRows);
+    assert.deepEqual(payload.righe.map(row => row.menuConvenzione), ["menu_123", "menu_123"]);
+    assert.deepEqual(payload.convenzione, { tipo: "menu" });
+});
+
 test("multiplier keypad composes up to two digits and ignores a leading zero", () => {
     let stato = creaStatoMoltiplicatore();
     stato = premiTastoMoltiplicatore(stato, "0");
@@ -1149,7 +1178,7 @@ test("product cards expose the ingredient toggle and quantity badge markup", () 
     assert.match(navigationStyle, /@media \(max-width: 600px\)[\s\S]*?\.prodotto-btn\.ha-quantita \.ingredienti\s*\{[^}]*padding-right:\s*20px;/);
 });
 
-test("university menu convention is counted before it is selected", () => {
+test("guided university menu discounts only selected pairs and preserves legacy auto-pairing", () => {
     const script = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.js"),
         "utf8"
@@ -1157,10 +1186,13 @@ test("university menu convention is counted before it is selected", () => {
     const start = script.indexOf("function anteprimaTotaliOrdine()");
     const end = script.indexOf("\nfunction ", start + 1);
     const preview = script.slice(start, end);
-    const menuCount = preview.indexOf("const menuConvenzione = orderDiscountRules.calculateMenuConvention(menuItems);");
+    const explicitMenuCount = preview.indexOf("orderDiscountRules.calculateExplicitMenuConvention(menuItems)");
+    const automaticMenuCount = preview.indexOf("orderDiscountRules.calculateMenuConvention(menuItems)");
 
-    assert.ok(start >= 0 && menuCount > 0);
-    assert.ok(menuCount < preview.indexOf("if (convenzioneOrdine?.tipo === \"percentuale\")"));
+    assert.ok(start >= 0 && explicitMenuCount > 0 && automaticMenuCount > 0);
+    assert.match(preview, /const hasExplicitMenus = menuItems\.some\(item => item\.menuConvenzione\)/);
+    assert.match(preview, /\?\s*orderDiscountRules\.calculateExplicitMenuConvention\(menuItems\)\s*:\s*convenzioneOrdine\?\.tipo === "menu"/);
+    assert.ok(automaticMenuCount < preview.indexOf("if (convenzioneOrdine?.tipo === \"percentuale\")"));
     assert.match(script, /<p class="convenzione-titolo" id="convenzione-titolo">Convenzione universitaria<\/p>/);
     const page = fs.readFileSync(
         path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.html"),

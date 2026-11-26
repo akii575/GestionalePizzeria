@@ -365,6 +365,37 @@
             </section>
         </div>
         <div
+            id="menu-convenzione-modale"
+            class="menu-convenzione-modale"
+            hidden
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="menu-convenzione-titolo"
+            aria-describedby="menu-convenzione-passo-label"
+        >
+            <section class="menu-convenzione-finestra">
+                <header class="menu-convenzione-intestazione">
+                    <h2 id="menu-convenzione-titolo">Menu convenzione · 6 €</h2>
+                    <p id="menu-convenzione-passo-label" aria-live="polite"></p>
+                </header>
+                <p id="menu-convenzione-disponibilita" class="menu-convenzione-disponibilita" role="status" hidden></p>
+                <section id="menu-convenzione-pizza-step" class="menu-convenzione-step" aria-labelledby="menu-convenzione-titolo">
+                    <h3>Scegli la pizza</h3>
+                    <div id="menu-convenzione-pizze" class="menu-convenzione-prodotti"></div>
+                </section>
+                <section id="menu-convenzione-bibita-step" class="menu-convenzione-step" aria-labelledby="menu-convenzione-titolo" hidden>
+                    <h3>Scegli la bibita</h3>
+                    <div id="menu-convenzione-bibite" class="menu-convenzione-prodotti"></div>
+                </section>
+                <p id="menu-convenzione-riepilogo" class="menu-convenzione-riepilogo" aria-live="polite" hidden></p>
+                <footer class="menu-convenzione-azioni">
+                    <button id="menu-convenzione-indietro" class="btn-annulla" type="button" hidden>Indietro</button>
+                    <button id="menu-convenzione-aggiungi" class="btn-invia" type="button" disabled>Aggiungi menu</button>
+                    <button id="menu-convenzione-annulla" class="btn-annulla" type="button">Annulla</button>
+                </footer>
+            </section>
+        </div>
+        <div
             id="conferma-modale"
             class="conferma-modale"
             hidden

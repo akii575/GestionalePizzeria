@@ -723,6 +723,78 @@ test("menu convention does not increase low-priced pairs", () => {
     assert.equal(lowPrice.totale, 5);
 });
 
+test("explicit menu pairs discount only identified pairs and keep pizza extras at full price", () => {
+    const catalog = conventionCatalog([
+        { nome: "Margherita", prezzo: 7, convenzione: "pizza", ammetteExtra: true },
+        { nome: "Napoletana", prezzo: 4, convenzione: "pizza" },
+        { nome: "Coca Cola 33cl", prezzo: 3, convenzione: "bibita" },
+        { nome: "Acqua 0,5L", prezzo: 1, convenzione: "bibita" }
+    ]);
+    catalog.extras = [{ id: "bufala", nome: "Bufala", prezzo: 2, disponibile: true }];
+
+    const order = prepareOrder(bancoInput([
+        { prodotto: "Margherita", menuConvenzione: "menu-A", extra: ["bufala"] },
+        { prodotto: "Coca Cola 33cl", menuConvenzione: "menu-A" },
+        { prodotto: "Napoletana", menuConvenzione: "menu-B" },
+        { prodotto: "Acqua 0,5L", menuConvenzione: "menu-B" },
+        { prodotto: "Margherita" },
+        { prodotto: "Coca Cola 33cl" }
+    ], { convenzione: { tipo: "menu" } }), catalog);
+
+    assert.deepEqual(order.convenzione, { tipo: "menu", importo: 4, menu: 2 });
+    assert.equal(order.totaleLordo, 27);
+    assert.equal(order.totale, 23);
+    assert.equal(order.righe[0].totale, 9);
+    assert.equal(order.righe[0].menuConvenzione, "menu-A");
+    assert.equal(order.righe[1].menuConvenzione, "menu-A");
+    assert.equal(order.righe[4].totale, 7);
+    assert.equal(order.righe[5].totale, 3);
+});
+
+test("explicit menu convention accepts three pairs and rejects invalid or incomplete pair identifiers", () => {
+    const catalog = conventionCatalog([
+        { nome: "Pizza", prezzo: 8, convenzione: "pizza" },
+        { nome: "Bibita", prezzo: 2, convenzione: "bibita" }
+    ]);
+    const threeMenus = prepareOrder(bancoInput([
+        { prodotto: "Pizza", menuConvenzione: "a" },
+        { prodotto: "Bibita", menuConvenzione: "a" },
+        { prodotto: "Pizza", menuConvenzione: "b" },
+        { prodotto: "Bibita", menuConvenzione: "b" },
+        { prodotto: "Pizza", menuConvenzione: "c" },
+        { prodotto: "Bibita", menuConvenzione: "c" }
+    ], { convenzione: { tipo: "menu" } }), catalog);
+    assert.deepEqual(threeMenus.convenzione, { tipo: "menu", importo: 12, menu: 3 });
+    assert.equal(threeMenus.totale, 18);
+
+    for (const righe of [
+        [
+            { prodotto: "Pizza", menuConvenzione: "a" },
+            { prodotto: "Pizza", menuConvenzione: "a" }
+        ],
+        [{ prodotto: "Pizza", menuConvenzione: "a" }]
+    ]) {
+        assert.throws(() => prepareOrder(bancoInput(righe, {
+            convenzione: { tipo: "menu" }
+        }), catalog), error => (
+            error.statusCode === 400
+            && error.message === "Ogni menu convenzione deve avere una pizza e una bibita idonee."
+        ));
+    }
+
+    assert.throws(() => prepareOrder(bancoInput([
+        { prodotto: "Pizza", menuConvenzione: "a" },
+        { prodotto: "Bibita", menuConvenzione: "a" }
+    ]), catalog), error => error.statusCode === 400);
+    assert.throws(() => prepareOrder(bancoInput([
+        { prodotto: "Pizza", menuConvenzione: "invalid id" },
+        { prodotto: "Bibita", menuConvenzione: "invalid id" }
+    ], { convenzione: { tipo: "menu" } }), catalog), error => (
+        error.statusCode === 400
+        && error.message === "L'identificativo del menu convenzione non e' valido."
+    ));
+});
+
 test("menu convention rejects ineligible fried products and drinks", () => {
     const catalog = conventionCatalog([
         { nome: "Margherita fritta", prezzo: 8 },

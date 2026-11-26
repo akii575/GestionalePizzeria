@@ -972,6 +972,8 @@ html body.app-shell main.dashboard .order-card__actions {
 .order-card__product-name { display: grid; min-width: 0; gap: 2px; }
 .order-card__product-name strong { font-size: 14px; }
 .order-card__product-price { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.order-card__product-price del { display: block; color: var(--theme-muted); font-size: 11px; font-weight: 400; }
+.order-card__menu-items { color: var(--theme-muted); font-size: 11px; }
 .order-card__without-ingredients,
 .order-card__extra,
 .order-card__product-note { display: block; margin: 0; font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
