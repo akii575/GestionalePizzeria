@@ -145,6 +145,24 @@ test("compact statuses use words and prioritize pending delivery printing", () =
     assert.match(render({ tipo: "banco", stampaCompletata: true }), /order-card__compact-state--printed">stampata/);
 });
 
+test("historical order cards continue to display row and total discounts", () => {
+    const html = render({
+        righe: [{
+            prodotto: "Margherita",
+            totaleLordo: 5,
+            totale: 4,
+            sconto: { tipo: "importo", importo: 1, motivo: "Promozione" }
+        }],
+        sconto: { tipo: "percentuale", importo: 0.4, motivo: "Cliente abituale" },
+        totaleLordo: 5,
+        totale: 3.6
+    });
+
+    assert.match(html, /class="order-card__discount">SCONTO Promozione/);
+    assert.match(html, /Sconto sul totale · Cliente abituale/);
+    assert.match(html, /order-card__discount-summary[^>]*>[\s\S]*?−0,40/);
+});
+
 test("table cards use singular and plural people labels", () => {
     assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2", numeroPersone: 1 }), /Tavolo 2 · 1 persona/);
     assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2", numeroPersone: 2 }), /Tavolo 2 · 2 persone/);
