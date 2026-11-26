@@ -456,18 +456,16 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             if (itemParts.amountLine) lines.push(itemParts.amountLine);
             for (const ingredient of (Array.isArray(row.senza) ? row.senza : [])
                 .filter(value => typeof value === "string" && value.trim())) {
-                const prefix = "  - senza ";
-                lines.push(...wrapReceiptText(
-                    ingredient.toLocaleLowerCase("it-IT"),
-                    Math.max(1, receiptWidth - Array.from(prefix).length)
-                ).map(line => `${prefix}${line.toLocaleLowerCase("it-IT")}`));
+                // Le righe successive restano rientrate: non sono altri ingredienti.
+                lines.push(...wrapReceiptPrefix(
+                    "  - senza ",
+                    ingredient,
+                    receiptWidth
+                ).map(line => line.toLocaleLowerCase("it-IT")));
             }
             for (const note of notes) {
-                const prefix = "  * ";
-                lines.push(...wrapReceiptText(
-                    note.toLocaleLowerCase("it-IT"),
-                    Math.max(1, receiptWidth - Array.from(prefix).length)
-                ).map(line => `${prefix}${line.toLocaleLowerCase("it-IT")}`));
+                lines.push(...wrapReceiptPrefix("  * ", note, receiptWidth)
+                    .map(line => line.toLocaleLowerCase("it-IT")));
             }
             for (const extra of rowExtras) {
                 const extraTotal = Math.round(extra.price * quantity * 100) / 100;

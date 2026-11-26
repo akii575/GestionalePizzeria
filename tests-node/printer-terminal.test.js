@@ -813,3 +813,27 @@ test("sala prints cover charge after the convention line and keeps long menu cou
     }, 80).split(/\r?\n/);
     assert.ok(tenMenus.includes("10 MENU X 6,00 EUR 60,00"));
 });
+
+test("sala keeps long removed ingredients on indented continuation lines", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const lines = formatReceipt({
+        numero: 49,
+        tipo: "tavolo",
+        tavoloOCliente: "1",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{
+            prodotto: "Capricciosa",
+            categoria: "pizze",
+            prezzoBase: 7,
+            totale: 7,
+            senza: ["olive taggiasche", "carciofini sott'olio"]
+        }],
+        totale: 7
+    }, 80).split(/\r?\n/);
+
+    assert.equal(lines.filter(line => line.startsWith("  - senza ")).length, 2);
+    assert.ok(lines.includes("  - senza olive"));
+    assert.ok(lines.includes("          taggiasche"));
+    assert.ok(lines.includes("  - senza carciofini"));
+    assert.ok(lines.includes("          sott'olio"));
+});
