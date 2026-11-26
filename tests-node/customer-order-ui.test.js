@@ -128,4 +128,12 @@ test("guided university menu dialog offers pizza, drink, review, and cancellatio
     assert.match(ordersPage, /Togli il 10% per usare i menu/);
     assert.match(ordersPage, /Togli i menu per usare il 10%/);
     assert.match(ordersPage, /data-convenzione="menu"[^`]*aria-haspopup="dialog"/);
+    assert.match(ordersHtml, /id="menu-convenzione-riepilogo-testo"/);
+    assert.match(ordersHtml, /id="menu-convenzione-riepilogo-prezzo-pieno"/);
+    assert.match(ordersPage, /euro\.format\(orderDiscountRules\.CONVENZIONE_PREZZO_MENU\)/);
+    assert.match(ordersPage, /prezzo pieno /);
+    assert.match(ordersPage, /fullPriceCents > orderDiscountRules\.CONVENZIONE_PREZZO_MENU_CENTESIMI \? "del" : "span"/);
+    assert.match(ordersPage, /menuPriceCents = orderDiscountRules\.CONVENZIONE_PREZZO_MENU_CENTESIMI/);
+    assert.match(ordersPage, /availableMenus} menu · \$\{euro\.format\(orderDiscountRules\.CONVENZIONE_PREZZO_MENU \* availableMenus\)/);
+    assert.match(ordersPage, /Menu convenzione \$\{preview\.menuConvenzione\.menu\} x/);
 });

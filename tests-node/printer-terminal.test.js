@@ -235,6 +235,95 @@ test("sala prints row and order discounts plus convention, while cucina omits di
     assert.doesNotMatch(cucina, /SCONTO|OMAGGIO|CONVENZIONE|EUR/);
 });
 
+test("sala aligns fixed-price convention summaries within the 24-column receipt width", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const percentageLines = formatReceipt({
+        numero: 45,
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [{ prodotto: "Prodotti", prezzoBase: 16, totaleLordo: 16, totale: 16 }],
+        totaleLordo: 16,
+        convenzione: { tipo: "percentuale", importo: 1.6 },
+        totale: 14.4
+    }, 80).split(/\r?\n/);
+    const percentageSubtotal = percentageLines.findIndex(line => line.includes("SUBTOTALE"));
+    const percentageConvention = percentageLines.findIndex(line => line.includes("CONV. UNIV. 10%"));
+    const percentageTotal = percentageLines.findIndex(line => line.startsWith("TOTALE"));
+
+    assert.ok(percentageSubtotal >= 0);
+    assert.ok(percentageSubtotal < percentageConvention);
+    assert.ok(percentageConvention < percentageTotal);
+    assert.match(percentageLines[percentageSubtotal], /SUBTOTALE\s+EUR 16,00/);
+    assert.match(percentageLines[percentageConvention + 1], /EUR -1,60/);
+    assert.equal(percentageLines[percentageConvention + 1].length, 24);
+    assert.match(percentageLines[percentageTotal], /EUR 14,40/);
+
+    const menuOrder = {
+        numero: 46,
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [],
+        totaleLordo: 19.5,
+        convenzione: {
+            tipo: "menu",
+            menu: 3,
+            importo: 1.5,
+            prezzoMenu: 6,
+            totaleMenu: 18
+        },
+        totale: 18
+    };
+    const menuLines = formatReceipt(menuOrder, 80).split(/\r?\n/);
+    const menuSubtotal = menuLines.findIndex(line => line.includes("SUBTOTALE"));
+    const menuSummary = menuLines.findIndex(line => line.includes("MENU CONV. X 6,00"));
+    const menuTotal = menuLines.findIndex(line => line.startsWith("TOTALE"));
+
+    assert.ok(menuSubtotal >= 0);
+    assert.ok(menuSubtotal < menuSummary);
+    assert.ok(menuSummary < menuTotal);
+    assert.match(menuLines[menuSubtotal], /SUBTOTALE\s+EUR 19,50/);
+    assert.match(menuLines[menuSummary + 1], /EUR 18,00/);
+    assert.equal(menuLines[menuSummary + 1].length, 24);
+    assert.match(menuLines[menuTotal], /EUR 18,00/);
+    for (const lines of [percentageLines, menuLines]) {
+        for (const index of [
+            lines.findIndex(line => line.includes("SUBTOTALE")),
+            lines.findIndex(line => line.includes("CONV. UNIV. 10%") || line.includes("MENU CONV. X 6,00")),
+            lines.findIndex(line => line.includes("CONV. UNIV. 10%") || line.includes("MENU CONV. X 6,00")) + 1,
+            lines.findIndex(line => line.startsWith("TOTALE"))
+        ]) {
+            assert.ok(lines[index].length <= 24);
+        }
+    }
+
+    assert.equal(
+        formatReceipt(menuOrder, 80, { profile: "cucina" }),
+        formatReceipt({ ...menuOrder, convenzione: undefined }, 80, { profile: "cucina" })
+    );
+});
+
+test("orders without a convention keep the exact standard sala receipt bytes", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const receipt = formatReceipt({
+        numero: 99,
+        tipo: "banco",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [],
+        totale: 0
+    }, 80);
+
+    assert.equal(receipt, [
+        "@@BIG:#99@@",
+        "@@TITLE:BANCO@@",
+        "------------------------",
+        "DATA: 14/10/2026",
+        "------------------------",
+        "------------------------",
+        "TOTALE          EUR 0,00",
+        "------------------------"
+    ].join("\r\n"));
+});
+
 test("receipt number is first and requested time is the final large line", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const lines = formatReceipt({

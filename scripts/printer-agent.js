@@ -113,6 +113,11 @@ function receiptAmount(price) {
     return `EUR ${rounded.toFixed(2).replace(".", ",")}`;
 }
 
+function receiptNumber(price) {
+    const rounded = Math.round(Number(price) * 100) / 100;
+    return rounded.toFixed(2).replace(".", ",");
+}
+
 function formatDiscountLine(label, amount, width, indent = "") {
     const formattedAmount = receiptAmount(amount).replace(/^EUR\s+/, "");
     const value = `${label}  -${formattedAmount}`;
@@ -495,6 +500,36 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
             lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
         }
+        if (options.tipoStampa !== "aggiunta" && order.convenzione?.tipo === "percentuale") {
+            const copertoCents = Math.round(Number(order.coperto?.totale || 0) * 100);
+            const deliveryCents = Math.round(Number(order.costoConsegna || 0) * 100);
+            const grossCents = Number.isFinite(Number(order.totaleLordo))
+                ? Math.round(Number(order.totaleLordo) * 100)
+                : Math.round(receiptRows.reduce((sum, row) => sum + receiptUnitPrice(row), 0) * 100)
+                    + copertoCents + deliveryCents;
+            const subtotalCents = grossCents - copertoCents - deliveryCents;
+            lines.push(...wrapReceiptItem("SUBTOTALE", subtotalCents / 100, receiptWidth));
+        } else if (options.tipoStampa !== "aggiunta"
+                && order.convenzione?.tipo === "menu"
+                && typeof order.convenzione.prezzoMenu === "number"
+                && Number.isFinite(order.convenzione.prezzoMenu)
+                && typeof order.convenzione.totaleMenu === "number"
+                && Number.isFinite(order.convenzione.totaleMenu)) {
+            const copertoCents = Math.round(Number(order.coperto?.totale || 0) * 100);
+            const deliveryCents = Math.round(Number(order.costoConsegna || 0) * 100);
+            const grossCents = Number.isFinite(Number(order.totaleLordo))
+                ? Math.round(Number(order.totaleLordo) * 100)
+                : Math.round(receiptRows.reduce((sum, row) => sum + receiptUnitPrice(row), 0) * 100)
+                    + copertoCents + deliveryCents;
+            const subtotalCents = grossCents - copertoCents - deliveryCents;
+            const menuCount = Number(order.convenzione.menu) || 0;
+            lines.push(...wrapReceiptItem("SUBTOTALE", subtotalCents / 100, receiptWidth));
+            lines.push(...wrapReceiptItem(
+                `${menuCount} MENU CONV. X ${receiptNumber(order.convenzione.prezzoMenu)}`,
+                Number(order.convenzione.totaleMenu),
+                receiptWidth
+            ));
+        }
         if (options.tipoStampa !== "aggiunta" && Number(order.sconto?.importo) > 0) {
             lines.push(...formatDiscountLine(
                 `SCONTO ${order.sconto.motivo || ""}`,
@@ -503,14 +538,24 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             ));
         }
         if (options.tipoStampa !== "aggiunta" && order.convenzione) {
-            const conventionLabel = order.convenzione.tipo === "menu"
-                ? `CONVENZIONE UNIV. ${Number(order.convenzione.menu) || 0} MENU 6 EURO`
-                : "CONVENZIONE UNIV. 10%";
-            lines.push(...formatDiscountLine(
-                conventionLabel,
-                Number(order.convenzione.importo) || 0,
-                receiptWidth
-            ));
+            if (order.convenzione.tipo === "percentuale") {
+                lines.push(...wrapReceiptItem(
+                    "CONV. UNIV. 10%",
+                    -Number(order.convenzione.importo || 0),
+                    receiptWidth
+                ));
+            } else if (order.convenzione.tipo === "menu"
+                    && !(typeof order.convenzione.prezzoMenu === "number"
+                        && Number.isFinite(order.convenzione.prezzoMenu)
+                        && typeof order.convenzione.totaleMenu === "number"
+                        && Number.isFinite(order.convenzione.totaleMenu))) {
+                const conventionLabel = `CONVENZIONE UNIV. ${Number(order.convenzione.menu) || 0} MENU 6 EURO`;
+                lines.push(...formatDiscountLine(
+                    conventionLabel,
+                    Number(order.convenzione.importo) || 0,
+                    receiptWidth
+                ));
+            }
         }
     }
     if (receiptOptions.profile === "sala" && options.tipoStampa !== "aggiunta") {

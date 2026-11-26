@@ -30,12 +30,11 @@
         pizzas.sort(byPrice);
         drinks.sort(byPrice);
         const menu = Math.min(pizzas.length, drinks.length);
-        const importo = pizzas.slice(0, menu).reduce((sum, pizza, index) => (
-            sum + Math.max(
-                0,
-                pizza.prezzoCentesimi + drinks[index].prezzoCentesimi - CONVENZIONE_PREZZO_MENU_CENTESIMI
-            )
-        ), 0);
+        const importo = pizzas.slice(0, menu).reduce((sum, pizza, index) => {
+            const pizzaPrice = pizza.prezzoBaseCentesimi ?? pizza.prezzoCentesimi;
+            const drinkPrice = drinks[index].prezzoBaseCentesimi ?? drinks[index].prezzoCentesimi;
+            return sum + pizzaPrice + drinkPrice - CONVENZIONE_PREZZO_MENU_CENTESIMI;
+        }, 0);
         return { menu, importo };
     }
 
@@ -56,12 +55,9 @@
                 valid = false;
                 continue;
             }
-            importo += Math.max(
-                0,
-                pizzas[0].prezzoBaseCentesimi
-                    + drinks[0].prezzoBaseCentesimi
-                    - CONVENZIONE_PREZZO_MENU_CENTESIMI
-            );
+            importo += pizzas[0].prezzoBaseCentesimi
+                + drinks[0].prezzoBaseCentesimi
+                - CONVENZIONE_PREZZO_MENU_CENTESIMI;
         }
         return { valid, menu: groups.size, importo };
     }

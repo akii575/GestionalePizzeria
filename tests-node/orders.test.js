@@ -685,7 +685,7 @@ function bancoInput(righe, extra = {}) {
     };
 }
 
-test("menu convention pairs the most expensive eligible pizza and drink, with extras at full price", () => {
+test("menu convention pairs expensive items and charges the fixed price for all selected pairs", () => {
     const catalog = conventionCatalog([
         { nome: "Pizza 10", prezzo: 10, convenzione: "pizza" },
         { nome: "Pizza 7", prezzo: 7, convenzione: "pizza" },
@@ -705,12 +705,18 @@ test("menu convention pairs the most expensive eligible pizza and drink, with ex
         { prodotto: "Bibita 10" }
     ], { convenzione: { tipo: "menu" } }), catalog);
 
-    assert.deepEqual(order.convenzione, { tipo: "menu", importo: 17, menu: 3 });
+    assert.deepEqual(order.convenzione, {
+        tipo: "menu",
+        importo: 16,
+        menu: 3,
+        prezzoMenu: 6,
+        totaleMenu: 18
+    });
     assert.equal(order.totaleLordo, 35);
-    assert.equal(order.totale, 18);
+    assert.equal(order.totale, 19);
 });
 
-test("menu convention does not increase low-priced pairs", () => {
+test("menu convention raises a low-priced pair to six euros", () => {
     const lowPriceCatalog = conventionCatalog([
         { nome: "Napoletana", prezzo: 4, disponibile: true },
         { nome: "Acqua 0,5L", prezzo: 1, disponibile: true }
@@ -719,8 +725,32 @@ test("menu convention does not increase low-priced pairs", () => {
         { prodotto: "Napoletana" },
         { prodotto: "Acqua 0,5L" }
     ], { convenzione: { tipo: "menu" } }), lowPriceCatalog);
-    assert.deepEqual(lowPrice.convenzione, { tipo: "menu", importo: 0, menu: 1 });
-    assert.equal(lowPrice.totale, 5);
+    assert.deepEqual(lowPrice.convenzione, {
+        tipo: "menu",
+        importo: -1,
+        menu: 1,
+        prezzoMenu: 6,
+        totaleMenu: 6
+    });
+    assert.equal(lowPrice.totale, 6);
+});
+
+test("automatic menu matching keeps pizza extras outside the fixed menu price", () => {
+    const catalog = conventionCatalog([
+        { nome: "Margherita", prezzo: 7, convenzione: "pizza", ammetteExtra: true },
+        { nome: "Coca Cola 33cl", prezzo: 2, convenzione: "bibita" }
+    ]);
+    catalog.extras = [{ id: "bufala", nome: "Bufala", prezzo: 2, disponibile: true }];
+
+    const order = prepareOrder(bancoInput([
+        { prodotto: "Margherita", extra: ["bufala"] },
+        { prodotto: "Coca Cola 33cl" }
+    ], { convenzione: { tipo: "menu" } }), catalog);
+
+    assert.equal(order.convenzione.importo, 3);
+    assert.equal(order.convenzione.totaleMenu, 6);
+    assert.equal(order.totaleLordo, 11);
+    assert.equal(order.totale, 8);
 });
 
 test("explicit menu pairs allow notes and reject extra or senza changes", () => {
@@ -739,9 +769,15 @@ test("explicit menu pairs allow notes and reject extra or senza changes", () => 
         { prodotto: "Acqua 0,5L", menuConvenzione: "menu-B" }
     ], { convenzione: { tipo: "menu" } }), catalog);
 
-    assert.deepEqual(order.convenzione, { tipo: "menu", importo: 4, menu: 2 });
+    assert.deepEqual(order.convenzione, {
+        tipo: "menu",
+        importo: 3,
+        menu: 2,
+        prezzoMenu: 6,
+        totaleMenu: 12
+    });
     assert.equal(order.totaleLordo, 15);
-    assert.equal(order.totale, 11);
+    assert.equal(order.totale, 12);
     assert.equal(order.righe[0].menuConvenzione, "menu-A");
     assert.equal(order.righe[1].menuConvenzione, "menu-A");
     assert.deepEqual(order.righe[0].note, ["Ben cotta"]);
@@ -757,24 +793,54 @@ test("explicit menu pairs allow notes and reject extra or senza changes", () => 
     }
 });
 
-test("white and red pizzas pair with Coca Cola Zero defaults in guided menu orders", () => {
+test("three guided default menus total eighteen euros against a nineteen-fifty subtotal", () => {
     const products = [
-        { nome: "Pizza bianca", prezzo: 8 },
-        { nome: "Pizza rossa", prezzo: 7 },
+        { nome: "Margherita", prezzo: 5.5 },
+        { nome: "Coca Cola 33cl", prezzo: 2.5 },
+        { nome: "Pizza rossa", prezzo: 4.5 },
         { nome: "Coca-Cola Zero 33 cl", prezzo: 2 },
-        { nome: "Coca Zero 33cl", prezzo: 2 }
+        { nome: "Napoletana", prezzo: 4 },
+        { nome: "Acqua 0,5L", prezzo: 1 }
     ].map(product => ({ ...product, convenzione: productConvention(product) }));
     const catalog = conventionCatalog(products);
     const order = prepareOrder(bancoInput([
-        { prodotto: "Pizza bianca", menuConvenzione: "bianca" },
-        { prodotto: "Coca-Cola Zero 33 cl", menuConvenzione: "bianca" },
-        { prodotto: "Pizza rossa", menuConvenzione: "rossa" },
-        { prodotto: "Coca Zero 33cl", menuConvenzione: "rossa" }
+        { prodotto: "Margherita", menuConvenzione: "menu-1" },
+        { prodotto: "Coca Cola 33cl", menuConvenzione: "menu-1" },
+        { prodotto: "Pizza rossa", menuConvenzione: "menu-2" },
+        { prodotto: "Coca-Cola Zero 33 cl", menuConvenzione: "menu-2" },
+        { prodotto: "Napoletana", menuConvenzione: "menu-3" },
+        { prodotto: "Acqua 0,5L", menuConvenzione: "menu-3" }
     ], { convenzione: { tipo: "menu" } }), catalog);
 
-    assert.deepEqual(order.convenzione, { tipo: "menu", importo: 7, menu: 2 });
-    assert.equal(order.totaleLordo, 19);
-    assert.equal(order.totale, 12);
+    assert.deepEqual(order.convenzione, {
+        tipo: "menu",
+        importo: 1.5,
+        menu: 3,
+        prezzoMenu: 6,
+        totaleMenu: 18
+    });
+    assert.equal(order.totaleLordo, 19.5);
+    assert.equal(order.totale, 18);
+});
+
+test("Solo pomodoro and Acqua 0,5L make a fixed six-euro menu", () => {
+    const products = [
+        { nome: "Solo pomodoro", prezzo: 3.5 },
+        { nome: "Acqua 0,5L", prezzo: 1 }
+    ].map(product => ({ ...product, convenzione: productConvention(product) }));
+    const order = prepareOrder(bancoInput([
+        { prodotto: "Solo pomodoro", menuConvenzione: "pomodoro" },
+        { prodotto: "Acqua 0,5L", menuConvenzione: "pomodoro" }
+    ], { convenzione: { tipo: "menu" } }), conventionCatalog(products));
+
+    assert.deepEqual(order.convenzione, {
+        tipo: "menu",
+        importo: -1.5,
+        menu: 1,
+        prezzoMenu: 6,
+        totaleMenu: 6
+    });
+    assert.equal(order.totale, 6);
 });
 
 test("explicit menu convention requires every order row to belong to a menu, including edits", () => {
@@ -804,7 +870,13 @@ test("explicit menu convention requires every order row to belong to a menu, inc
         { prodotto: "Pizza", menuConvenzione: "b" },
         { prodotto: "Bibita", menuConvenzione: "b" }
     ], { convenzione: { tipo: "menu" } }), catalog);
-    assert.deepEqual(validMultipleMenus.convenzione, { tipo: "menu", importo: 8, menu: 2 });
+    assert.deepEqual(validMultipleMenus.convenzione, {
+        tipo: "menu",
+        importo: 8,
+        menu: 2,
+        prezzoMenu: 6,
+        totaleMenu: 12
+    });
 });
 
 test("explicit menu convention accepts three pairs and rejects invalid or incomplete pair identifiers", () => {
@@ -820,7 +892,13 @@ test("explicit menu convention accepts three pairs and rejects invalid or incomp
         { prodotto: "Pizza", menuConvenzione: "c" },
         { prodotto: "Bibita", menuConvenzione: "c" }
     ], { convenzione: { tipo: "menu" } }), catalog);
-    assert.deepEqual(threeMenus.convenzione, { tipo: "menu", importo: 12, menu: 3 });
+    assert.deepEqual(threeMenus.convenzione, {
+        tipo: "menu",
+        importo: 12,
+        menu: 3,
+        prezzoMenu: 6,
+        totaleMenu: 18
+    });
     assert.equal(threeMenus.totale, 18);
 
     for (const righe of [
@@ -889,6 +967,12 @@ test("university convention is exclusive and recalculates on edits", () => {
         existingRows: [{ prodotto: "Margherita" }],
         existingOrder: { tipo: "banco" }
     });
-    assert.deepEqual(edited.convenzione, { tipo: "menu", importo: 4, menu: 1 });
+    assert.deepEqual(edited.convenzione, {
+        tipo: "menu",
+        importo: 4,
+        menu: 1,
+        prezzoMenu: 6,
+        totaleMenu: 6
+    });
     assert.equal(edited.totale, 6);
 });

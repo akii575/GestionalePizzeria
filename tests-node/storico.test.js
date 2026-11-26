@@ -188,12 +188,15 @@ test("saved service-day summaries include discounts and convention orders", () =
             }],
             sconto: { importo: 0.5 },
             convenzione: { tipo: "percentuale", importo: 0.25 }
+        }),
+        order(3, "2026-05-10T14:00:00.000Z", "banco", 6, {
+            convenzione: { tipo: "menu", importo: -1 }
         })
     ]).get("2026-05-10");
     const saved = finalizeSummary(summary);
 
-    assert.equal(saved.sconti, 1.75);
-    assert.equal(saved.convenzioni, 1);
+    assert.equal(saved.sconti, 0.75);
+    assert.equal(saved.convenzioni, 2);
 });
 
 test("chart preparation fills all selected days with zeros and marks the current day", () => {
@@ -432,6 +435,10 @@ test("history totals row discounts, order discounts, and conventions from saved 
                 }],
                 sconto: { tipo: "percentuale", importo: 0.5 },
                 convenzione: { tipo: "percentuale", importo: 0.25 }
+            },
+            surcharge: {
+                ...order(10, "2026-03-10T14:00:00.000Z", "banco", 6),
+                convenzione: { tipo: "menu", importo: -1 }
             }
         }
     });
@@ -442,10 +449,10 @@ test("history totals row discounts, order discounts, and conventions from saved 
     });
 
     assert.equal(response.statusCode, 200);
-    assert.equal(response.body.serate[0].sconti, 3.25);
-    assert.equal(response.body.serate[0].convenzioni, 2);
-    assert.equal(response.body.totali.sconti, 3.25);
-    assert.equal(response.body.totali.convenzioni, 2);
+    assert.equal(response.body.serate[0].sconti, 2.25);
+    assert.equal(response.body.serate[0].convenzioni, 3);
+    assert.equal(response.body.totali.sconti, 2.25);
+    assert.equal(response.body.totali.convenzioni, 3);
 });
 
 test("history rejects staff and delivery accounts and validates its date range", async t => {
