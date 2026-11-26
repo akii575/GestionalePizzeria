@@ -5,12 +5,12 @@ const { createServer } = require("../scripts/printer-terminal");
 const allowedOrigin = "https://gestionale-pizzeria-six.vercel.app";
 
 function receiptLineFits(line, doubleWidth) {
-    const marker = /^@@(TITLE|SECTION|BIG|ITEM|SMALL|BOLD):(.*)@@$/.exec(line);
+    const marker = /^@@(TITLE|SECTION|BIG|NOTEBIG|ITEM|SMALL|BOLD):(.*)@@$/.exec(line);
     if (!marker) return Array.from(line).length <= doubleWidth;
     if (marker[1] === "TITLE" || marker[1] === "SECTION") return true;
     const width = marker[1] === "SMALL"
         ? doubleWidth * 2
-        : marker[1] === "BIG" ? Math.floor(doubleWidth * 2 / 3) : doubleWidth;
+        : marker[1] === "BIG" || marker[1] === "NOTEBIG" ? Math.floor(doubleWidth * 2 / 3) : doubleWidth;
     return Array.from(marker[2]).length <= width;
 }
 
@@ -526,7 +526,7 @@ test("receipt prints removed ingredients for kitchen and sala without grouping t
     assert.match(sala, /\x20{2}- senza basilico/);
 });
 
-test("receipt keeps a pizza with a note separate and prints note lines for kitchen and sala", () => {
+test("receipt keeps a pizza with a note separate and prints its notes in the NOTE section", () => {
     const { formatReceipt } = require("../scripts/printer-agent");
     const plain = {
         prodotto: "Margherita",
@@ -550,16 +550,21 @@ test("receipt keeps a pizza with a note separate and prints note lines for kitch
     };
     const cucina = formatReceipt(order, 80, { ...options, profile: "cucina" });
     const sala = formatReceipt(order, 80, { ...options, profile: "sala" });
-    const righeCucina = cucina.split(/\r?\n/);
-    const senza = righeCucina.findIndex(linea => linea.includes("- SENZA BASILICO"));
-    const nota = righeCucina.findIndex(linea => linea.includes("! BEN COTTA"));
-    const extra = righeCucina.findIndex(linea => linea.includes("+ BUFALA"));
+    for (const receipt of [cucina, sala]) {
+        const lines = receipt.split(/\r?\n/);
+        const noteHeader = lines.indexOf("NOTE:");
+        const section = lines.indexOf("@@SECTION:PIZZE@@");
+        const note = lines.indexOf("@@NOTEBIG:! BEN COTTA@@");
 
-    assert.equal((cucina.match(/@@ITEM:1X MARGHERITA@@/g) || []).length, 2);
-    assert.ok(senza >= 0 && senza < nota && nota < extra);
-    assert.match(righeCucina[nota], /^@@ITEM: {2}! BEN COTTA@@$/);
-    assert.equal((sala.match(/@@ITEM:1X MARGHERITA/g) || []).length, 2);
-    assert.match(sala, /^ {2}\* ben cotta$/m);
+        assert.ok(noteHeader >= 0 && noteHeader < note && note < section);
+        assert.equal(lines[noteHeader + 1], "@@ITEM:1X MARGHERITA@@");
+        assert.equal(lines.filter(line => line.includes("BEN COTTA")).length, 1);
+        assert.equal(lines.filter(line => line === "@@ITEM:  > VEDI NOTE@@").length, 1);
+    }
+    assert.equal((cucina.match(/@@ITEM:1X MARGHERITA@@/g) || []).length, 3);
+    assert.match(cucina, /@@ITEM: {2}- SENZA BASILICO@@/);
+    assert.match(cucina, /@@ITEM: {2}\+ BUFALA@@/);
+    assert.equal((sala.match(/@@ITEM:1X MARGHERITA\s+EUR/g) || []).length, 2);
 });
 
 test("receipt groups products in Firestore category order using prices stored in order rows", () => {
@@ -759,7 +764,7 @@ test("receipt wraps long product, destination and note text to the configured ro
     assert.ok(lines.every(line => receiptLineFits(line, 24)));
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("CLIENTE CON UN NOMINATIVO MOLTO LUNGO"));
     assert.ok(receipt.includes("NOTE:"));
-    assert.ok(receipt.replace(/\r?\n/g, " ").includes("DETTAGLI IMPORTANTI"));
+    assert.ok(receipt.replace(/@@NOTEBIG:(.*)@@/g, "$1").replace(/\r?\n/g, " ").includes("DETTAGLI IMPORTANTI"));
     assert.ok(receipt.indexOf("NOTE:") < receipt.indexOf("@@SECTION:"));
     assert.ok(receipt.replace(/\r?\n/g, " ").includes("  + EXTRA CON NOME"));
 });

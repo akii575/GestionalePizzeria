@@ -260,6 +260,7 @@ function formatKitchenRows(rows, options, receiptWidth) {
     for (const { row, rowExtras, notes, quantity } of groupReceiptRows(rows)) {
         lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, receiptWidth)
             .map(line => `@@ITEM:${line}@@`));
+        if (notes.length) lines.push(`@@ITEM:${NOTE_REFERENCE}@@`);
         const ingredients = options.productIngredients?.[row.prodotto];
         const senza = (Array.isArray(row.senza) ? row.senza : [])
             .filter(ingredient => typeof ingredient === "string" && ingredient.trim());
@@ -279,16 +280,31 @@ function formatKitchenRows(rows, options, receiptWidth) {
             lines.push(...wrapReceiptPrefix("  - SENZA ", ingredient.toLocaleUpperCase("it-IT"), receiptWidth)
                 .map(line => `@@ITEM:${line}@@`));
         }
-        for (const note of notes) {
-            lines.push(...wrapReceiptPrefix("  ! ", note.toLocaleUpperCase("it-IT"), receiptWidth)
-                .map(line => `@@ITEM:${line}@@`));
-        }
         for (const extra of rowExtras) {
             lines.push(...wrapReceiptPrefix("  + ", extra.name, receiptWidth)
                 .map(line => `@@ITEM:${line}@@`));
         }
     }
     return lines;
+}
+
+const NOTE_REFERENCE = "  > VEDI NOTE";
+
+// Sezione NOTE in cima: note rapide di ogni pizza e nota scritta dell'ordine, in grande.
+function formatNotesSection(order, rows, width, bigWidth, divider) {
+    const lines = [];
+    if (typeof order.note === "string" && order.note.trim()) {
+        lines.push(...wrapReceiptText(order.note, bigWidth).map(line => `@@NOTEBIG:${line}@@`));
+    }
+    for (const { row, notes, quantity } of groupReceiptRows(rows)) {
+        if (!notes.length) continue;
+        lines.push(...wrapReceiptText(`${quantity}x ${row.prodotto}`, width).map(line => `@@ITEM:${line}@@`));
+        for (const note of notes) {
+            lines.push(...wrapReceiptPrefix("! ", note.toLocaleUpperCase("it-IT"), bigWidth)
+                .map(line => `@@NOTEBIG:${line}@@`));
+        }
+    }
+    return lines.length ? ["NOTE:", ...lines, divider] : [];
 }
 
 function formatVariationChange(change, quantity, width) {
@@ -422,12 +438,10 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         lines.push(...wrapReceiptText(`COGNOME: ${order.cognomeBanco}`, receiptWidth));
     }
     lines.push(divider);
-    if (typeof order.note === "string" && order.note.trim()) {
-        lines.push("NOTE:", ...wrapReceiptText(order.note, receiptWidth), divider);
-    }
     const rowsByCategory = new Map();
     const receiptOptions = { ...options, profile: options.profile === "cucina" ? "cucina" : "sala" };
     const receiptRows = receiptRowsForProfile(order, receiptOptions);
+    lines.push(...formatNotesSection(order, receiptRows, receiptWidth, bigWidth, divider));
     const productCategories = options.productCategories || {};
     for (const row of receiptRows) {
         const category = row.categoria || productCategories[row.prodotto] || "altro";
@@ -454,6 +468,7 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             const itemParts = wrapReceiptItemParts(`${quantity}x ${row.prodotto}`, baseTotal, receiptWidth);
             lines.push(...itemParts.nameLines.map(line => `@@ITEM:${line}@@`));
             if (itemParts.amountLine) lines.push(itemParts.amountLine);
+            if (notes.length) lines.push(`@@ITEM:${NOTE_REFERENCE}@@`);
             for (const ingredient of (Array.isArray(row.senza) ? row.senza : [])
                 .filter(value => typeof value === "string" && value.trim())) {
                 // Le righe successive restano rientrate: non sono altri ingredienti.
@@ -462,10 +477,6 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
                     ingredient,
                     receiptWidth
                 ).map(line => line.toLocaleLowerCase("it-IT")));
-            }
-            for (const note of notes) {
-                lines.push(...wrapReceiptPrefix("  * ", note, receiptWidth)
-                    .map(line => line.toLocaleLowerCase("it-IT")));
             }
             for (const extra of rowExtras) {
                 const extraTotal = Math.round(extra.price * quantity * 100) / 100;

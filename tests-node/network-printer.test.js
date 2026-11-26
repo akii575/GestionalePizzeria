@@ -92,6 +92,17 @@ test("ESC/POS receipt contains readable section commands and a partial cut", () 
     assert.equal(payload[payload.length - 1], 3);
 });
 
+test("note lines print bold, triple size and left aligned", () => {
+    const { encodeEscPosReceipt } = require("../scripts/network-printer");
+    const payload = encodeEscPosReceipt(["NOTE:", "@@NOTEBIG:! BEN COTTA@@", "TOTALE EUR 5,00"].join("\r\n"));
+    const start = Buffer.from([0x1b, 0x61, 0, 0x1b, 0x45, 1, 0x1d, 0x21, 0x22]);
+    const at = payload.indexOf(start);
+
+    assert.ok(at > 0);
+    assert.equal(payload.subarray(at + start.length, at + start.length + 11).toString("ascii"), "! BEN COTTA");
+    assert.doesNotMatch(payload.toString("ascii"), /@@NOTEBIG/);
+});
+
 test("the printer reachability check connects without sending a print job", async t => {
     const server = net.createServer(socket => socket.end());
     await new Promise((resolve, reject) => {

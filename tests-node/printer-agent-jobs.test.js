@@ -675,7 +675,7 @@ test("the agent prints only added rows and reports both addition totals", async 
     assert.match(receipt, /@@BIG:ORARIO 20:00@@$/);
     assert.match(receipt, /TEL: 3331234567/);
     assert.match(receipt, /VIA ROMA 12/);
-    assert.match(receipt, /NOTE:\r?\nSENZA BASILICO/);
+    assert.match(receipt, /NOTE:\r?\n@@NOTEBIG:SENZA BASILICO@@/);
     assert.match(receipt, /@@ITEM:2X PATATINE PICCOLE@@\r?\n\s+EUR 6,00/);
     assert.doesNotMatch(receipt, /1X MARGHERITA|COSTO CONSEGNA/);
     assert.match(receipt, /TOTALE AGGIUNTA/);
@@ -694,12 +694,12 @@ test("the agent prints only added rows and reports both addition totals", async 
     assert.match(narrowReceipt, /NUOVO TOTALE\r?\n {7}EUR 10,00/);
     assert.match(narrowReceipt, /@@BIG:ORARIO@@\r?\n@@BIG:20:00@@$/);
     assert.ok(narrowLines.every(line => {
-        const marker = /^@@(TITLE|SECTION|BIG|ITEM|SMALL|BOLD):(.*)@@$/.exec(line);
+        const marker = /^@@(TITLE|SECTION|BIG|NOTEBIG|ITEM|SMALL|BOLD):(.*)@@$/.exec(line);
         if (!marker) return Array.from(line).length <= 16;
         if (marker[1] === "TITLE" || marker[1] === "SECTION") return true;
         const width = marker[1] === "SMALL"
             ? 32
-            : marker[1] === "BIG" ? 10 : 16;
+            : marker[1] === "BIG" || marker[1] === "NOTEBIG" ? 10 : 16;
         return Array.from(marker[2]).length <= width;
     }));
 });

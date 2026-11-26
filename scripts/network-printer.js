@@ -145,6 +145,7 @@ function encodeEscPosReceipt(receipt) {
     for (const line of receiptLines) {
         const section = /^@@SECTION:(.*)@@$/.exec(line);
         const big = /^@@BIG:(.*)@@$/.exec(line);
+        const noteBig = /^@@NOTEBIG:(.*)@@$/.exec(line);
         const title = /^@@TITLE:(.*)@@$/.exec(line);
         const itemMarker = /^@@ITEM:(.*)@@$/.exec(line);
         const small = /^@@SMALL:(.*)@@$/.exec(line);
@@ -152,6 +153,14 @@ function encodeEscPosReceipt(receipt) {
         if (big) {
             bytes(0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0x22);
             text(big[1]);
+            lineFeed();
+            normalText();
+            continue;
+        }
+        if (noteBig) {
+            // Nota in grassetto, tripla grandezza, allineata a sinistra.
+            bytes(0x1b, 0x61, 0, 0x1b, 0x45, 1, 0x1d, 0x21, 0x22);
+            text(noteBig[1]);
             lineFeed();
             normalText();
             continue;
