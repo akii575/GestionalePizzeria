@@ -599,14 +599,25 @@ test("server rejects row and total discounts but still exposes legacy discount f
     assert.throws(() => prepareOrder({
         tipo: "banco",
         cognomeBanco: "Rossi",
-        righe: [{ prodotto: "Margherita", sconto: null }]
+        righe: [{ prodotto: "Margherita", sconto: { tipo: "omaggio", motivo: "Omaggio" } }]
     }), error => error.statusCode === 400 && error.message === errorMessage);
     assert.throws(() => prepareOrder({
         tipo: "banco",
         cognomeBanco: "Rossi",
         righe: [{ prodotto: "Margherita" }],
-        sconto: null
+        sconto: { tipo: "percentuale", valore: 10, motivo: "Promozione" }
     }), error => error.statusCode === 400 && error.message === errorMessage);
+
+    // Le pagine aperte prima dell'aggiornamento inviano campi sconto vuoti.
+    const fromOldPage = prepareOrder({
+        tipo: "banco",
+        cognomeBanco: "Rossi",
+        righe: [{ prodotto: "Margherita", sconto: null }],
+        sconto: null,
+        convenzione: null
+    }, { menu: [{ nome: "Margherita", prezzo: 5, disponibile: true }], extras: [] });
+    assert.equal(fromOldPage.totale, 5);
+    assert.equal("sconto" in fromOldPage, false);
 
     const legacy = publicOrder({
         numero: 5,
