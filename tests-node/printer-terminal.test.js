@@ -247,15 +247,14 @@ test("sala aligns fixed-price convention summaries within the 24-column receipt 
         totale: 14.4
     }, 80).split(/\r?\n/);
     const percentageSubtotal = percentageLines.findIndex(line => line.includes("SUBTOTALE"));
-    const percentageConvention = percentageLines.findIndex(line => line.includes("CONV. UNIV. 10%"));
+    const percentageConvention = percentageLines.findIndex(line => line.startsWith("CONVENZ. 10%"));
     const percentageTotal = percentageLines.findIndex(line => line.startsWith("TOTALE"));
 
     assert.ok(percentageSubtotal >= 0);
     assert.ok(percentageSubtotal < percentageConvention);
     assert.ok(percentageConvention < percentageTotal);
     assert.match(percentageLines[percentageSubtotal], /SUBTOTALE\s+EUR 16,00/);
-    assert.match(percentageLines[percentageConvention + 1], /EUR -1,60/);
-    assert.equal(percentageLines[percentageConvention + 1].length, 24);
+    assert.equal(percentageLines[percentageConvention], "CONVENZ. 10%   EUR -1,60");
     assert.match(percentageLines[percentageTotal], /EUR 14,40/);
 
     const menuOrder = {
@@ -275,21 +274,19 @@ test("sala aligns fixed-price convention summaries within the 24-column receipt 
     };
     const menuLines = formatReceipt(menuOrder, 80).split(/\r?\n/);
     const menuSubtotal = menuLines.findIndex(line => line.includes("SUBTOTALE"));
-    const menuSummary = menuLines.findIndex(line => line.includes("MENU CONV. X 6,00"));
+    const menuSummary = menuLines.findIndex(line => line.startsWith("3 MENU X 6,00"));
     const menuTotal = menuLines.findIndex(line => line.startsWith("TOTALE"));
 
     assert.ok(menuSubtotal >= 0);
     assert.ok(menuSubtotal < menuSummary);
     assert.ok(menuSummary < menuTotal);
     assert.match(menuLines[menuSubtotal], /SUBTOTALE\s+EUR 19,50/);
-    assert.match(menuLines[menuSummary + 1], /EUR 18,00/);
-    assert.equal(menuLines[menuSummary + 1].length, 24);
+    assert.equal(menuLines[menuSummary], "3 MENU X 6,00  EUR 18,00");
     assert.match(menuLines[menuTotal], /EUR 18,00/);
     for (const lines of [percentageLines, menuLines]) {
         for (const index of [
             lines.findIndex(line => line.includes("SUBTOTALE")),
-            lines.findIndex(line => line.includes("CONV. UNIV. 10%") || line.includes("MENU CONV. X 6,00")),
-            lines.findIndex(line => line.includes("CONV. UNIV. 10%") || line.includes("MENU CONV. X 6,00")) + 1,
+            lines.findIndex(line => line.startsWith("CONVENZ. 10%") || line.startsWith("3 MENU X 6,00")),
             lines.findIndex(line => line.startsWith("TOTALE"))
         ]) {
             assert.ok(lines[index].length <= 24);
@@ -782,4 +779,37 @@ test("receipt fills the configured 58 mm and 80 mm roll widths", () => {
     assert.equal(wideReceipt.split(/\r?\n/)[2], "-".repeat(24));
     assert.ok(narrowReceipt.split(/\r?\n/).every(line => receiptLineFits(line, 16)));
     assert.ok(wideReceipt.split(/\r?\n/).every(line => receiptLineFits(line, 24)));
+});
+
+test("sala prints cover charge after the convention line and keeps long menu counts on one line", () => {
+    const { formatReceipt } = require("../scripts/printer-agent");
+    const lines = formatReceipt({
+        numero: 47,
+        tipo: "tavolo",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [],
+        coperto: { persone: 2, totale: 4 },
+        totaleLordo: 17,
+        convenzione: { tipo: "menu", menu: 2, importo: 1, prezzoMenu: 6, totaleMenu: 12 },
+        totale: 16
+    }, 80).split(/\r?\n/);
+    const subtotal = lines.findIndex(line => line.startsWith("SUBTOTALE"));
+    const menu = lines.findIndex(line => line.startsWith("2 MENU X 6,00"));
+    const cover = lines.findIndex(line => line.startsWith("COPERTO 2X"));
+    const total = lines.findIndex(line => line.startsWith("TOTALE"));
+
+    assert.match(lines[subtotal], /EUR 13,00$/);
+    assert.ok(subtotal < menu && menu < cover && cover < total);
+    assert.match(lines[total], /EUR 16,00$/);
+
+    const tenMenus = formatReceipt({
+        numero: 48,
+        tipo: "ritiro",
+        dataOra: "2026-10-14T12:00:00.000Z",
+        righe: [],
+        totaleLordo: 70,
+        convenzione: { tipo: "menu", menu: 10, importo: 10, prezzoMenu: 6, totaleMenu: 60 },
+        totale: 60
+    }, 80).split(/\r?\n/);
+    assert.ok(tenMenus.includes("10 MENU X 6,00 EUR 60,00"));
 });

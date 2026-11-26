@@ -494,12 +494,19 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         lines.push(...wrapReceiptItem("TOTALE AGGIUNTA", totalAdded, receiptWidth));
         lines.push(...wrapReceiptItem("NUOVO TOTALE", Number(order.totale || 0), receiptWidth));
     } else if (receiptOptions.profile === "sala") {
+        const extraLines = [];
         if (Number(order.coperto?.totale) > 0) {
-            lines.push(...wrapReceiptItem(`COPERTO ${Number(order.coperto.persone) || 0}X`, Number(order.coperto.totale), receiptWidth));
+            extraLines.push(...wrapReceiptItem(`COPERTO ${Number(order.coperto.persone) || 0}X`, Number(order.coperto.totale), receiptWidth));
         }
         if (tipo === "consegna" && Number(order.costoConsegna) > 0) {
-            lines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
+            extraLines.push(...wrapReceiptItem("COSTO CONSEGNA", Number(order.costoConsegna), receiptWidth));
         }
+        // Con la convenzione: SUBTOTALE prodotti, convenzione, poi coperto/consegna e TOTALE.
+        const conventionLayout = order.convenzione?.tipo === "percentuale"
+            || (order.convenzione?.tipo === "menu"
+                && Number.isFinite(order.convenzione.prezzoMenu)
+                && Number.isFinite(order.convenzione.totaleMenu));
+        if (!conventionLayout) lines.push(...extraLines);
         if (options.tipoStampa !== "aggiunta" && order.convenzione?.tipo === "percentuale") {
             const copertoCents = Math.round(Number(order.coperto?.totale || 0) * 100);
             const deliveryCents = Math.round(Number(order.costoConsegna || 0) * 100);
@@ -525,7 +532,7 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
             const menuCount = Number(order.convenzione.menu) || 0;
             lines.push(...wrapReceiptItem("SUBTOTALE", subtotalCents / 100, receiptWidth));
             lines.push(...wrapReceiptItem(
-                `${menuCount} MENU CONV. X ${receiptNumber(order.convenzione.prezzoMenu)}`,
+                `${menuCount} MENU X ${receiptNumber(order.convenzione.prezzoMenu)}`,
                 Number(order.convenzione.totaleMenu),
                 receiptWidth
             ));
@@ -540,7 +547,7 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
         if (options.tipoStampa !== "aggiunta" && order.convenzione) {
             if (order.convenzione.tipo === "percentuale") {
                 lines.push(...wrapReceiptItem(
-                    "CONV. UNIV. 10%",
+                    "CONVENZ. 10%",
                     -Number(order.convenzione.importo || 0),
                     receiptWidth
                 ));
@@ -557,6 +564,7 @@ function formatReceipt(order, paperWidthMm = 80, options = {}) {
                 ));
             }
         }
+        if (conventionLayout) lines.push(...extraLines);
     }
     if (receiptOptions.profile === "sala" && options.tipoStampa !== "aggiunta") {
         const amount = receiptAmount(Number(order.totale || 0));
