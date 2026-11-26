@@ -195,7 +195,7 @@ const orderCard = (() => {
 
     function groupProducts(rows) {
         const groups = new Map();
-        (Array.isArray(rows) ? rows : []).forEach(row => {
+        (Array.isArray(rows) ? rows : []).forEach((row, position) => {
             const extras = (Array.isArray(row.extra) ? row.extra : []).map(extra => (
                 typeof extra === "string" ? extra : extra?.nome
             )).filter(Boolean);
@@ -208,7 +208,8 @@ const orderCard = (() => {
                 extraIdentity(row),
                 senza.slice().sort(),
                 rowNotes(row),
-                row.sconto || null
+                row.sconto || null,
+                row.menuConvenzione || null
             ]);
             const group = groups.get(identity);
             if (group) {
@@ -223,7 +224,8 @@ const orderCard = (() => {
                     notes: rowNotes(row),
                     quantity: 1,
                     total: price,
-                    grossTotal: grossPrice
+                    grossTotal: grossPrice,
+                    position
                 });
             }
         });
@@ -231,7 +233,9 @@ const orderCard = (() => {
     }
 
     function renderProducts(rows) {
-        return groupProducts(rows).map(({ row, extras, senza, notes, quantity, total, grossTotal }) => {
+        const products = groupProducts(rows)
+            .filter(group => !group.row.menuConvenzione)
+            .map(({ row, extras, senza, notes, quantity, total, grossTotal, position }) => {
             const senzaMarkup = senza.length
                 ? `<small class="order-card__without-ingredients">senza ${escapeHtml(senza.join(", "))}</small>`
                 : "";
@@ -247,8 +251,41 @@ const orderCard = (() => {
             const price = discount
                 ? `<del>${euro.format(grossTotal)}</del><strong>${euro.format(total)}</strong>`
                 : euro.format(total);
-            return `<li><div class="order-card__product-row"><span class="order-card__product-quantity">${quantity}×</span><div class="order-card__product-name"><strong>${escapeHtml(row.prodotto)}</strong>${senzaMarkup}${extraMarkup}${noteMarkup}${discount}</div><span class="order-card__product-price">${price}</span></div></li>`;
-        }).join("");
+            return { position, markup: `<li><div class="order-card__product-row"><span class="order-card__product-quantity">${quantity}×</span><div class="order-card__product-name"><strong>${escapeHtml(row.prodotto)}</strong>${senzaMarkup}${extraMarkup}${noteMarkup}${discount}</div><span class="order-card__product-price">${price}</span></div></li>` };
+        });
+        const menus = new Map();
+        (Array.isArray(rows) ? rows : []).forEach((row, position) => {
+            if (typeof row.menuConvenzione !== "string") return;
+            if (!menus.has(row.menuConvenzione)) menus.set(row.menuConvenzione, { position, rows: [] });
+            menus.get(row.menuConvenzione).rows.push(row);
+        });
+        menus.forEach(menu => {
+            const [pizza, bibita] = menu.rows;
+            if (!pizza || !bibita) return;
+            const grossCents = [pizza, bibita].reduce((sum, row) => (
+                sum + Math.round(Number(row.totaleLordo ?? row.totale ?? row.prezzoBase ?? 0) * 100)
+            ), 0);
+            const baseCents = [pizza, bibita].reduce((sum, row) => (
+                sum + Math.round(Number(row.prezzoBase ?? row.totaleLordo ?? row.totale ?? 0) * 100)
+            ), 0);
+            const netCents = grossCents - Math.max(0, baseCents - 600);
+            const fullPrice = euro.format(grossCents / 100);
+            const netPrice = euro.format(netCents / 100);
+            const discount = grossCents > netCents ? `<del>${fullPrice}</del>` : "";
+            const extras = (Array.isArray(pizza.extra) ? pizza.extra : [])
+                .map(extra => typeof extra === "string" ? extra : extra?.nome)
+                .filter(Boolean);
+            const extrasMarkup = extras.length
+                ? `<small class="order-card__extra">Extra pizza: ${escapeHtml(extras.join(", "))}</small>`
+                : "";
+            products.push({
+                position: menu.position,
+                markup: `<li class="order-card__menu"><div class="order-card__product-row"><span class="order-card__product-quantity">1×</span><div class="order-card__product-name"><strong>Menu convenzione</strong><small class="order-card__menu-items">${escapeHtml(pizza.prodotto)} + ${escapeHtml(bibita.prodotto)}</small>${extrasMarkup}</div><span class="order-card__product-price">${discount}<strong>${netPrice}</strong></span></div></li>`
+            });
+        });
+        return products.sort((first, second) => first.position - second.position)
+            .map(product => product.markup)
+            .join("");
     }
 
     function renderDiscountSummary(order) {

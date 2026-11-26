@@ -55,6 +55,9 @@ let trascinamentoRiepilogo = null;
 let trascinamentoChiusuraSheet = null;
 let timerNascondiRiepilogoSheet = 0;
 let overflowRadicePrecedente = null;
+let menuConvenzionePasso = 1;
+let menuConvenzionePizzaSelezionata = null;
+let menuConvenzioneBibitaSelezionata = null;
 const messaggio = document.getElementById("messaggio");
 const riprovaModifica = document.getElementById("riprova-modifica");
 const invia = document.getElementById("btn-invia");
@@ -130,6 +133,17 @@ const confermaIntestazione = document.getElementById("conferma-intestazione");
 const confermaRighe = document.getElementById("conferma-righe");
 const confermaTotale = document.getElementById("conferma-totale");
 const confermaSconti = document.getElementById("conferma-sconti");
+const menuConvenzioneModale = document.getElementById("menu-convenzione-modale");
+const menuConvenzionePassoLabel = document.getElementById("menu-convenzione-passo-label");
+const menuConvenzioneDisponibilita = document.getElementById("menu-convenzione-disponibilita");
+const menuConvenzionePizzaStep = document.getElementById("menu-convenzione-pizza-step");
+const menuConvenzionePizze = document.getElementById("menu-convenzione-pizze");
+const menuConvenzioneBibitaStep = document.getElementById("menu-convenzione-bibita-step");
+const menuConvenzioneBibite = document.getElementById("menu-convenzione-bibite");
+const menuConvenzioneRiepilogo = document.getElementById("menu-convenzione-riepilogo");
+const menuConvenzioneIndietro = document.getElementById("menu-convenzione-indietro");
+const menuConvenzioneAggiungi = document.getElementById("menu-convenzione-aggiungi");
+const menuConvenzioneAnnulla = document.getElementById("menu-convenzione-annulla");
 const bottoneCostoConsegna = document.getElementById("btn-costo-consegna");
 const bottoneRicerca = document.getElementById("btn-ricerca");
 const bottoneIngredienti = document.getElementById("btn-ingredienti");
@@ -157,10 +171,11 @@ const {
     creaPayloadComanda,
     puoSalvareModifica,
     aggiungiProdotti,
+    aggiungiMenuConvenzione,
     quantitaProdotto,
     preparaRipetizione,
     impostaRigaAttiva,
-    raggruppaRigheConferma,
+    raggruppaRigheConMenu,
     rimuoviProdotto,
     toggleExtra,
     toggleSenza,
@@ -1062,6 +1077,179 @@ function prezzoRiga(riga) {
         )
     );
 }
+function prodottiConvenzioneDisponibili(tipo) {
+    return stato.menu
+        .filter(prodotto => prodotto.convenzione === tipo
+            && prodotto.disponibile !== false
+            && prodotto.archiviato !== true)
+        .sort(window.htmlUtils.compareMenuItemsByName);
+}
+function creaIdMenuConvenzione() {
+    const cryptoApi = globalThis.crypto;
+    if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
+        return cryptoApi.randomUUID().replace(/-/g, "").slice(0, 12);
+    }
+    const alfabeto = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+    return Array.from({ length: 12 }, () => alfabeto[Math.floor(Math.random() * alfabeto.length)]).join("");
+}
+function creaPulsanteSceltaMenu(prodotto, tipo, seleziona) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "menu-convenzione-prodotto";
+    const name = document.createElement("span");
+    name.textContent = prodotto.nome;
+    const price = document.createElement("strong");
+    price.textContent = euro.format(Number(prodotto.prezzo) || 0);
+    button.append(name, price);
+    button.addEventListener("click", () => seleziona(prodotto));
+    button.setAttribute("aria-label", `${tipo}: ${prodotto.nome}, ${price.textContent}`);
+    button.dataset.prodottoMenu = prodotto.nome;
+    return button;
+}
+function aggiornaMenuConvenzioneGuidato() {
+    const pizze = prodottiConvenzioneDisponibili("pizza");
+    const bibite = prodottiConvenzioneDisponibili("bibita");
+    const disponibilita = [];
+    if (!pizze.length) disponibilita.push("Non ci sono pizze idonee disponibili.");
+    if (!bibite.length) disponibilita.push("Non ci sono bibite idonee disponibili.");
+    const disponibile = pizze.length > 0 && bibite.length > 0;
+    menuConvenzioneDisponibilita.hidden = disponibile;
+    menuConvenzioneDisponibilita.textContent = disponibilita.join(" ");
+    menuConvenzionePizzaStep.hidden = !disponibile || menuConvenzionePasso !== 1;
+    menuConvenzioneBibitaStep.hidden = !disponibile || menuConvenzionePasso !== 2;
+    menuConvenzioneIndietro.hidden = !disponibile || menuConvenzionePasso === 1;
+    menuConvenzioneRiepilogo.hidden = !disponibile || menuConvenzionePasso !== 3;
+    menuConvenzioneAggiungi.disabled = !disponibile
+        || !menuConvenzionePizzaSelezionata
+        || !menuConvenzioneBibitaSelezionata
+        || menuConvenzionePasso !== 3;
+    menuConvenzionePassoLabel.textContent = !disponibile
+        ? "Menu convenzione non disponibile"
+        : menuConvenzionePasso === 1
+            ? "Passaggio 1 di 2 · Scegli la pizza"
+            : menuConvenzionePasso === 2
+                ? "Passaggio 2 di 2 · Scegli la bibita"
+                : "Controlla il menu";
+
+    menuConvenzionePizze.replaceChildren(...pizze.map(prodotto => (
+        creaPulsanteSceltaMenu(prodotto, "Pizza", pizza => {
+            menuConvenzionePizzaSelezionata = pizza;
+            menuConvenzioneBibitaSelezionata = null;
+            menuConvenzionePasso = 2;
+            aggiornaMenuConvenzioneGuidato();
+            menuConvenzioneBibite.querySelector("button")?.focus();
+        })
+    )));
+    menuConvenzioneBibite.replaceChildren(...bibite.map(prodotto => (
+        creaPulsanteSceltaMenu(prodotto, "Bibita", bibita => {
+            menuConvenzioneBibitaSelezionata = bibita;
+            menuConvenzionePasso = 3;
+            aggiornaMenuConvenzioneGuidato();
+            menuConvenzioneIndietro.focus();
+        })
+    )));
+
+    if (menuConvenzionePizzaSelezionata && menuConvenzioneBibitaSelezionata) {
+        const fullPriceCents = orderDiscountRules.toCents(menuConvenzionePizzaSelezionata.prezzo)
+            + orderDiscountRules.toCents(menuConvenzioneBibitaSelezionata.prezzo);
+        const menuPriceCents = Math.min(
+            orderDiscountRules.CONVENZIONE_PREZZO_MENU_CENTESIMI,
+            fullPriceCents
+        );
+        const names = `${menuConvenzionePizzaSelezionata.nome} + ${menuConvenzioneBibitaSelezionata.nome}`;
+        menuConvenzioneRiepilogo.textContent = menuPriceCents < fullPriceCents
+            ? `${names} · ${euro.format(menuPriceCents / 100)} invece di ${euro.format(fullPriceCents / 100)}`
+            : `${names} · ${euro.format(fullPriceCents / 100)}`;
+    } else {
+        menuConvenzioneRiepilogo.textContent = "";
+    }
+}
+let menuConvenzioneTrigger = null;
+function apriMenuConvenzione(trigger) {
+    if (convenzioneOrdine?.tipo === "percentuale") return;
+    if (riepilogoSheetAperto) chiudiRiepilogoSheet(false);
+    menuConvenzioneTrigger = trigger;
+    menuConvenzionePasso = 1;
+    menuConvenzionePizzaSelezionata = null;
+    menuConvenzioneBibitaSelezionata = null;
+    aggiornaMenuConvenzioneGuidato();
+    menuConvenzioneModale.hidden = false;
+    paginaPrincipale.inert = true;
+    document.body.classList.add("modale-aperta");
+    const primoPulsante = menuConvenzioneDisponibilita.hidden
+        ? menuConvenzionePizze.querySelector("button")
+        : null;
+    (primoPulsante || menuConvenzioneAnnulla).focus();
+}
+function chiudiMenuConvenzione(ripristinaFocus = true) {
+    menuConvenzioneModale.hidden = true;
+    paginaPrincipale.inert = false;
+    if (confermaModale.hidden && ricercaModale.hidden && !riepilogoSheetAperto) {
+        document.body.classList.remove("modale-aperta");
+    }
+    menuConvenzionePizzaSelezionata = null;
+    menuConvenzioneBibitaSelezionata = null;
+    const focusTarget = menuConvenzioneTrigger?.closest("#riepilogo-sheet")
+        ? riepilogoSheetApri
+        : menuConvenzioneTrigger;
+    if (ripristinaFocus && focusTarget?.isConnected) focusTarget.focus();
+    menuConvenzioneTrigger = null;
+}
+function aggiungiMenuConvenzioneSelezionato() {
+    if (!menuConvenzionePizzaSelezionata || !menuConvenzioneBibitaSelezionata) return;
+    const limite = controllaLimiteRighe(stato.righe.length, 2);
+    if (!limite.consentito) {
+        mostraMessaggio("Non puoi aggiungere altre righe a questa comanda.", "errore");
+        return;
+    }
+    const aggiunta = aggiungiMenuConvenzione(
+        stato.righe,
+        menuConvenzionePizzaSelezionata,
+        menuConvenzioneBibitaSelezionata,
+        creaIdMenuConvenzione()
+    );
+    stato.righe = aggiunta.righe;
+    stato.rigaAttiva = aggiunta.rigaAttiva;
+    convenzioneOrdine = { tipo: "menu" };
+    chiudiMenuConvenzione(false);
+    renderRiepilogo();
+    mostraMessaggio("Menu convenzione aggiunto.", "");
+    const focusTarget = riepilogoSheetDisponibile()
+        ? riepilogoSheetApri
+        : riepilogo.querySelector('[data-convenzione="menu"]:not(:disabled)');
+    focusTarget?.focus();
+}
+
+function datiRigaMenuConvenzione(menuGroup) {
+    const isPizza = group => stato.menu.find(prodotto => prodotto.nome === group.riga.prodotto)?.convenzione === "pizza";
+    const pizzaGroup = menuGroup.righe.find(isPizza) || menuGroup.righe[0];
+    const bibitaGroup = menuGroup.righe.find(group => group !== pizzaGroup) || menuGroup.righe[1];
+    const pizzaRow = pizzaGroup?.riga;
+    const bibitaRow = bibitaGroup?.riga;
+    const fullPriceCents = orderDiscountRules.toCents(pizzaRow?.prezzo)
+        + orderDiscountRules.toCents(bibitaRow?.prezzo);
+    const extrasCents = [pizzaGroup, bibitaGroup].reduce((sum, group) => (
+        sum + Math.max(
+            0,
+            orderDiscountRules.toCents(prezzoRiga(group.riga))
+                - orderDiscountRules.toCents(group.riga.prezzo)
+        ) * group.quantita
+    ), 0);
+    const menuPriceCents = Math.min(
+        orderDiscountRules.CONVENZIONE_PREZZO_MENU_CENTESIMI,
+        fullPriceCents
+    );
+    return {
+        pizzaGroup,
+        bibitaGroup,
+        fullPriceCents,
+        extrasCents,
+        menuPriceCents,
+        totalFullCents: fullPriceCents + extrasCents,
+        totalMenuCents: menuPriceCents + extrasCents
+    };
+}
+
 function anteprimaTotaliOrdine() {
     let righeLordoCentesimi = 0;
     const menuItems = stato.righe.map(riga => {
@@ -1070,14 +1258,23 @@ function anteprimaTotaliOrdine() {
         const prodotto = stato.menu.find(item => item.nome === riga.prodotto);
         return {
             tipo: prodotto?.convenzione || "",
-            prezzoCentesimi: lordoCentesimi
+            prezzoCentesimi: lordoCentesimi,
+            prezzoBaseCentesimi: orderDiscountRules.toCents(riga.prezzo),
+            ...(typeof riga.menuConvenzione === "string"
+                ? { menuConvenzione: riga.menuConvenzione }
+                : {})
         };
     });
     const copertoCentesimi = orderDiscountRules.toCents(copertoCorrente()?.totale || 0);
     const consegnaCentesimi = orderDiscountRules.toCents(costoConsegna);
     const imponibileCentesimi = righeLordoCentesimi + copertoCentesimi;
     let convenzioneCentesimi = 0;
-    const menuConvenzione = orderDiscountRules.calculateMenuConvention(menuItems);
+    const hasExplicitMenus = menuItems.some(item => item.menuConvenzione);
+    const menuConvenzione = hasExplicitMenus
+        ? orderDiscountRules.calculateExplicitMenuConvention(menuItems)
+        : convenzioneOrdine?.tipo === "menu"
+            ? orderDiscountRules.calculateMenuConvention(menuItems)
+            : { menu: 0, importo: 0 };
     if (convenzioneOrdine?.tipo === "percentuale") {
         convenzioneCentesimi = orderDiscountRules.percentageDiscountCents(
             imponibileCentesimi,
@@ -1111,13 +1308,16 @@ function markupRiepilogoFinanziario(preview, controlli = false) {
     const availableMenus = preview.menuConvenzione.menu;
     const menuDescription = availableMenus
         ? `${availableMenus} ${availableMenus === 1 ? "menu" : "menu"} · risparmio ${euro.format(preview.menuConvenzione.importo / 100)}`
-        : "Per il menu convenzione servono una pizza e una bibita idonee.";
+        : "Scegli una pizza e una bibita per aggiungere un menu.";
+    const menuAttivo = availableMenus > 0;
+    const percentLabel = menuAttivo ? "Togli i menu per usare il 10%" : "10% sul totale";
+    const menuLabel = conventionType === "percentuale" ? "Togli il 10% per usare i menu" : "Menu 6 €";
     const controls = controlli
         ? `<div class="riepilogo-sconti-controlli">
                 <p class="convenzione-titolo" id="convenzione-titolo">Convenzione universitaria</p>
                 <div class="convenzione-scelte" role="group" aria-labelledby="convenzione-titolo">
-                    <button class="convenzione-scelta${conventionType === "percentuale" ? " is-active" : ""}" type="button" data-convenzione="percentuale" aria-pressed="${conventionType === "percentuale"}">10% sul totale</button>
-                    <button class="convenzione-scelta${conventionType === "menu" ? " is-active" : ""}" type="button" data-convenzione="menu" aria-pressed="${conventionType === "menu"}">Menu 6 €</button>
+                    <button class="convenzione-scelta${conventionType === "percentuale" ? " is-active" : ""}" type="button" data-convenzione="percentuale" aria-pressed="${conventionType === "percentuale"}"${menuAttivo ? " disabled" : ""}>${percentLabel}</button>
+                    <button class="convenzione-scelta${menuAttivo ? " is-active" : ""}" type="button" data-convenzione="menu" aria-haspopup="dialog"${conventionType === "percentuale" ? " disabled" : ""}>${menuLabel}</button>
                 </div>
                 <p class="convenzione-anteprima">${escapeHtml(menuDescription)}</p>
             </div>`
@@ -1666,7 +1866,39 @@ function aggiornaStatoCaricamentoModifica() {
 }
 function renderRigheRiepilogo(contenitore) {
     contenitore.replaceChildren();
-    raggruppaRigheConferma(stato.righe).forEach(({ riga, quantita, indici }) => {
+    raggruppaRigheConMenu(stato.righe).forEach(entry => {
+        if (entry.tipo === "menu") {
+            const menu = datiRigaMenuConvenzione(entry);
+            const pizza = menu.pizzaGroup.riga;
+            const bibita = menu.bibitaGroup.riga;
+            const pizzaIndex = menu.pizzaGroup.indici[0];
+            const voce = document.createElement("div");
+            voce.className = "riepilogo-item riepilogo-item--menu";
+            voce.classList.toggle("riga-attiva", menu.pizzaGroup.indici.includes(stato.rigaAttiva));
+            voce.dataset.rigaAttiva = pizzaIndex;
+            const delPrice = menu.totalMenuCents < menu.totalFullCents
+                ? `<del>${euro.format(menu.totalFullCents / 100)}</del>`
+                : "";
+            const pizzaExtra = pizza.extra?.length
+                ? `<small class="riepilogo-extra">+ ${escapeHtml(nomiExtra(pizza.extra).join(", "))}</small>`
+                : "";
+            const pizzaSenza = pizza.senza?.length
+                ? `<small class="riepilogo-senza">senza ${escapeHtml(pizza.senza.join(", "))}</small>`
+                : "";
+            const pizzaNote = pizza.note?.length
+                ? `<small class="riepilogo-note-riga">${escapeHtml(pizza.note.map(value => value.toLocaleLowerCase("it-IT")).join(", "))}</small>`
+                : "";
+            const pizzaNotAvailable = pizza.nonDisponibile
+                ? '<small class="riepilogo-non-disponibile">Non più disponibile</small>'
+                : "";
+            const bibitaDetails = bibita.extra?.length
+                ? `<small class="riepilogo-extra">+ ${escapeHtml(nomiExtra(bibita.extra).join(", "))}</small>`
+                : "";
+            voce.innerHTML = `<div class="riepilogo-menu-contenuto"><div class="riepilogo-menu-titolo"><strong>Menu convenzione · ${euro.format(menu.totalMenuCents / 100)}</strong>${delPrice}</div><div class="riepilogo-item__descrizione"><button class="seleziona-riga" type="button" data-riga-attiva="${escapeHtml(pizzaIndex)}">${escapeHtml(pizza.prodotto)}</button>${pizzaNotAvailable}${pizzaSenza}${pizzaExtra}${pizzaNote}<small class="riepilogo-menu-prodotto">${escapeHtml(bibita.prodotto)}${bibitaDetails ? ` · ${bibitaDetails}` : ""}</small></div></div><button class="rimuovi" type="button" data-indice="${escapeHtml(pizzaIndex)}" aria-label="Rimuovi menu convenzione">−</button>`;
+            contenitore.appendChild(voce);
+            return;
+        }
+        const { riga, quantita, indici } = entry;
         const indiceUltimaRiga = indici[indici.length - 1];
         const voce = document.createElement("div");
         voce.className = "riepilogo-item";
@@ -1709,14 +1941,13 @@ function rimuoviRigaRiepilogo(evento) {
         evento.preventDefault();
         evento.stopPropagation();
         const tipo = pulsanteConvenzione.dataset.convenzione;
+        if (tipo === "menu") {
+            apriMenuConvenzione(pulsanteConvenzione);
+            return;
+        }
         if (convenzioneOrdine?.tipo === tipo) {
             convenzioneOrdine = null;
-        } else {
-            const preview = anteprimaTotaliOrdine();
-            if (tipo === "menu" && !preview.menuConvenzione.menu) {
-                mostraMessaggio("Per il menu convenzione servono una pizza e una bibita idonee.", "errore");
-                return;
-            }
+        } else if (tipo === "percentuale") {
             convenzioneOrdine = { tipo };
         }
         renderRiepilogo();
@@ -1724,10 +1955,15 @@ function rimuoviRigaRiepilogo(evento) {
     }
     const pulsante = evento.target.closest(".rimuovi");
     if (pulsante && evento.currentTarget.contains(pulsante)) {
+        const menuId = stato.righe[Number(pulsante.dataset.indice)]?.menuConvenzione;
         const risultato = rimuoviProdotto(stato.righe, stato.rigaAttiva, Number(pulsante.dataset.indice));
         stato.righe = risultato.righe;
         stato.rigaAttiva = risultato.rigaAttiva;
+        if (menuId && !stato.righe.some(riga => riga.menuConvenzione)) {
+            convenzioneOrdine = null;
+        }
         renderRiepilogo();
+        if (menuId) mostraMessaggio("Menu convenzione rimosso.", "");
         return;
     }
     const riga = evento.target.closest(".riepilogo-item[data-riga-attiva]");
@@ -1997,8 +2233,26 @@ function apriConferma() {
     confermaIntestazione.innerHTML =
         dettagliServizio +
         dettaglioOrario;
-    confermaRighe.innerHTML = raggruppaRigheConferma(stato.righe)
-        .map(({ riga, quantita }) => {
+    confermaRighe.innerHTML = raggruppaRigheConMenu(stato.righe)
+        .map(entry => {
+            if (entry.tipo === "menu") {
+                const menu = datiRigaMenuConvenzione(entry);
+                const pizza = menu.pizzaGroup.riga;
+                const bibita = menu.bibitaGroup.riga;
+                const prezzo = euro.format(menu.totalMenuCents / 100);
+                const prezzoPieno = menu.totalMenuCents < menu.totalFullCents
+                    ? `<del>${euro.format(menu.totalFullCents / 100)}</del> `
+                    : "";
+                const extra = nomiExtra(pizza.extra).join(", ");
+                const senza = Array.isArray(pizza.senza) && pizza.senza.length
+                    ? `<small class="conferma-senza">SENZA ${escapeHtml(pizza.senza.join(", "))}</small>`
+                    : "";
+                const note = normalizzaNoteRiga(pizza.note)
+                    .map(value => `<small class="conferma-nota-riga">• ${escapeHtml(value)}</small>`)
+                    .join("");
+                return `<div class="conferma-riga"><strong>Menu convenzione — ${prezzoPieno}${prezzo}</strong><small class="conferma-extra">${escapeHtml(pizza.prodotto)} + ${escapeHtml(bibita.prodotto)}</small>${extra ? `<small class="conferma-extra">Extra pizza: ${escapeHtml(extra)}</small>` : ""}${senza}${note}</div>`;
+            }
+            const { riga, quantita } = entry;
             const extra = nomiExtra(riga.extra).join(", ");
             const senza = Array.isArray(riga.senza) && riga.senza.length
                 ? `<small class="conferma-senza">SENZA ${escapeHtml(riga.senza.join(", "))}</small>`
@@ -2399,6 +2653,25 @@ document.getElementById("conferma-invio").addEventListener("click", inviaOrdine)
 document.getElementById("annulla-invio").addEventListener("click", chiudiConferma);
 riepilogo.addEventListener("click", rimuoviRigaRiepilogo);
 riepilogoSheetLista.addEventListener("click", rimuoviRigaRiepilogo);
+menuConvenzioneIndietro.addEventListener("click", () => {
+    if (menuConvenzionePasso === 3) {
+        menuConvenzionePasso = 2;
+        aggiornaMenuConvenzioneGuidato();
+        const bibitaSelezionata = [...menuConvenzioneBibite.querySelectorAll("button")]
+            .find(button => button.dataset.prodottoMenu === menuConvenzioneBibitaSelezionata?.nome);
+        (bibitaSelezionata || menuConvenzioneBibite.querySelector("button"))?.focus();
+        return;
+    }
+    menuConvenzionePasso = 1;
+    menuConvenzioneBibitaSelezionata = null;
+    aggiornaMenuConvenzioneGuidato();
+    menuConvenzionePizze.querySelector("button")?.focus();
+});
+menuConvenzioneAnnulla.addEventListener("click", () => chiudiMenuConvenzione());
+menuConvenzioneAggiungi.addEventListener("click", aggiungiMenuConvenzioneSelezionato);
+menuConvenzioneModale.addEventListener("click", evento => {
+    if (evento.target === menuConvenzioneModale) chiudiMenuConvenzione();
+});
 barraConto.addEventListener("pointerdown", avviaTrascinamentoRiepilogo);
 barraConto.addEventListener("pointermove", aggiornaTrascinamentoRiepilogo);
 barraConto.addEventListener("pointerup", terminaTrascinamentoRiepilogo);
@@ -2466,6 +2739,29 @@ annullaModificaModale.addEventListener("click", evento => {
 });
 document.addEventListener("keydown", evento => {
     intrappolaFocusNelRiepilogoSheet(evento);
+    if (!menuConvenzioneModale.hidden) {
+        if (evento.key === "Escape") {
+            chiudiMenuConvenzione();
+            evento.preventDefault();
+            return;
+        }
+        if (evento.key === "Tab") {
+            const focusable = [...menuConvenzioneModale.querySelectorAll("button:not(:disabled)")]
+                .filter(button => !button.closest("[hidden]"));
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (!first) {
+                evento.preventDefault();
+            } else if (evento.shiftKey && document.activeElement === first) {
+                evento.preventDefault();
+                last.focus();
+            } else if (!evento.shiftKey && document.activeElement === last) {
+                evento.preventDefault();
+                first.focus();
+            }
+            return;
+        }
+    }
     if (evento.key !== "Escape") return;
     if (!clientiIndirizzoRisultati.hidden) {
         chiudiRisultatiClientiIndirizzo();

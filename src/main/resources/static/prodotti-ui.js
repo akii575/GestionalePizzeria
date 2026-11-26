@@ -215,6 +215,9 @@ const prodottiUI = (() => {
                 return {
                     prodotto: riga.prodotto,
                     prezzo: Number(prodotto?.prezzo ?? riga.prezzoBase ?? riga.prezzo ?? 0),
+                    ...(typeof riga.menuConvenzione === "string"
+                        ? { menuConvenzione: riga.menuConvenzione }
+                        : {}),
                     categoria: prodotto?.categoria || riga.categoria || "",
                     ingredienti,
                     ammetteExtra: prodotto?.ammetteExtra === true,
@@ -251,7 +254,10 @@ const prodottiUI = (() => {
                 prodotto: riga.prodotto,
                 extra: Array.isArray(riga.extra) ? riga.extra : [],
                 senza: Array.isArray(riga.senza) ? riga.senza : [],
-                note: Array.isArray(riga.note) ? [...riga.note] : []
+                note: Array.isArray(riga.note) ? [...riga.note] : [],
+                ...(typeof riga.menuConvenzione === "string"
+                    ? { menuConvenzione: riga.menuConvenzione }
+                    : {})
             })),
             ...(dati.convenzione ? { convenzione: { tipo: dati.convenzione.tipo } } : {})
         };
@@ -268,6 +274,16 @@ const prodottiUI = (() => {
             righe: nuoveRighe,
             rigaAttiva: rigaModificabile(prodotto) ? nuoveRighe.length - 1 : rigaAttiva
         };
+    }
+
+    function aggiungiMenuConvenzione(righe, pizza, bibita, menuId) {
+        if (!pizza || !bibita || !/^[A-Za-z0-9_-]{1,36}$/.test(menuId || "")) {
+            throw new Error("Il menu convenzione non e' valido.");
+        }
+        const pizzaRiga = { ...creaRiga(pizza), menuConvenzione: menuId };
+        const bibitaRiga = { ...creaRiga(bibita), menuConvenzione: menuId };
+        const nuoveRighe = [...righe, pizzaRiga, bibitaRiga];
+        return { righe: nuoveRighe, rigaAttiva: nuoveRighe.length - 2 };
     }
 
     function quantitaProdotto(righe, nomeProdotto) {
@@ -332,7 +348,7 @@ const prodottiUI = (() => {
             const note = normalizzaNoteRiga(riga.note).sort((first, second) =>
                 first.localeCompare(second, "it-IT")
             );
-            const chiave = JSON.stringify([riga.prodotto, extra, senza, note]);
+            const chiave = JSON.stringify([riga.prodotto, extra, senza, note, riga.menuConvenzione || null]);
             const gruppo = gruppi.get(chiave);
             if (gruppo) {
                 gruppo.quantita++;
@@ -344,19 +360,58 @@ const prodottiUI = (() => {
         return [...gruppi.values()];
     }
 
+    function raggruppaRigheConMenu(righe) {
+        const entries = [];
+        const menus = new Map();
+        for (const group of raggruppaRigheConferma(righe)) {
+            const menuId = group.riga.menuConvenzione;
+            if (!menuId) {
+                entries.push({
+                    tipo: "prodotto",
+                    posizione: group.indici[0],
+                    ...group
+                });
+                continue;
+            }
+            if (!menus.has(menuId)) {
+                menus.set(menuId, {
+                    tipo: "menu",
+                    menuId,
+                    posizione: group.indici[0],
+                    righe: [],
+                    indici: []
+                });
+                entries.push(menus.get(menuId));
+            }
+            menus.get(menuId).righe.push(group);
+            menus.get(menuId).indici.push(...group.indici);
+        }
+        return entries.sort((first, second) => first.posizione - second.posizione);
+    }
+
     function rimuoviProdotto(righe, rigaAttiva, indice) {
         if (!Number.isInteger(indice) || indice < 0 || indice >= righe.length) {
             return { righe, rigaAttiva };
         }
-        const nuoveRighe = righe.filter((_, posizione) => posizione !== indice);
-        if (indice === rigaAttiva) {
+        const menuId = righe[indice].menuConvenzione;
+        const removedPositions = new Set(menuId
+            ? righe.reduce((positions, row, position) => {
+                if (row.menuConvenzione === menuId) positions.push(position);
+                return positions;
+            }, [])
+            : [indice]);
+        const nuoveRighe = righe.filter((_, posizione) => !removedPositions.has(posizione));
+        if (rigaAttiva !== null && removedPositions.has(rigaAttiva)) {
             let prossimoAttivo = null;
             nuoveRighe.forEach((riga, posizione) => {
                 if (rigaModificabile(riga)) prossimoAttivo = posizione;
             });
             return { righe: nuoveRighe, rigaAttiva: prossimoAttivo };
         }
-        const prossimoIndice = rigaAttiva === null ? null : rigaAttiva > indice ? rigaAttiva - 1 : rigaAttiva;
+        const rimossePrimaDellAttiva = rigaAttiva === null
+            ? 0
+            : [...removedPositions].filter(position => position < rigaAttiva).length;
+        const prossimoIndice = rigaAttiva === null ? null : rigaAttiva - rimossePrimaDellAttiva;
         return {
             righe: nuoveRighe,
             rigaAttiva: prossimoIndice !== null && rigaModificabile(nuoveRighe[prossimoIndice]) ? prossimoIndice : null
@@ -831,10 +886,12 @@ const prodottiUI = (() => {
         creaPayloadComanda,
         puoSalvareModifica,
         aggiungiProdotti,
+        aggiungiMenuConvenzione,
         quantitaProdotto,
         preparaRipetizione,
         impostaRigaAttiva,
         raggruppaRigheConferma,
+        raggruppaRigheConMenu,
         rimuoviProdotto,
         toggleExtra,
         toggleSenza,

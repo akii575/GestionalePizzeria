@@ -110,3 +110,22 @@ test("address results use the selected customer without a phone lookup", () => {
     assert.match(ordersPage, /applicaClienteIndirizzo\([\s\S]*?mostraClienteAbituale\([\s\S]*?telefono,\s*true/);
     assert.match(ordersPage, /timerRicercaClientiIndirizzo = window\.setTimeout\([\s\S]*?300/);
 });
+
+test("guided university menu dialog offers pizza, drink, review, and cancellation steps", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const directory = path.join(__dirname, "../src/main/resources/static");
+    const ordersPage = fs.readFileSync(path.join(directory, "ordini.js"), "utf8");
+    const ordersHtml = fs.readFileSync(path.join(directory, "ordini.html"), "utf8");
+
+    assert.match(ordersHtml, /id="menu-convenzione-modale"[^>]*role="dialog"[^>]*aria-modal="true"/);
+    assert.match(ordersHtml, /id="menu-convenzione-pizza-step"[\s\S]*?Scegli la pizza/);
+    assert.match(ordersHtml, /id="menu-convenzione-bibita-step"[\s\S]*?Scegli la bibita/);
+    assert.match(ordersHtml, /id="menu-convenzione-indietro"[^>]*>Indietro/);
+    assert.match(ordersHtml, /id="menu-convenzione-aggiungi"[^>]*>Aggiungi menu/);
+    assert.match(ordersHtml, /id="menu-convenzione-annulla"[^>]*>Annulla/);
+    assert.match(ordersPage, /calcolaMenuConvenzione|calculateExplicitMenuConvention/);
+    assert.match(ordersPage, /Togli il 10% per usare i menu/);
+    assert.match(ordersPage, /Togli i menu per usare il 10%/);
+    assert.match(ordersPage, /data-convenzione="menu"[^`]*aria-haspopup="dialog"/);
+});

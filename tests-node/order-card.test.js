@@ -163,6 +163,38 @@ test("historical order cards continue to display row and total discounts", () =>
     assert.match(html, /order-card__discount-summary[^>]*>[\s\S]*?−0,40/);
 });
 
+test("order details group explicit university menu pairs and show their net total", () => {
+    const html = render({
+        righe: [
+            {
+                prodotto: "Margherita",
+                prezzoBase: 7,
+                totaleLordo: 9,
+                totale: 9,
+                extra: [{ id: "bufala", nome: "Bufala", prezzo: 2 }],
+                menuConvenzione: "menu-1"
+            },
+            {
+                prodotto: "Coca Cola 33cl",
+                prezzoBase: 2,
+                totaleLordo: 2,
+                totale: 2,
+                menuConvenzione: "menu-1"
+            }
+        ],
+        convenzione: { tipo: "menu", menu: 1, importo: 3 },
+        totaleLordo: 11,
+        totale: 8
+    });
+
+    assert.match(html, /class="order-card__menu"/);
+    assert.match(html, /Menu convenzione/);
+    assert.match(html, /Margherita \+ Coca Cola 33cl/);
+    assert.match(html, /Extra pizza: Bufala/);
+    assert.match(html, /Convenzione universitaria · 1 menu 6 euro/);
+    assert.doesNotMatch(html, /<strong>Margherita<\/strong>/);
+});
+
 test("table cards use singular and plural people labels", () => {
     assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2", numeroPersone: 1 }), /Tavolo 2 · 1 persona/);
     assert.match(render({ tipo: "tavolo", tavoloOCliente: "Tavolo 2", numeroPersone: 2 }), /Tavolo 2 · 2 persone/);
@@ -1120,7 +1152,7 @@ test("portrait order summary sheet opens accessibly and removes rows through sha
     assert.match(script, /riepilogoSheetLista\.addEventListener\("click", rimuoviRigaRiepilogo\)/);
     assert.match(script, /const indiceUltimaRiga = indici\[indici\.length - 1\];[\s\S]*?data-indice="\$\{escapeHtml\(indiceUltimaRiga\)\}" aria-label="Togli uno"/);
     assert.match(script, /function rimuoviRigaRiepilogo\(evento\)[\s\S]*?rimuoviProdotto\(stato\.righe, stato\.rigaAttiva, Number\(pulsante\.dataset\.indice\)\)[\s\S]*?renderRiepilogo\(\);/);
-    assert.match(script, /raggruppaRigheConferma\(stato\.righe\)\.forEach\(\(\{ riga, quantita, indici \}\)/);
+    assert.match(script, /raggruppaRigheConMenu\(stato\.righe\)\.forEach\(entry =>/);
     assert.match(script, /<span class="riepilogo-quantita">\$\{quantita\}×<\/span>/);
     assert.match(script, /if \(!stato\.righe\.length\) contenitore\.innerHTML = "<p>Nessun prodotto selezionato<\/p>";/);
     assert.match(script, /barraConto\.addEventListener\("pointerdown", avviaTrascinamentoRiepilogo\)/);
