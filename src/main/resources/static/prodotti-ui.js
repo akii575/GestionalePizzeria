@@ -153,10 +153,11 @@ const prodottiUI = (() => {
     }
 
     function ammetteExtra(prodotto) {
-        return prodotto?.ammetteExtra === true;
+        return typeof prodotto?.menuConvenzione !== "string" && prodotto?.ammetteExtra === true;
     }
 
     function rigaModificabile(riga) {
+        if (typeof riga?.menuConvenzione === "string") return false;
         return ammetteExtra(riga) || (Array.isArray(riga?.ingredienti) && riga.ingredienti.length > 0);
     }
 
@@ -212,18 +213,19 @@ const prodottiUI = (() => {
                             || (typeof elemento === "string" ? null : elemento);
                     })
                     .filter(Boolean);
+                const menuConvenzione = typeof riga.menuConvenzione === "string";
                 return {
                     prodotto: riga.prodotto,
                     prezzo: Number(prodotto?.prezzo ?? riga.prezzoBase ?? riga.prezzo ?? 0),
-                    ...(typeof riga.menuConvenzione === "string"
+                    ...(menuConvenzione
                         ? { menuConvenzione: riga.menuConvenzione }
                         : {}),
                     categoria: prodotto?.categoria || riga.categoria || "",
                     ingredienti,
-                    ammetteExtra: prodotto?.ammetteExtra === true,
+                    ammetteExtra: !menuConvenzione && prodotto?.ammetteExtra === true,
                     componibile: prodotto?.componibile === true,
-                    extra,
-                    senza: normalizzaSenzaIngredienti(riga.senza, ingredienti),
+                    extra: menuConvenzione ? [] : extra,
+                    senza: menuConvenzione ? [] : normalizzaSenzaIngredienti(riga.senza, ingredienti),
                     note: normalizzaNoteRiga(riga.note),
                     nonDisponibile: !prodotto
                         || prodotto.disponibile === false
@@ -252,8 +254,12 @@ const prodottiUI = (() => {
             note: dati.note,
             righe: righe.map(riga => ({
                 prodotto: riga.prodotto,
-                extra: Array.isArray(riga.extra) ? riga.extra : [],
-                senza: Array.isArray(riga.senza) ? riga.senza : [],
+                extra: typeof riga.menuConvenzione === "string"
+                    ? []
+                    : Array.isArray(riga.extra) ? riga.extra : [],
+                senza: typeof riga.menuConvenzione === "string"
+                    ? []
+                    : Array.isArray(riga.senza) ? riga.senza : [],
                 note: Array.isArray(riga.note) ? [...riga.note] : [],
                 ...(typeof riga.menuConvenzione === "string"
                     ? { menuConvenzione: riga.menuConvenzione }
@@ -474,7 +480,7 @@ const prodottiUI = (() => {
 
     function toggleSenza(righe, rigaAttiva, ingrediente) {
         const riga = righe[rigaAttiva];
-        if (!riga || typeof ingrediente !== "string") return righe;
+        if (!riga || typeof riga.menuConvenzione === "string" || typeof ingrediente !== "string") return righe;
         const canonical = (riga.ingredienti || []).find(item =>
             typeof item === "string"
             && item.trim().toLocaleLowerCase("it-IT") === ingrediente.trim().toLocaleLowerCase("it-IT")
@@ -864,6 +870,14 @@ const prodottiUI = (() => {
             .trim();
     }
 
+    function statoRigheMenuConvenzione(righe) {
+        const rows = Array.isArray(righe) ? righe : [];
+        return {
+            haMenu: rows.some(riga => typeof riga?.menuConvenzione === "string"),
+            haProdottiNormali: rows.some(riga => typeof riga?.menuConvenzione !== "string")
+        };
+    }
+
     return {
         LIMITE_RIGHE_ORDINE,
         NOTE_RIGA,
@@ -893,6 +907,7 @@ const prodottiUI = (() => {
         raggruppaRigheConferma,
         raggruppaRigheConMenu,
         rimuoviProdotto,
+        statoRigheMenuConvenzione,
         toggleExtra,
         toggleSenza,
         toggleNotaRiga,

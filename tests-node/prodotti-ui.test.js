@@ -25,6 +25,7 @@ const {
     raggruppaRigheConferma,
     raggruppaRigheConMenu,
     rimuoviProdotto,
+    statoRigheMenuConvenzione,
     toggleExtra,
     toggleSenza,
     toggleNotaRiga,
@@ -1029,6 +1030,47 @@ test("guided menu rows retain their shared identifier, group together, and remov
     }, modifiedRows);
     assert.deepEqual(payload.righe.map(row => row.menuConvenzione), ["menu_123", "menu_123"]);
     assert.deepEqual(payload.convenzione, { tipo: "menu" });
+});
+
+test("menu rows allow notes but ignore extra and ingredient-removal changes", () => {
+    const rows = [{
+        prodotto: "Pizza bianca",
+        menuConvenzione: "menu_1",
+        ingredienti: ["Mozzarella"],
+        ammetteExtra: true,
+        extra: [],
+        senza: [],
+        note: []
+    }];
+
+    assert.deepEqual(toggleExtra(rows, 0, { id: "bufala", nome: "Bufala" }), {
+        righe: rows,
+        rigaAttiva: 0
+    });
+    assert.equal(toggleSenza(rows, 0, "Mozzarella"), rows);
+    assert.deepEqual(toggleNotaRiga(rows, 0, "Ben cotta")[0].note, ["Ben cotta"]);
+    assert.deepEqual(statoRigheMenuConvenzione(rows), {
+        haMenu: true,
+        haProdottiNormali: false
+    });
+    assert.deepEqual(statoRigheMenuConvenzione([...rows, { prodotto: "Acqua" }]), {
+        haMenu: true,
+        haProdottiNormali: true
+    });
+});
+
+test("menu orders disable normal product search and menu controls for mixed rows", () => {
+    const script = fs.readFileSync(
+        path.join(__dirname, "..", "src", "main", "resources", "static", "ordini.js"),
+        "utf8"
+    );
+
+    assert.match(script, /Ordine con menu convenzione: puoi aggiungere solo altri menu/);
+    assert.match(script, /extraConteggio\.hidden = rigaMenuConvenzione/);
+    assert.match(script, /bottoneRicerca\.disabled = haMenu/);
+    assert.match(script, /bottone\.disabled = haMenu \|\| bottone\.dataset\.disponibile === "false"/);
+    assert.match(script, /Il menu convenzione va in un ordine separato/);
+    assert.match(script, /conventionType === "percentuale" \|\| righeMenu\.haProdottiNormali \? " disabled" : ""/);
 });
 
 test("multiplier keypad composes up to two digits and ignores a leading zero", () => {

@@ -723,7 +723,7 @@ test("menu convention does not increase low-priced pairs", () => {
     assert.equal(lowPrice.totale, 5);
 });
 
-test("explicit menu pairs discount only identified pairs and keep pizza extras at full price", () => {
+test("explicit menu pairs allow notes and reject extra or senza changes", () => {
     const catalog = conventionCatalog([
         { nome: "Margherita", prezzo: 7, convenzione: "pizza", ammetteExtra: true },
         { nome: "Napoletana", prezzo: 4, convenzione: "pizza" },
@@ -733,22 +733,78 @@ test("explicit menu pairs discount only identified pairs and keep pizza extras a
     catalog.extras = [{ id: "bufala", nome: "Bufala", prezzo: 2, disponibile: true }];
 
     const order = prepareOrder(bancoInput([
-        { prodotto: "Margherita", menuConvenzione: "menu-A", extra: ["bufala"] },
+        { prodotto: "Margherita", menuConvenzione: "menu-A", note: ["Ben cotta"] },
         { prodotto: "Coca Cola 33cl", menuConvenzione: "menu-A" },
         { prodotto: "Napoletana", menuConvenzione: "menu-B" },
-        { prodotto: "Acqua 0,5L", menuConvenzione: "menu-B" },
-        { prodotto: "Margherita" },
-        { prodotto: "Coca Cola 33cl" }
+        { prodotto: "Acqua 0,5L", menuConvenzione: "menu-B" }
     ], { convenzione: { tipo: "menu" } }), catalog);
 
     assert.deepEqual(order.convenzione, { tipo: "menu", importo: 4, menu: 2 });
-    assert.equal(order.totaleLordo, 27);
-    assert.equal(order.totale, 23);
-    assert.equal(order.righe[0].totale, 9);
+    assert.equal(order.totaleLordo, 15);
+    assert.equal(order.totale, 11);
     assert.equal(order.righe[0].menuConvenzione, "menu-A");
     assert.equal(order.righe[1].menuConvenzione, "menu-A");
-    assert.equal(order.righe[4].totale, 7);
-    assert.equal(order.righe[5].totale, 3);
+    assert.deepEqual(order.righe[0].note, ["Ben cotta"]);
+
+    for (const changes of [{ extra: ["bufala"] }, { senza: ["Mozzarella"] }]) {
+        assert.throws(() => prepareOrder(bancoInput([
+            { prodotto: "Margherita", menuConvenzione: "menu-A", ...changes },
+            { prodotto: "Coca Cola 33cl", menuConvenzione: "menu-A" }
+        ], { convenzione: { tipo: "menu" } }), catalog), error => (
+            error.statusCode === 400
+            && error.message === "I prodotti del menu convenzione non possono essere modificati."
+        ));
+    }
+});
+
+test("white and red pizzas pair with Coca Cola Zero defaults in guided menu orders", () => {
+    const products = [
+        { nome: "Pizza bianca", prezzo: 8 },
+        { nome: "Pizza rossa", prezzo: 7 },
+        { nome: "Coca-Cola Zero 33 cl", prezzo: 2 },
+        { nome: "Coca Zero 33cl", prezzo: 2 }
+    ].map(product => ({ ...product, convenzione: productConvention(product) }));
+    const catalog = conventionCatalog(products);
+    const order = prepareOrder(bancoInput([
+        { prodotto: "Pizza bianca", menuConvenzione: "bianca" },
+        { prodotto: "Coca-Cola Zero 33 cl", menuConvenzione: "bianca" },
+        { prodotto: "Pizza rossa", menuConvenzione: "rossa" },
+        { prodotto: "Coca Zero 33cl", menuConvenzione: "rossa" }
+    ], { convenzione: { tipo: "menu" } }), catalog);
+
+    assert.deepEqual(order.convenzione, { tipo: "menu", importo: 7, menu: 2 });
+    assert.equal(order.totaleLordo, 19);
+    assert.equal(order.totale, 12);
+});
+
+test("explicit menu convention requires every order row to belong to a menu, including edits", () => {
+    const catalog = conventionCatalog([
+        { nome: "Pizza", prezzo: 8, convenzione: "pizza" },
+        { nome: "Bibita", prezzo: 2, convenzione: "bibita" },
+        { nome: "Acqua", prezzo: 1 }
+    ]);
+    const rows = [
+        { prodotto: "Pizza", menuConvenzione: "a" },
+        { prodotto: "Bibita", menuConvenzione: "a" },
+        { prodotto: "Acqua" }
+    ];
+    const input = bancoInput(rows, { convenzione: { tipo: "menu" } });
+    const invalid = error => error.statusCode === 400
+        && error.message === "Con il menu convenzione l'ordine puo' contenere solo menu pizza + bibita.";
+
+    assert.throws(() => prepareOrder(input, catalog), invalid);
+    assert.throws(() => prepareOrder(input, catalog, {
+        existingRows: [{ prodotto: "Acqua" }],
+        existingOrder: { tipo: "banco", convenzione: { tipo: "menu" } }
+    }), invalid);
+
+    const validMultipleMenus = prepareOrder(bancoInput([
+        { prodotto: "Pizza", menuConvenzione: "a" },
+        { prodotto: "Bibita", menuConvenzione: "a" },
+        { prodotto: "Pizza", menuConvenzione: "b" },
+        { prodotto: "Bibita", menuConvenzione: "b" }
+    ], { convenzione: { tipo: "menu" } }), catalog);
+    assert.deepEqual(validMultipleMenus.convenzione, { tipo: "menu", importo: 8, menu: 2 });
 });
 
 test("explicit menu convention accepts three pairs and rejects invalid or incomplete pair identifiers", () => {
